@@ -1,9 +1,9 @@
 # Current Status — TradeLinks
 
-Version:        v0.4.0
+Version:        v0.4.1
 Sprint:         003
 Sprint Status:  ✅ Done
-Last Updated:   2026-06-03 by claude-opus-4-8
+Last Updated:   2026-06-04 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-003.md
 
 ## Open Bugs（P0/P1 必须本 Sprint 修复）
@@ -49,6 +49,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.4.1 | 2026-06-04 | UI 重做：Intelligence Wire 编辑风(Fraunces+Plex Mono+琥珀信号色)，用户确认采用 + Neon 连接池修复 |
 | v0.4.0 | 2026-06-03 | Sprint 003：Next.js Web(时间线+过滤)+REST API+RSS+审核UI+日报生成，真实验证 |
 | v0.3.0 | 2026-06-03 | Sprint 002：评分(MiniMax)+Alert生成+状态路由+审核队列，全链真实验证 |
 | v0.2.0 | 2026-06-03 | Sprint 001 完成：数据摄取管道（pg-boss/Neon + deepseek-v4-flash + Scrapling）全链真实验证 |
