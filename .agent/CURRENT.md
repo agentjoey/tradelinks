@@ -1,8 +1,8 @@
 # Current Status — TradeLinks
 
-Version:        v0.1.0
+Version:        v0.2.0
 Sprint:         001
-Sprint Status:  🔄 In Progress
+Sprint Status:  ✅ Done
 Last Updated:   2026-06-03 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-001.md
 
@@ -33,4 +33,5 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.2.0 | 2026-06-03 | Sprint 001 完成：数据摄取管道（pg-boss/Neon + deepseek-v4-flash + Scrapling）全链真实验证 |
 | v0.1.0 | 2026-06-03 | 项目立项，规范初始化，数据源清单确认 |

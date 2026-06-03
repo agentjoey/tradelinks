@@ -28,8 +28,8 @@ if [[ -f "$AGENT_CURRENT" ]]; then
   if [[ "${BUMP_TYPE}" == "minor" || "${BUMP_TYPE}" == "major" ]]; then
     sed -i.bak "s/^Sprint Status:.*$/Sprint Status:  ✅ Done/" "$AGENT_CURRENT"
   fi
-  # Append version history row
-  sed -i.bak "/^| Version | Date | Summary |/a | v${NEW_VERSION} | ${TODAY_STR} | [请补充] |" "$AGENT_CURRENT"
+  # Insert newest version-history row after the table separator (portable: perl)
+  perl -i -pe "if (!\$done && /^\\|[- ]+\\|[- ]+\\|[- ]+\\|\\s*\$/) { \$_ .= \"| v${NEW_VERSION} | ${TODAY_STR} | [请补充] |\\n\"; \$done=1 }" "$AGENT_CURRENT"
   rm -f "${AGENT_CURRENT}.bak"
 fi
 
