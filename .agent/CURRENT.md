@@ -1,14 +1,21 @@
 # Current Status — TradeLinks
 
 Version:        v0.3.0
-Sprint:         002
-Sprint Status:  ✅ Done
+Sprint:         003
+Sprint Status:  🔄 In Progress
 Last Updated:   2026-06-03 by claude-opus-4-8
-Sprint File:    .agent/sprints/sprint-002.md
+Sprint File:    .agent/sprints/sprint-003.md
 
 ## Open Bugs（P0/P1 必须本 Sprint 修复）
 🟢 无已知 P0/P1 bug。
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
+
+## Sprint 003 Summary（Web + 分发）
+Next.js 14 + Tailwind 接入(与 worker 共存，webpack extensionAlias 解析 .js→.ts)。
+T1 时间线 + 过滤器 ✅ / T2 REST API + UA 门禁 ✅ / T3 日报生成(5段)+Resend(gated) ✅ / T4 RSS ✅ / T5 审核 UI ✅。
+**真实验证(next start + Neon)**：API 返回 2 条预警、bot UA→403/browser→200、首页渲染、过滤器(regulatory→1/europe→0)、审核页、RSS、日报 dry-run。
+`next build` ✓ / 56 单测 / lint 0。
+延后项：read-state/24h-delay/auth(→S005)、daily-by-date/openapi/rate-limit、cron、真实发信(RESEND key)、Feedly 手动确认。
 
 ## Sprint 002 Summary（评分与预警生成）
 T1 Stage-2 评分 ✅（score prompt + stage2 + MiniMax 真实验证：de minimis→5/GPSR→4/tips→1）

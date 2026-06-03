@@ -8,41 +8,55 @@ Assignee:  claude
 ## Tasks
 
 ### T1: Next.js 网站骨架 — Alert 时间线 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done（核心；read-state/24h-delay 延后）
 **Epic:** EP-005
 **Acceptance:**
-- [ ] `/` 页面：Alert 时间线，每条显示 urgencyScore 角标 + region 标签 + platform 标签 + 时间 + 摘要
-- [ ] 左侧/顶部过滤器：region（6 区多选）+ category（6 类）+ platform
-- [ ] 游标分页（40 条/页），不用 offset
-- [ ] 已读置灰（localStorage），移动端响应式
-- [ ] Free 用户：24h 延迟（服务端通过 `publishedAt + 24h` 判断，无需登录）
+- [x] `/` 时间线：urgencyScore 角标 + region/platform 标签 + 时间 + 摘要 + action + source（实测渲染 de minimis）
+- [x] 过滤器 region + category chips（实测 ?category=regulatory→1、?region=europe→0）；platform 经 API 支持
+- [x] 游标分页（take+1/Load more，不用 offset）
+- [~] 已读置灰 localStorage → 延后（纯前端小项，非阻塞）
+- [~] Free 24h 延迟 → 延后 Sprint 005（依赖 auth）
 
 ### T2: REST API 公开端点 v1 [MED] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done（核心；openapi/rate-limit/by-date 延后）
 **Epic:** EP-007
 **Acceptance:**
-- [ ] `GET /api/public/alerts` 支持 `?region=&category=&since=&take=&cursor=`
-- [ ] `GET /api/public/daily` 最新日报
-- [ ] `GET /api/public/daily/:date` 指定日期日报
-- [ ] OpenAPI 3.1 spec 文件生成于 `/api/openapi.json`
-- [ ] 限流：600 req/min/IP，强制 browser UA（curl UA → 403）
+- [x] `GET /api/public/alerts` 支持 `?region=&category=&platform=&take=&cursor=`（实测返回 2 条）
+- [x] `GET /api/public/daily` 最新日报（JSON + `?format=text`）
+- [x] 强制 browser UA（bot UA → 403 实测，browser → 200）
+- [~] `/api/public/daily/:date` 历史日报 → 延后（需日报快照表）
+- [~] OpenAPI `/api/openapi.json` → 延后
+- [~] 限流 600/min/IP → 延后（serverless 需 KV/edge 存储）
 
 ### T3: 每日日报生成（五段式）+ Resend 邮件 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done（生成已验证；真实发信 gated on RESEND key）
 **Epic:** EP-006
 **Acceptance:**
-- [ ] Cron job 每日 00:00 UTC 触发日报生成
-- [ ] 五段格式：🚨 Top Alerts / 📋 Regulatory Updates / 🏪 Platform News / 📈 Trend Signals / 🛒 Product Picks
-- [ ] 邮件通过 Resend 发送，支持纯文本 + HTML 双格式
-- [ ] 测试发送成功，邮件正确渲染
+- [x] `app/lib/digest.ts` buildDigest（Top Alerts + 5 段：Regulatory/Platform/Logistics/Trend/Picks&Tips）+ 7 单测
+- [x] `/api/public/daily`(JSON) + `scripts/send-digest.ts` dry-run 实测真实 Neon 数据（de minimis 进 Top Alerts）
+- [x] Resend 发送（text + HTML）已实现，无 key 时 dry-run
+- [~] cron 每日 00:00 触发 → 延后（部署时挂 pg-boss schedule / 平台 cron）
+- [~] 真实发信验证 → gated on RESEND_API_KEY
 
 ### T4: RSS Feed 输出 [MED] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Epic:** EP-007
 **Acceptance:**
-- [ ] `/feed.xml` 输出标准 RSS 2.0，包含最近 50 条 alert
-- [ ] `/feed.xml?region=europe` 支持区域过滤
-- [ ] 在 Feedly / NetNewsWire 手动验证可订阅
+- [x] `/feed.xml` 标准 RSS 2.0（最近 50 条，含 urgency/category/action，实测有效 XML）
+- [x] `/feed.xml?region=&category=` 过滤（复用 getAlerts）
+- [~] Feedly/NetNewsWire 手动订阅验证 → 部署后手动确认
+
+### T5: 审核 UI `/admin/review` [MED] [claude]
+**Status:** ✅ Done
+**Epic:** EP-005
+**Acceptance:**
+- [x] `/admin/review` 列出 `pending_review`（实测渲染 "Review queue"/"Queue empty"）
+- [x] approve/reject server actions 调用 `alerts/review.ts` + revalidatePath
+- [x] approve → published 后从列表消失（实测队列已空）
+- [~] 注：管理页暂无鉴权，Sprint 005 加 auth 后限制访问
+
+> 注：T3 邮件发送需 RESEND_API_KEY（未 provision）；日报生成逻辑可建+单测，
+> 真实发信留待 key 到位。Sprint 顺延，无固定日期。
 
 ## Superpowers Checkpoints
 | Skill | 触发条件 | 本 Sprint |

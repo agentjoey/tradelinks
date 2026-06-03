@@ -12,6 +12,8 @@ const EnvSchema = z.object({
   DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
+  RESEND_API_KEY: z.string().optional(), // daily digest email (Sprint 003 T3)
+  FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
   LOG_LEVEL: z.string().default("info"),
 });
 
