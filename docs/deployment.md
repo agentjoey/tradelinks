@@ -1,6 +1,6 @@
 # TradeLinks — Deployment Guide
 
-> Last updated: 2026-06-03 v0.2.0 | Infra: ADR-003 (Neon + Upstash + Railway + Vercel)
+> Last updated: 2026-06-03 v0.2.0 | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
 
 ## Stack Overview
 
@@ -8,18 +8,14 @@
 |---------|----------|------|
 | Frontend + API routes | Vercel | Hobby → Pro |
 | Node worker + Python Scraper | Railway | Starter services |
-| PostgreSQL 16 | Neon | Free → Launch |
-| Redis | Upstash | Pay-as-you-go |
+| PostgreSQL 16 (data + pg-boss queue) | Neon | Free → Launch |
 
 ## Environment Variables
 
 ```bash
 # Postgres (Neon) — TWO urls required
 DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/tradelinks?sslmode=require&pgbouncer=true
-DIRECT_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/tradelinks?sslmode=require
-
-# Redis (Upstash) — use the rediss:// protocol endpoint, not the REST URL
-REDIS_URL=rediss://default:pass@xxx.upstash.io:6379
+DIRECT_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/tradelinks?sslmode=require  # also used by pg-boss
 
 # AI
 DEEPSEEK_API_KEY=...
@@ -64,9 +60,8 @@ railway up                 # Node worker service
 ## First Deploy Checklist
 
 - [ ] Neon: project + `tradelinks` db + `dev` branch; capture pooled + direct URLs
-- [ ] Upstash: Redis db; capture `rediss://` URL
 - [ ] Railway: Node worker service + Python scraper service; set env vars
 - [ ] Vercel: connect repo, set env vars (pooled `DATABASE_URL`)
 - [ ] `pnpm db:migrate` against Neon (runs 0001_init + 0002_trgm)
 - [ ] `pnpm worker:run-once --source=A02` → rows appear in Neon (Prisma Studio)
-- [ ] Verify BullMQ connects to Upstash (worker logs "workers online")
+- [ ] Start worker → pg-boss creates `pgboss` schema; logs "workers online"

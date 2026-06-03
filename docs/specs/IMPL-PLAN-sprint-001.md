@@ -14,17 +14,17 @@ Scaffold ─► T1 schema ─► T2 TS crawler ─┬─► T3 sources + ingest 
 
 - pnpm workspace, single package (Next.js comes Sprint 003; Sprint 001 is worker-only).
 - TypeScript strict, ESM, `tsx` for running workers in dev.
-- Deps: `prisma @prisma/client`, `bullmq ioredis`, `rss-parser`, `cheerio`,
+- Deps: `prisma @prisma/client`, `pg-boss cron-parser`, `rss-parser`, `cheerio`,
   `zod` (validate job payloads + env), `pino` (logging), `vitest`.
 - Scripts: `dev`, `worker`, `worker:run-once`, `db:migrate`, `db:gen`,
   `db:studio`, `test`, `lint`.
-- `.env.example` with DATABASE_URL / REDIS_URL / DEEPSEEK_API_KEY / QWEN_API_KEY.
+- `.env.example` with DATABASE_URL / DIRECT_URL / DEEPSEEK_API_KEY / QWEN_API_KEY.
 - `src/` layout:
   ```
   src/
     config/       env.ts, sources.ts
     db/           client.ts
-    queue/        queues.ts (BullMQ defs), schemas.ts (zod)
+    queue/        queues.ts (pg-boss defs), schemas.ts (zod)
     workers/      scheduler.ts, crawler.ts, ingest.ts, processor.ts
     adapters/     rss.ts, fetch.ts, blocked.ts
     ai/           client.ts, prompts/*, prefilter.ts, translate.ts, categorize.ts
@@ -41,7 +41,7 @@ Scaffold ─► T1 schema ─► T2 TS crawler ─┬─► T3 sources + ingest 
    (Real `migrate deploy` deferred to Railway — documented in deployment.md.)
 
 ## T2 — TS Crawler Framework
-1. `queue/queues.ts`: define crawl/scrape/ingest queues + workers (ioredis conn).
+1. `queue/queues.ts`: define crawl/scrape/ingest/process queues (pg-boss, DIRECT_URL).
 2. `queue/schemas.ts`: zod schemas for CrawlJob/ScrapeJob/IngestJob/RawItem.
 3. `adapters/rss.ts` (rss-parser), `adapters/fetch.ts` (fetch+cheerio).
 4. `adapters/blocked.ts`: blocked-detection per crawler-contract §5.

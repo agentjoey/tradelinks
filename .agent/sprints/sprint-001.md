@@ -17,14 +17,14 @@ Assignee:  claude
 - [x] trigram GIN 索引：`prisma/migrations/0002_trgm/migration.sql`（pg_trgm + title/titleEn GIN）
 - [x] 时序表 `trend_snapshots`（+ `trend_signals` 跨区扩散）已建模；offline 迁移 `0001_init/migration.sql`（200 行）已生成
 
-### T2: 爬虫框架搭建（TS adapters + BullMQ） [HIGH] [claude]
+### T2: 爬虫框架搭建（TS adapters + pg-boss） [HIGH] [claude]
 **Status:** ✅ Done
 **Epic:** EP-001
 **架构:** 见 ADR-002（混合 polyglot：TS 管 RSS/简单 fetch，Python/Scrapling 管反爬源）
 **Acceptance:**
 - [x] RssAdapter + FetchAdapter；**实测** `worker:run-once --source=A02` 从 Shopify changelog 解析 1508 条，字段完整
 - [x] scrapling/JSON 源经 `scrape-queue` 转发（`crawler.ts` routeToScrape；`buildAdapter` 返回 null）
-- [x] BullMQ `crawl-queue` 消费 `{ sourceId, url, adapter }`（zod `CrawlJobSchema` 校验）
+- [x] pg-boss `crawl-queue` 消费 `{ sourceId, url, adapter }`（zod `CrawlJobSchema` 校验）；scheduler-tick + cron-parser isDue 派发（5 单测）
 - [x] 每源可配 `frequencyCron`（`scheduler.ts` repeatable job）
 - [x] 重试 3 次 + 指数退避(2s/8s/32s)，fetch 超时 30s；连续失败≥5 自动禁用源
 - [x] **被封检测** `src/adapters/blocked.ts`（Cloudflare/captcha/access-denied/异常短）→ 6 单测全过；blocked→scrape-queue 已实现
@@ -40,7 +40,7 @@ Assignee:  claude
 - [ ] 验证可抓到：TikTok Creative Center(D07) + Amazon BSR US(D02) + Shopee SG(D08，Phase1.5 先验证可达)
 - [ ] 启用 Scrapling 自适应模式（Smart Element Tracking / auto-save），改版后选择器可自愈
 - [ ] pytrends（Google Trends D01）收纳进本服务，暴露 `POST /trends`
-- [ ] 抓取结果经 Redis 队列回写 Node `crawl-queue`，schema 与 TS adapter 输出一致
+- [ ] 抓取结果经 pg-boss `ingest-queue` 回写，schema 与 TS adapter 输出一致
 - [ ] Dockerfile 基于 Scrapling 官方镜像（含 Chromium），可在 Railway 部署
 
 ### T3: Phase 1 信息源接入（25 个核心源） [HIGH] [claude]

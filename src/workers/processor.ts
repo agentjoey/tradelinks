@@ -1,5 +1,5 @@
-import { Worker } from "bullmq";
-import { connection } from "../queue/queues.js";
+import type PgBoss from "pg-boss";
+import { QUEUES } from "../queue/queues.js";
 import { prisma } from "../db/client.js";
 import { SOURCES_BY_ID } from "../config/sources.js";
 import { pickClient } from "../ai/client.js";
@@ -10,16 +10,15 @@ import { logger } from "../lib/logger.js";
 type Region = (typeof REGIONS)[number];
 
 /**
- * process-queue consumer. Runs AI Stage 1 on a raw item and writes the result:
+ * process-queue worker. Runs AI Stage 1 on a raw item and writes the result:
  * filtered (dropped) or processed (translated + categorized + tagged).
  */
-export function startProcessorWorker() {
-  return new Worker(
-    "process-queue",
-    async (job) => {
+export async function registerProcessorWorker(boss: PgBoss) {
+  await boss.work(QUEUES.process, async (jobs) => {
+    for (const job of jobs) {
       const { itemId } = job.data as { itemId: string };
       const item = await prisma.item.findUnique({ where: { id: itemId } });
-      if (!item || item.status !== "raw") return { skipped: true };
+      if (!item || item.status !== "raw") continue;
 
       const source = SOURCES_BY_ID.get(item.sourceId);
       const fallbackRegions = (source?.regions ?? []) as Region[];
@@ -40,12 +39,9 @@ export function startProcessorWorker() {
       const out = await runStage1(input, pickClient(item.lang));
 
       if (!out.keep) {
-        await prisma.item.update({
-          where: { id: itemId },
-          data: { status: "filtered" },
-        });
+        await prisma.item.update({ where: { id: itemId }, data: { status: "filtered" } });
         logger.debug({ itemId, reason: out.reason }, "filtered");
-        return { kept: false };
+        continue;
       }
 
       await prisma.item.update({
@@ -60,8 +56,6 @@ export function startProcessorWorker() {
         },
       });
       logger.debug({ itemId, category: out.category, regions: out.regions }, "processed");
-      return { kept: true };
-    },
-    { connection, concurrency: 2 },
-  );
+    }
+  });
 }

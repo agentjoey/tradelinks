@@ -4,7 +4,7 @@
 > Defines adapter interface, queue schemas, Node↔Python contract, blocked-detection.
 > Architecture: ADR-002 (polyglot — TS for rss/fetch, Python Scrapling for anti-bot).
 
-## 1. Queues (BullMQ over Redis)
+## 1. Queues (pg-boss on Neon Postgres — ADR-004, no Redis)
 
 | Queue | Producer | Consumer | Purpose |
 |-------|----------|----------|---------|
@@ -78,7 +78,7 @@ interface SourceAdapter {
 
 ## 4. Python Scraper Service (T6)
 
-- FastAPI app `scraper-py/`, also a Redis consumer of `scrape-queue`.
+- FastAPI app `scraper-py/`, also a pg-boss consumer of `scrape-queue` (Postgres).
 - `POST /scrape` (sync, for debugging) and queue consumer (production path).
 - Uses Scrapling `StealthyFetcher(solve_cloudflare=True)` + adaptive mode
   (Smart Element Tracking, auto-save) so selectors self-heal on redesign.
@@ -101,14 +101,14 @@ Action: set item-source `blocked`, route to `scrape-queue mode=stealth`.
 
 | Condition | Behavior |
 |-----------|----------|
-| network error / 5xx / timeout (30s) | BullMQ retry ×3, exp backoff (2s,8s,32s) |
+| network error / 5xx / timeout (30s) | pg-boss retry ×3, exp backoff (retryDelay=2s, retryBackoff) |
 | 200 blocked | no retry; route to scrape-queue |
 | 3× hard failure in a row | `sources.consecutiveFailures++`; ≥5 → mark `isActive=false` + ops alert |
 | success | reset `consecutiveFailures=0`, set `lastOkAt` |
 
 ## 7. Politeness
 
-- Per-domain concurrency = 1 (BullMQ group key = hostname).
+- Per-domain politeness via scheduler fan-out + jitter (pg-boss has no group key; serialize same-host by spacing crawl dispatch).
 - Random 1–4s jitter between requests to same host.
 - Respect `frequencyCron` per source (no tighter polling).
 - TS fetch sends realistic browser headers (UA, Accept-Language).

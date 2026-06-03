@@ -1,18 +1,17 @@
-import { Worker } from "bullmq";
-import { connection, processQueue, defaultJobOpts } from "../queue/queues.js";
+import type PgBoss from "pg-boss";
+import { QUEUES, sendOpts } from "../queue/queues.js";
 import { IngestJobSchema } from "../queue/schemas.js";
 import { prisma } from "../db/client.js";
 import { urlHash } from "../lib/hash.js";
 import { logger } from "../lib/logger.js";
 
 /**
- * ingest-queue consumer. Upserts RawItems into `items` (url unique = dedup
+ * ingest-queue worker. Upserts RawItems into `items` (url unique = dedup
  * level 1), status=raw, then enqueues each new item onto process-queue.
  */
-export function startIngestWorker() {
-  return new Worker(
-    "ingest-queue",
-    async (job) => {
+export async function registerIngestWorker(boss: PgBoss) {
+  await boss.work(QUEUES.ingest, async (jobs) => {
+    for (const job of jobs) {
       const { sourceId, items } = IngestJobSchema.parse(job.data);
       let created = 0;
 
@@ -33,12 +32,10 @@ export function startIngestWorker() {
           },
         });
         created++;
-        await processQueue.add("process", { itemId: item.id }, defaultJobOpts);
+        await boss.send(QUEUES.process, { itemId: item.id }, sendOpts);
       }
 
       logger.info({ sourceId, received: items.length, created }, "ingested");
-      return { created };
-    },
-    { connection, concurrency: 4 },
-  );
+    }
+  });
 }

@@ -14,7 +14,7 @@ Sprint File:    .agent/sprints/sprint-001.md
 Sprint 001 目标：搭建数据摄取基础设施。**进度**：T1 Schema ✅、T2 爬虫框架 ✅（RSS 实测 1508 条）、T3 源接入 🔄（25 源+ingest，DB 入库待 Railway）、T4 AI 粗筛/翻译 ✅（client+prompts+stage1+processor，24 单测全过，成本测算 ~¥1.8/周）。**剩余**：T5 去重聚类、T6 Python Scraper 服务。
 SPEC/PLAN 文档已就绪：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint-001}.md。
 测试现状：`pnpm test` 24 passed / `pnpm lint` 0 error / `pnpm db:validate` ok。
-**基础设施已定（ADR-003）**：Neon(PG, pooled+direct 双 URL) + Upstash(Redis) + Railway(workers) + Vercel(前端)。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、Upstash Redis、DeepSeek key — 这些到位后 T3 入库 / T5 trigram 可真验证。
+**基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
 
 ## Next Sprint Candidates
 - [ ] [EP-002] [HIGH] AI 精筛/打分管道（Sprint 002）

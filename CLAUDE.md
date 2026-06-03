@@ -19,7 +19,7 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 |-------|------|
 | Frontend | Next.js 14 (App Router) + Tailwind CSS |
 | API | Next.js Route Handlers |
-| Workers | BullMQ + Redis (crawl/process jobs) |
+| Queue/Workers | pg-boss on Neon Postgres (no Redis — ADR-004) |
 | Scraping (TS) | RSS + fetch — simple sources (~50%) |
 | Scraping (Python svc) | **Scrapling** (StealthyFetcher + self-healing selectors) for anti-bot sources (TikTok CC / Amazon BSR / Shopee) + pytrends — see ADR-002 |
 | Database | PostgreSQL 16 + trigram GIN index + time-series views |
@@ -31,24 +31,26 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 | Push | Telegram Bot API + Slack Webhooks |
 | Auth | NextAuth.js v5 |
 | Payment | Stripe (USD, global) |
-| Hosting | Vercel (frontend) + Railway (Node+Python workers) + Neon (Postgres) + Upstash (Redis) — ADR-003 |
+| Hosting | Vercel (frontend) + Railway (Node+Python workers) + Neon (Postgres+queue) — ADR-003/004 |
 
 ## Key Implementation Details
 - Alert pipeline forks at classification: urgency×impact score ≥4 triggers immediate push; <4 queues to daily digest
 - Trend diffusion: cross-region time-series alignment (Google Trends slope + Amazon BSR rank delta + TikTok CC mentions) — 3-source consensus required before marking a signal
 - All items tagged with `region[]` + `platform[]` + `category` — push routing is subscription-filter based, never broadcast
-- Crawler is polyglot (ADR-002): TS handles RSS/fetch; Python Scrapling service handles anti-bot sources + Google Trends, results returned via Redis queue with schema matching TS adapters
+- Crawler is polyglot (ADR-002): TS handles RSS/fetch; Python Scrapling service handles anti-bot sources + Google Trends, results returned via pg-boss ingest-queue with schema matching TS adapters
 - Blocked-detection: HTTP 200 with captcha/Cloudflare body must NOT be naively retried — route to Python StealthyFetcher instead
 - DeepSeek API requires `User-Agent: Mozilla/5.0` workaround for some fetch contexts
 - Postgres trigram: `CREATE EXTENSION pg_trgm; CREATE INDEX ON items USING GIN (title gin_trgm_ops)`
 - Neon needs TWO urls (ADR-003): `DATABASE_URL` (pooled, runtime) + `DIRECT_URL` (direct, migrations). Migrations can't run over the transaction pooler.
+- pg-boss (queue) also uses `DIRECT_URL`, not the pooled url (ADR-004). It creates a `pgboss` schema on first start.
+- Scheduling: pg-boss schedule is one-cron-per-queue, so a per-minute `scheduler-tick` fans out crawl jobs via cron-parser `isDue()` per source (not 25 separate schedules).
 - Local dev/test connects to a Neon dev branch (no local Postgres); unit tests stay DB-free
 - Sources with login walls (Amazon SC, Temu) captured via secondary media sources only — never scrape authenticated sessions
 
 ## Dev Commands
 ```bash
 pnpm dev          # start Next.js dev server (port 3000)
-pnpm worker       # start BullMQ worker process
+pnpm worker       # start pg-boss worker process (scheduler+crawl+ingest+process)
 pnpm db:migrate   # run Prisma migrations
 pnpm db:studio    # open Prisma Studio
 pnpm test         # vitest

@@ -1,27 +1,45 @@
-import { Queue } from "bullmq";
-import IORedis from "ioredis";
+import PgBoss from "pg-boss";
 import { env } from "../config/env.js";
 
-export const connection = new IORedis(env.REDIS_URL, {
-  maxRetriesPerRequest: null,
-});
+// Queue backend = pg-boss on Neon Postgres (ADR-004). No Redis.
+// pg-boss uses the DIRECT (unpooled) Neon connection — its maintenance and
+// notify do not play well with the transaction pooler.
 
-export const crawlQueue = new Queue("crawl-queue", { connection });
-export const scrapeQueue = new Queue("scrape-queue", { connection });
-export const ingestQueue = new Queue("ingest-queue", { connection });
-export const processQueue = new Queue("process-queue", { connection });
-
-export const QUEUE_NAMES = {
+export const QUEUES = {
+  scheduler: "scheduler-tick",
   crawl: "crawl-queue",
   scrape: "scrape-queue",
   ingest: "ingest-queue",
   process: "process-queue",
 } as const;
 
-/** Default job options: 3 retries, exponential backoff (2s, 8s, 32s). */
-export const defaultJobOpts = {
-  attempts: 3,
-  backoff: { type: "exponential" as const, delay: 2000 },
-  removeOnComplete: 1000,
-  removeOnFail: 5000,
+/** Per-queue defaults: 3 retries, 2s base delay, exponential backoff. */
+const RETRY: PgBoss.RetryOptions = {
+  retryLimit: 3,
+  retryDelay: 2,
+  retryBackoff: true,
 };
+
+let _boss: PgBoss | null = null;
+
+/** Lazily construct pg-boss so importing this module never requires env/DB. */
+export function getBoss(): PgBoss {
+  if (!_boss) {
+    const cs = env.DIRECT_URL ?? env.DATABASE_URL;
+    if (!cs) {
+      throw new Error("pg-boss needs DIRECT_URL (or DATABASE_URL). See .env.example");
+    }
+    _boss = new PgBoss({ connectionString: cs });
+  }
+  return _boss;
+}
+
+/** Create all queues with retry policy. Idempotent. */
+export async function ensureQueues(boss: PgBoss): Promise<void> {
+  for (const name of Object.values(QUEUES)) {
+    await boss.createQueue(name, { name, ...RETRY });
+  }
+}
+
+/** Send options applied per-job (mirrors queue retry policy). */
+export const sendOpts: PgBoss.SendOptions = { ...RETRY };

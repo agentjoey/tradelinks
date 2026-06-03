@@ -3,7 +3,7 @@
 
 ## 🔴 HIGH
 
-- [ ] [EP-001] [HIGH] 爬虫框架搭建（RSS fetch + Playwright + 任务队列 BullMQ）
+- [ ] [EP-001] [HIGH] 爬虫框架搭建（RSS fetch + Playwright + 任务队列 pg-boss）
 - [ ] [EP-001] [HIGH] Postgres schema 设计（items / alerts / trends / sources / users）
 - [ ] [EP-001] [HIGH] Phase 1 信息源接入（25-30 个，见 docs/specs/sources.md S1 列）
 - [ ] [EP-002] [HIGH] DeepSeek 粗筛 + 翻译 prompt（EN/ZH/PT/ES/AR → EN）

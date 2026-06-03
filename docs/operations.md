@@ -26,20 +26,18 @@ psql $DATABASE_URL -c "SELECT source_id, count(*) FROM items WHERE crawled_at > 
 ## Cost Monitoring
 
 - LLM target: <$15/week (≈$60/month)
-- If DeepSeek cost spikes: check for crawl loop bug or runaway retries in BullMQ
-- **Upstash (Redis) command cost — watch this (ADR-003):** BullMQ is command-heavy
-  (blocking pops, polling). Upstash bills per command, so a 24/7 worker can run up
-  cost. Check Upstash dashboard weekly; if commands/day is high, tune:
-  - increase poll/backoff intervals, reduce queues' concurrency
-  - if still expensive, migrate Redis to a fixed-price Railway Redis instance
-- Neon: scale-to-zero saves cost when idle, but workers keep it warm 24/7 — monitor
-  compute-hours; consider Neon autoscaling limits.
+- If DeepSeek cost spikes: check for crawl loop bug or runaway retries in pg-boss
+- **Neon compute (ADR-004):** queue lives in Postgres now (pg-boss), and the
+  `scheduler-tick` polls every minute → Neon never scales to zero while workers run.
+  Monitor compute-hours; the pg-boss poll interval can be widened if cost is an issue.
+- pg-boss maintenance: it auto-archives/expires completed jobs in its `pgboss`
+  schema; watch table growth if dead jobs accumulate.
 
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| No new items for >4h | Worker crashed / Redis disconnected | `railway restart --service worker` |
+| No new items for >4h | Worker crashed / Neon unreachable | `railway restart --service worker`; check DIRECT_URL |
 | 403 on playwright sources | IP blocked | Rotate proxy / reduce frequency |
-| DeepSeek 429 | Rate limit hit | Increase job delay in BullMQ; check concurrent jobs |
+| DeepSeek 429 | Rate limit hit | Widen pg-boss poll/retry delay; reduce work batchSize |
 | Telegram push not firing | Bot token expired or chat ID wrong | Re-check `TELEGRAM_BOT_TOKEN` env var |

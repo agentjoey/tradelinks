@@ -10,7 +10,7 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 ┌─────────────────────────────────────────────────────────────────┐
 │  INGESTION LAYER (polyglot — see ADR-002)                       │
 │                                                                 │
-│  Node/TS worker (BullMQ crawl-queue, per-source cron):          │
+│  Node/TS worker (pg-boss crawl-queue; scheduler-tick fan-out):  │
 │    RSS Adapter │ Fetch Adapter  — simple sources (~50%)         │
 │    blocked-detection → route hard sources to scrape-queue       │
 │                                                                 │
@@ -19,7 +19,7 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 │      Shopee / Lazada (anti-bot ~20%)                            │
 │    Smart Element Tracking — self-healing selectors on redesign  │
 │    pytrends — Google Trends (D01)                               │
-│    results → Redis → back to Node crawl-queue (same schema)     │
+│    results → pg-boss ingest-queue (same schema as TS adapters)  │
 └────────────────────────┬────────────────────────────────────────┘
                          │ raw items
 ┌────────────────────────▼────────────────────────────────────────┐
@@ -140,7 +140,7 @@ alert.urgency_score
 | Next.js app | Vercel | serverless |
 | Node worker + Python Scraper | Railway | always-on services |
 | PostgreSQL 16 | **Neon** | serverless, scale-to-zero, built-in PgBouncer pooler, DB branching, pg_trgm |
-| Redis | **Upstash** | BullMQ backend via `rediss://`; monitor command cost (see operations.md) |
+| Queue | **pg-boss on Neon** | no Redis (ADR-004); `pgboss` schema; uses DIRECT_URL |
 | Images proxy | `/api/img-proxy` | Vercel edge function |
 
 **Connection wiring:** runtime (Vercel + Railway workers) → Neon **pooled** `DATABASE_URL`;
