@@ -29,8 +29,10 @@ export interface SourceConfig {
   adapter: "rss" | "fetch" | "scrapling";
   /** when adapter=scrapling */
   scrapeMode?: "stealth" | "trends";
-  /** JSON-API marker: handled by JsonAdapter (Reddit/FederalRegister) — follow-up */
+  /** JSON-API marker: handled by JsonAdapter (Reddit/FederalRegister) */
   json?: boolean;
+  /** which JSON shape the JsonAdapter should parse */
+  jsonShape?: "federal_register" | "reddit";
   frequencyCron: string;
   language: string;
   regions: Region[];
@@ -70,16 +72,17 @@ export const SOURCES: SourceConfig[] = [
   },
   {
     id: "B03",
-    name: "US Federal Register (Trade)",
-    url: "https://www.federalregister.gov/api/v1/documents.json?fields[]=title&fields[]=publication_date&fields[]=abstract&fields[]=html_url&per_page=20&order=newest&conditions[topics][]=Trade",
+    name: "US Federal Register (Trade/Tariff)",
+    // term search (topics=Trade returns 400; verified 2026-06-04)
+    url: "https://www.federalregister.gov/api/v1/documents.json?fields[]=title&fields[]=publication_date&fields[]=abstract&fields[]=html_url&per_page=20&order=newest&conditions[term]=import+tariff+antidumping",
     adapter: "fetch",
     json: true,
+    jsonShape: "federal_register",
     frequencyCron: "0 */6 * * *",
     language: "en",
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
-    note: "JSON API — JsonAdapter follow-up",
   },
   {
     id: "B04",
@@ -91,6 +94,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["europe"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "rss.xml 404 (verified 2026-06-04); EUR-Lex stable feed TBD — revisit",
   },
   {
     id: "B05",
@@ -102,7 +107,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["europe"],
     platforms: [],
     categoryHint: "regulatory",
-    note: "filter by GPSR/REACH keyword downstream",
+    enabled: false,
+    note: "same dead EUR-Lex feed as B04 (404); revisit",
   },
   {
     id: "B06",
@@ -125,6 +131,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["europe"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "/en/news 404 (verified 2026-06-04); correct path TBD — revisit",
     fetchConfig: {
       itemSelector: "article, .news-item, .teaser",
       titleSelector: "h2, h3, .title",
@@ -215,12 +223,14 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.reddit.com/r/FulfillmentByAmazon.json",
     adapter: "fetch",
     json: true,
+    jsonShape: "reddit",
     frequencyCron: "0 */4 * * *",
     language: "en",
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "industry",
-    note: "JSON API — JsonAdapter follow-up",
+    enabled: false,
+    note: "Reddit .json returns 403 to datacenter IPs/UAs (verified 2026-06-04); needs OAuth or proxy — JsonAdapter ready, re-enable when reachable",
   },
   {
     id: "D12",
@@ -228,12 +238,14 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.reddit.com/r/AmazonSeller.json",
     adapter: "fetch",
     json: true,
+    jsonShape: "reddit",
     frequencyCron: "0 */4 * * *",
     language: "en",
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "industry",
-    note: "JSON API — JsonAdapter follow-up",
+    enabled: false,
+    note: "same Reddit 403 as D11; JsonAdapter ready, re-enable when reachable",
   },
 
   // ---- F. Media (RSS) ----
@@ -297,6 +309,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["southeast_asia"],
     platforms: ["shopee", "lazada", "tiktok-shop"],
     categoryHint: "industry",
+    enabled: false,
+    note: "feed connection fails/blocked (verified 2026-06-04); revisit (likely Cloudflare → scrapling)",
   },
   {
     id: "F09",
@@ -321,13 +335,15 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america", "europe", "southeast_asia"],
     platforms: ["temu", "shein"],
     categoryHint: "industry",
+    enabled: false,
+    note: "rss 403 bot-blocked (verified 2026-06-04); route via scrapling stealth in Phase 2",
   },
 
   // ---- A. Platform Policy ----
   {
     id: "A01",
     name: "eBay Seller Updates",
-    url: "https://www.ebay.com/sellercenter/resources/news",
+    url: "https://www.ebay.com/sellercenter/resources/seller-updates",
     adapter: "fetch",
     frequencyCron: "0 */12 * * *",
     language: "en",
