@@ -1,0 +1,210 @@
+// TradeLinks data model — see docs/specs/data-model.md
+// Postgres 16 + pg_trgm (trigram GIN indexes added via raw SQL migration 0002)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Region {
+  north_america
+  europe
+  southeast_asia
+  middle_east
+  latin_america
+  australia_nz
+}
+
+enum Category {
+  regulatory
+  platform_policy
+  logistics
+  trend
+  industry
+  tip
+}
+
+enum Adapter {
+  rss
+  fetch
+  scrapling
+}
+
+enum ItemStatus {
+  raw
+  processed
+  filtered
+  failed
+}
+
+enum AlertStatus {
+  pending_review
+  published
+  rejected
+}
+
+enum Tier {
+  free
+  pro
+  team
+  enterprise
+}
+
+enum PushChannel {
+  email
+  telegram
+  slack
+}
+
+// ---------- Tables ----------
+
+model Source {
+  id                  String    @id
+  name                String
+  url                 String
+  adapter             Adapter
+  frequencyCron       String
+  language            String
+  regions             Region[]
+  platforms           String[]
+  categoryHint        Category?
+  isActive            Boolean   @default(true)
+  lastCrawledAt       DateTime?
+  lastOkAt            DateTime?
+  consecutiveFailures Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  items Item[]
+
+  @@map("sources")
+}
+
+model Item {
+  id             String     @id @default(cuid())
+  sourceId       String
+  url            String     @unique
+  urlHash        String     @unique
+  title          String
+  titleEn        String?
+  summaryEn      String?
+  rawContent     Json?
+  publishedAt    DateTime
+  crawledAt      DateTime   @default(now())
+  status         ItemStatus @default(raw)
+  regions        Region[]
+  platforms      String[]
+  category       Category?
+  lang           String
+  isDuplicate    Boolean    @default(false)
+  clusterId      String?
+  urgencyScore   Float?
+  impactScope    String?
+  recommendation String?
+
+  source  Source   @relation(fields: [sourceId], references: [id])
+  cluster Cluster? @relation(fields: [clusterId], references: [id])
+
+  @@index([sourceId, crawledAt])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([clusterId])
+  @@map("items")
+}
+
+model Cluster {
+  id                   String   @id @default(cuid())
+  representativeItemId String
+  sourceUrls           String[]
+  createdAt            DateTime @default(now())
+
+  items Item[]
+
+  @@map("clusters")
+}
+
+model Alert {
+  id             String      @id @default(cuid())
+  clusterId      String?
+  title          String
+  summary        String
+  urgencyScore   Float
+  regions        Region[]
+  platforms      String[]
+  category       Category
+  affectedSkus   String[]
+  actionRequired String?
+  sourceUrls     String[]
+  status         AlertStatus @default(pending_review)
+  publishedAt    DateTime?
+  reviewedBy     String?
+  createdAt      DateTime    @default(now())
+
+  @@index([status, urgencyScore])
+  @@index([publishedAt])
+  @@map("alerts")
+}
+
+model TrendSnapshot {
+  id                 String    @id @default(cuid())
+  date               DateTime  @db.Date
+  region             Region
+  category           Category?
+  keyword            String
+  rankAmazonBsr      Int?
+  trendsScoreGoogle  Int?
+  tiktokMentionCount Int?
+  signalStrength     Float?
+
+  @@unique([date, region, keyword])
+  @@map("trend_snapshots")
+}
+
+model TrendSignal {
+  id           String   @id @default(cuid())
+  keyword      String
+  originRegion Region
+  spreadingTo  Region[]
+  confidence   Float
+  signalBasis  String
+  firstSeenAt  DateTime @default(now())
+
+  @@map("trend_signals")
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  tier             Tier          @default(free)
+  stripeCustomerId String?
+  subRegions       Region[]
+  subPlatforms     String[]
+  subCategories    Category[]
+  pushChannels     PushChannel[]
+  telegramChatId   String?
+  slackWebhookUrl  String?
+  createdAt        DateTime      @default(now())
+
+  watches KeywordWatch[]
+
+  @@map("users")
+}
+
+model KeywordWatch {
+  id        String   @id @default(cuid())
+  userId    String
+  keyword   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("keyword_watches")
+}

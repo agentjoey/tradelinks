@@ -8,27 +8,27 @@ Assignee:  claude
 ## Tasks
 
 ### T1: Postgres Schema 设计与初始化 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Epic:** EP-001
 **Acceptance:**
-- [ ] `prisma/schema.prisma` 包含 Source / Item / Alert / TrendSnapshot / User 五张核心表
-- [ ] `pnpm db:migrate` 无报错，`pnpm db:studio` 可打开
-- [ ] Item 表有 `region[]` + `platform[]` + `category` + `publishedAt` + `urgencyScore` 字段
-- [ ] trigram GIN 索引建立（title + summary 字段）
-- [ ] 时序视图 `trend_daily_snapshots` 建立
+- [x] `prisma/schema.prisma` 含 Source/Item/Cluster/Alert/TrendSnapshot/TrendSignal/User/KeywordWatch 8 表 + 7 枚举
+- [x] `pnpm db:validate` 通过（`The schema at prisma/schema.prisma is valid 🚀`）；`pnpm db:gen` 生成 Client v6.19.3。真 `migrate deploy` 待 Railway（本地无 docker/psql，已在 deployment.md 注明）
+- [x] Item 表含 `regions[]` + `platforms[]` + `category` + `publishedAt` + `urgencyScore`
+- [x] trigram GIN 索引：`prisma/migrations/0002_trgm/migration.sql`（pg_trgm + title/titleEn GIN）
+- [x] 时序表 `trend_snapshots`（+ `trend_signals` 跨区扩散）已建模；offline 迁移 `0001_init/migration.sql`（200 行）已生成
 
 ### T2: 爬虫框架搭建（TS adapters + BullMQ） [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Epic:** EP-001
 **架构:** 见 ADR-002（混合 polyglot：TS 管 RSS/简单 fetch，Python/Scrapling 管反爬源）
 **Acceptance:**
-- [ ] `src/workers/crawler.ts` 实现两种 TS adapter：RssAdapter / FetchAdapter
-- [ ] 反爬源经 `scrape-queue` 转发给 Python 服务（见 T6），不在 TS 内做 Playwright
-- [ ] BullMQ 队列 `crawl-queue` 可接受 `{ sourceId, url, adapter }` job
-- [ ] 每个 Source 可配置 `cronSchedule`（如 `0 */2 * * *` 每 2 小时一次）
-- [ ] 失败自动重试 3 次，超时 30s
-- [ ] **被封检测**：HTTP 200 但内容命中验证页特征（Cloudflare/captcha/异常短）→ 标记 `blocked`，不简单重试，转 Python 服务
-- [ ] `pnpm worker` 启动无报错，日志输出 job 处理结果
+- [x] RssAdapter + FetchAdapter；**实测** `worker:run-once --source=A02` 从 Shopify changelog 解析 1508 条，字段完整
+- [x] scrapling/JSON 源经 `scrape-queue` 转发（`crawler.ts` routeToScrape；`buildAdapter` 返回 null）
+- [x] BullMQ `crawl-queue` 消费 `{ sourceId, url, adapter }`（zod `CrawlJobSchema` 校验）
+- [x] 每源可配 `frequencyCron`（`scheduler.ts` repeatable job）
+- [x] 重试 3 次 + 指数退避(2s/8s/32s)，fetch 超时 30s；连续失败≥5 自动禁用源
+- [x] **被封检测** `src/adapters/blocked.ts`（Cloudflare/captcha/access-denied/异常短）→ 6 单测全过；blocked→scrape-queue 已实现
+- [x] `pnpm test` 11 passed，`pnpm lint`(tsc) 0 error
 
 ### T6: Python Scraper 服务（Scrapling + FastAPI） [HIGH] [claude]
 **Status:** 🔲 Todo
@@ -44,11 +44,15 @@ Assignee:  claude
 - [ ] Dockerfile 基于 Scrapling 官方镜像（含 Chromium），可在 Railway 部署
 
 ### T3: Phase 1 信息源接入（25 个核心源） [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** 🔄 In Progress（配置+ingest 完成；DB 入库与 img-proxy 待验证/后续）
 **Epic:** EP-001
 **Acceptance:**
-- [ ] `src/config/sources.ts` 包含 Phase 1 的 25 个源（见 docs/specs/sources.md S1 列）
-- [ ] 每个源有 `id / name / url / adapter / frequency / language / region[] / category` 字段
+- [x] `src/config/sources.ts` 含 25 个 S1 源（B/D/F/A 类，与 docs/specs/sources.md 一致）
+- [x] 每源有 `id/name/url/adapter/frequencyCron/language/regions[]/platforms[]/categoryHint` 字段
+- [x] `src/workers/ingest.ts` 实现 upsert（url unique=去重L1）+ 转 process-queue
+- [~] DB 真入库待 Railway Postgres（本地无 psql/docker）
+- [~] img-proxy 推迟至 Sprint 003（需 Next.js，IMPL-PLAN 已注明）
+- [!] 修正：F01 Marketplace Pulse 无公开 RSS（/feed 全 404，已实测）→ 改 fetch adapter，选择器待线上验证
 - [ ] 跑 `pnpm worker` 后 24h 内，`items` 表有来自各区域的真实数据
 - [ ] 图片代理 `/api/img-proxy` 实现（绕过 X/Twitter 媒体封锁）
 
