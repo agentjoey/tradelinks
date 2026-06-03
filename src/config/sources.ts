@@ -49,7 +49,7 @@ export const SOURCES: SourceConfig[] = [
   {
     id: "B01",
     name: "USTR Press Releases",
-    url: "https://ustr.gov/news-releases/feed",
+    url: "https://ustr.gov/rss.xml",
     adapter: "rss",
     frequencyCron: "0 */4 * * *",
     language: "en",
@@ -133,8 +133,8 @@ export const SOURCES: SourceConfig[] = [
   },
   {
     id: "B16",
-    name: "ACCC Product Safety",
-    url: "https://www.productsafety.gov.au/news.rss",
+    name: "ACCC Product Safety Recalls",
+    url: "https://www.productsafety.gov.au/rss/recalls.xml",
     adapter: "rss",
     frequencyCron: "0 */6 * * *",
     language: "en",
@@ -301,13 +301,15 @@ export const SOURCES: SourceConfig[] = [
   {
     id: "F09",
     name: "雨果跨境 CIFNews",
-    url: "https://www.cifnews.com/rss.xml",
+    url: "https://www.cifnews.com/xmlconfig/YuGuo.xml",
     adapter: "rss",
     frequencyCron: "0 */4 * * *",
     language: "zh",
     regions: ["north_america", "europe", "southeast_asia"],
     platforms: ["amazon", "temu", "shein"],
     categoryHint: "industry",
+    enabled: false,
+    note: "feed bot-blocked (405 to plain fetch, verified 2026-06-04); route via scrapling stealth in Phase 2",
   },
   {
     id: "F10",
