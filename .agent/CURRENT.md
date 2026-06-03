@@ -1,6 +1,6 @@
 # Current Status — TradeLinks
 
-Version:        v0.5.0
+Version:        v0.5.1
 Sprint:         004
 Sprint Status:  ✅ Done
 Last Updated:   2026-06-04 by claude-opus-4-8
@@ -56,6 +56,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.5.1 | 2026-06-04 | 修复 3 个死源(USTR/ACCC 换 RSS、CIFNews 停用)+ Prisma Neon 冷启动重试 |
 | v0.5.0 | 2026-06-04 | Sprint 004：趋势摄取(pytrends)+跨区扩散信号(/trends Radar)+即时推送(gated)，差异化卖点上线 |
 | v0.4.1 | 2026-06-04 | UI 重做：Intelligence Wire 编辑风(Fraunces+Plex Mono+琥珀信号色)，用户确认采用 + Neon 连接池修复 |
 | v0.4.0 | 2026-06-03 | Sprint 003：Next.js Web(时间线+过滤)+REST API+RSS+审核UI+日报生成，真实验证 |
