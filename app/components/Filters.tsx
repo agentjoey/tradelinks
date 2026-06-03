@@ -7,13 +7,13 @@ const REGION_LABEL: Record<string, string> = {
 };
 
 function chip(active: boolean) {
-  return `rounded-full border px-3 py-1 text-xs ${
-    active ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300"
-           : "border-border bg-panel text-muted hover:text-ink"
+  return `ticker rounded-sm px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
+    active
+      ? "bg-signal text-ink"
+      : "text-muted hover:text-paper hover:bg-paper/[0.05]"
   }`;
 }
 
-/** Server-rendered filter bar; selecting sets a query param (link-based, no JS). */
 export function Filters({ region, category }: { region?: string; category?: string }) {
   const hrefFor = (params: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
@@ -24,17 +24,19 @@ export function Filters({ region, category }: { region?: string; category?: stri
   };
 
   return (
-    <div className="mb-5 space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <Link href={hrefFor({ region: undefined })} className={chip(!region)}>All regions</Link>
+    <div className="mb-6 space-y-2 border-y border-line py-3">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="ticker mr-2 text-[9px] uppercase tracking-[0.2em] text-faint">region</span>
+        <Link href={hrefFor({ region: undefined })} className={chip(!region)}>All</Link>
         {REGIONS.map((r) => (
           <Link key={r} href={hrefFor({ region: r })} className={chip(region === r)}>
             {REGION_LABEL[r]}
           </Link>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Link href={hrefFor({ category: undefined })} className={chip(!category)}>All types</Link>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="ticker mr-2 text-[9px] uppercase tracking-[0.2em] text-faint">type</span>
+        <Link href={hrefFor({ category: undefined })} className={chip(!category)}>All</Link>
         {CATEGORIES.map((c) => (
           <Link key={c} href={hrefFor({ category: c })} className={chip(category === c)}>{c}</Link>
         ))}

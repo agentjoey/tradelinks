@@ -32,6 +32,11 @@ psql $DATABASE_URL -c "SELECT source_id, count(*) FROM items WHERE crawled_at > 
   Monitor compute-hours; the pg-boss poll interval can be widened if cost is an issue.
 - pg-boss maintenance: it auto-archives/expires completed jobs in its `pgboss`
   schema; watch table growth if dead jobs accumulate.
+- **Prisma connection pool (Neon):** the pooled `DATABASE_URL` should carry
+  `connection_limit` — `5` for the long-lived worker, `1` for Vercel serverless
+  functions. Without it, bursts (or Next dev HMR) can hit "Timed out fetching a
+  new connection from the connection pool". Neon's pgbouncer already pools, so
+  keep Prisma's own pool small.
 
 ## Troubleshooting
 
