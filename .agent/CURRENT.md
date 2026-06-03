@@ -11,14 +11,14 @@ Sprint File:    .agent/sprints/sprint-001.md
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
 
 ## Current Sprint Summary
-Sprint 001 目标：搭建数据摄取基础设施。**代码全部完成**：T1 Schema ✅、T2 爬虫框架 ✅（RSS 实测 1508 条）、T3 源接入 🔄（25 源+ingest，DB 入库待 provision）、T4 AI 粗筛/翻译 ✅、T5 去重聚类 ✅、T6 Python Scraper 骨架+Node 桥接 ✅。
-**整条管道 code-complete + 单测验证（40 tests）+ 真实基础设施 e2e 验证**：
-- Neon dev 分支：migrate deploy(9 表)、pg_trgm、真实 RSS 抓取→入库、trigram 查询（verify-db.ts）
-- MiniMax-M2(Anthropic 端点, sk-cp- token-plan)：粗筛/译英(中→英)/分类全通；crawl→AI→DB 全链路（verify-ai.ts + verify-e2e.ts）
-- **唯一剩余 runtime 缺口：T6 Python Scraper 实跑**（需 scraper-py/.venv + Chromium，py3.11 已在本机）
-调优项：prefilter 偏严（recall 待调，ai-pipeline.md 已记）。
-连接/密钥均在 .env(gitignored)：Neon pooled+direct、MINIMAX(sk-cp-)、DEEPSEEK(fallback)。
-发 v0.2.0 前的唯一阻塞：T6 Python 服务实跑（或决定 skeleton 即发）。
+Sprint 001（数据摄取基础设施）**全部完成并真实验证** —— T1 Schema✅ / T2 爬虫框架(pg-boss)✅ / T3 源接入✅ / T4 AI 粗筛翻译(deepseek-v4-flash)✅ / T5 去重聚类✅ / T6 Python Scraper✅。
+真实 e2e 验证：
+- Neon dev：migrate(9表)、pg_trgm、RSS 抓取→入库、trigram 查询
+- AI：deepseek-v4-flash 关思考(bench 后定，ADR-005)，粗筛/译英/分类全通；MiniMax 留作 Sprint-002 打分
+- Python：py3.11 + scrapling[fetchers] 0.4.8 + Chromium，FastAPI /scrape + Node 桥接打通(10 items)
+单测 40 passed / lint 0 error。
+调优项：prefilter recall 偏严（ai-pipeline.md 记录）；各反爬源选择器线上迭代。
+密钥在 .env(gitignored)：Neon、MINIMAX(打分)、DEEPSEEK(Stage-1)。
 SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint-001}.md。ADR-001~004 见 Obsidian。
 测试现状：`pnpm test` 40 passed / `pnpm lint` 0 error / `pnpm db:validate` ok / py_compile ok。
 **基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
