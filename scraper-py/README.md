@@ -29,7 +29,19 @@ curl localhost:8000/health
 Build from this dir's Dockerfile (Scrapling Chromium base image). Set the Node
 worker's `SCRAPER_SERVICE_URL` to the deployed URL.
 
-## Status (Sprint 001 T6)
-Skeleton: FastAPI + stealth/trends scrapers wired to Scrapling/pytrends.
-**Not yet run end-to-end** (needs 3.10+ env + Chromium). Per-source selector
-tuning (TikTok CC / Amazon BSR / Shopee) is iterative — next step.
+## Selector tuning workflow
+Use `explore.py <url>` to reverse-engineer a source's DOM (probes common
+container selectors, counts matches, dumps embedded JSON markers):
+```bash
+.venv/bin/python explore.py "https://www.amazon.com/gp/bestsellers/electronics/"
+```
+Then put the working selectors in `src/config/sources.ts` `scrapeSelectors`.
+
+## Status (verified 2026-06-03)
+- ✅ Service runs (py3.11 + scrapling[fetchers] 0.4.8 + Chromium); `/health` + `/scrape` OK.
+- ✅ **Amazon Best Sellers (D02)**: 30 items/page with rank, via Node→Python bridge.
+  Selectors: item `#gridItemRoot`, title `div[class*=line-clamp]`,
+  link `a.a-link-normal[href*=/dp/]`, rank `.zg-bdg-text`.
+- ⛔ **TikTok Creative Center (D07)**: gated — public web is an empty SEO shell;
+  `creative_radar_api` returns `40101 no permission` (signed token required).
+  Disabled in config; revisit via official API / 3rd-party in Phase 2.

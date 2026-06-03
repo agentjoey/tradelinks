@@ -37,6 +37,10 @@ export interface SourceConfig {
   platforms: string[];
   categoryHint?: Category;
   fetchConfig?: FetchParseConfig;
+  /** when adapter=scrapling stealth: CSS selectors passed to the Python service */
+  scrapeSelectors?: { item: string; title: string; link?: string; rank?: string };
+  /** false = skip in scheduler (e.g. source gated/unavailable) */
+  enabled?: boolean;
   note?: string;
 }
 
@@ -155,8 +159,9 @@ export const SOURCES: SourceConfig[] = [
   },
   {
     id: "D02",
-    name: "Amazon Best Sellers US",
-    url: "https://www.amazon.com/gp/bestsellers/",
+    name: "Amazon Best Sellers US (Electronics)",
+    // category landing under /gp/bestsellers/<cat>/ serves the grid; root redirects
+    url: "https://www.amazon.com/gp/bestsellers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
     frequencyCron: "0 */4 * * *",
@@ -164,11 +169,18 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "trend",
+    // verified selectors 2026-06-03 (30 items/page)
+    scrapeSelectors: {
+      item: "#gridItemRoot",
+      title: "div[class*='line-clamp']",
+      link: "a.a-link-normal[href*='/dp/']",
+      rank: ".zg-bdg-text",
+    },
   },
   {
     id: "D03",
-    name: "Amazon Movers & Shakers US",
-    url: "https://www.amazon.com/gp/movers-and-shakers/",
+    name: "Amazon Movers & Shakers US (Electronics)",
+    url: "https://www.amazon.com/gp/movers-and-shakers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
     frequencyCron: "0 */4 * * *",
@@ -176,6 +188,12 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "trend",
+    scrapeSelectors: {
+      item: "#gridItemRoot",
+      title: "div[class*='line-clamp']",
+      link: "a.a-link-normal[href*='/dp/']",
+      rank: ".zg-bdg-text",
+    },
   },
   {
     id: "D07",
@@ -188,6 +206,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america", "europe", "southeast_asia", "middle_east"],
     platforms: ["tiktok-shop"],
     categoryHint: "trend",
+    enabled: false,
+    note: "GATED (verified 2026-06-03): public web redirects to empty SEO shell; creative_radar_api returns 40101 no-permission (needs signed token). Revisit via official API / 3rd-party data in Phase 2.",
   },
   {
     id: "D11",

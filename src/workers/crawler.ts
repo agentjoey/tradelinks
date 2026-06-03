@@ -23,7 +23,7 @@ export async function registerCrawlerWorker(boss: PgBoss) {
 
       const adapter = buildAdapter(source);
       if (!adapter) {
-        await routeToScrape(boss, source.id, url, source.scrapeMode ?? "stealth");
+        await routeToScrape(boss, source.id, url, source.scrapeMode ?? "stealth", source.scrapeSelectors);
         log.info("routed to scrape-queue (scrapling/json source)");
         continue;
       }
@@ -31,7 +31,7 @@ export async function registerCrawlerWorker(boss: PgBoss) {
       const result = await adapter.crawl({ sourceId, url, adapter: source.adapter });
 
       if (result.blocked) {
-        await routeToScrape(boss, source.id, url, "stealth");
+        await routeToScrape(boss, source.id, url, "stealth", source.scrapeSelectors);
         log.warn("blocked → routed to scrape-queue (stealth)");
         continue;
       }
@@ -50,8 +50,20 @@ export async function registerCrawlerWorker(boss: PgBoss) {
   });
 }
 
-async function routeToScrape(boss: PgBoss, sourceId: string, url: string, mode: ScrapeJob["mode"]) {
+async function routeToScrape(
+  boss: PgBoss,
+  sourceId: string,
+  url: string,
+  mode: ScrapeJob["mode"],
+  selectors?: Record<string, string | undefined>,
+) {
   const payload: ScrapeJob = { sourceId, url, mode };
+  if (selectors) {
+    // drop undefined optional selectors (e.g. rank) so the record is string-only
+    payload.selectors = Object.fromEntries(
+      Object.entries(selectors).filter(([, v]) => v != null) as [string, string][],
+    );
+  }
   await boss.send(QUEUES.scrape, payload, sendOpts);
 }
 

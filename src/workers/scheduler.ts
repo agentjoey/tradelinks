@@ -38,6 +38,7 @@ export async function registerScheduler(boss: PgBoss) {
 
     let dispatched = 0;
     for (const source of SOURCES) {
+      if (source.enabled === false) continue; // gated/unavailable source
       const last = lastById.get(source.id) ?? null;
       if (!isDue(source.frequencyCron, last, now)) continue;
       const payload: CrawlJob = {

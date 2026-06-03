@@ -58,12 +58,12 @@ Legend — Priority: `S1` = Sprint 001 (MVP core) · `S2` = Sprint 004 (Phase 1.
 | ID | Name | URL | Adapter | Freq | Lang | Region | Priority | Notes |
 |----|------|-----|---------|------|------|--------|----------|-------|
 | D01 | Google Trends (pytrends) | via pytrends Python lib or SerpAPI | api | 1d | multilingual | Global (region filter) | **S1** | Unofficial but stable. Use keyword seeds per category. Rate-limit: 5 req/min |
-| D02 | Amazon Best Sellers — US | https://www.amazon.com/gp/bestsellers/ | playwright | 4h | EN | NA | **S1** | Snapshot top-100 per category. Time-series delta = trend signal |
-| D03 | Amazon Movers & Shakers — US | https://www.amazon.com/gp/movers-and-shakers/ | playwright | 4h | EN | NA | **S1** | Rank velocity = early trend signal |
+| D02 | Amazon Best Sellers — US | https://www.amazon.com/gp/bestsellers/**electronics/** | scrapling | 4h | EN | NA | **S1** | ✅ verified 2026-06-03: 30 items/page. sel: item `#gridItemRoot`, title `div[class*=line-clamp]`, link `a.a-link-normal[href*=/dp/]`, rank `.zg-bdg-text`. Root URL redirects → use category landing. |
+| D03 | Amazon Movers & Shakers — US | https://www.amazon.com/gp/movers-and-shakers/**electronics/** | scrapling | 4h | EN | NA | **S1** | Same selectors as D02 (rank velocity = early signal) |
 | D04 | Amazon Best Sellers — UK | https://www.amazon.co.uk/gp/bestsellers/ | playwright | 4h | EN | EU | S2 | Cross-region diffusion comparison |
 | D05 | Amazon Best Sellers — DE | https://www.amazon.de/gp/bestsellers/ | playwright | 4h | DE | EU | S2 | Top EU market |
 | D06 | Amazon Best Sellers — AU | https://www.amazon.com.au/gp/bestsellers/ | playwright | 1d | EN | ANZ | S2 | |
-| D07 | TikTok Creative Center (Trending Products) | https://ads.tiktok.com/business/creativecenter/inspiration/popular/pc/en | playwright | 4h | EN | Global | **S1** | Anti-scrape: rotate UA + slow scroll. Best signal for SEA/ME trend |
+| D07 | TikTok Creative Center | https://ads.tiktok.com/business/creativecenter/... | scrapling | — | EN | Global | ⛔ **GATED** | verified 2026-06-03: public web → empty SEO shell; `creative_radar_api` → `40101 no permission` (needs signed token). Disabled in config (`enabled:false`). Revisit via official API / 3rd-party (Phase 2). |
 | D08 | Shopee Trending (SG) | https://shopee.sg/search?sortBy=pop | playwright | 1d | EN | SEA | S2 | Public search sort by popularity |
 | D09 | Lazada Top Products (MY) | https://www.lazada.com.my/catalog/ | playwright | 1d | EN | SEA | S2 | |
 | D10 | Mercado Libre Tendencias (BR) | https://www.mercadolibre.com.br/tendencias/ | playwright | 1d | PT | LatAm | S2 | Official trends page |

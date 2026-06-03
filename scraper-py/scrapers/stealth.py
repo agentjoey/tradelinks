@@ -21,9 +21,12 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
     item_sel = selectors.get("item", "article")
     title_sel = selectors.get("title", "h2, h3")
     link_sel = selectors.get("link", "a")
+    rank_sel = selectors.get("rank")  # optional (e.g. Amazon BSR badge)
 
     StealthyFetcher.adaptive = True  # Smart Element Tracking / auto-heal
-    page = StealthyFetcher.fetch(url, headless=True, solve_cloudflare=True)
+    page = StealthyFetcher.fetch(
+        url, headless=True, solve_cloudflare=True, network_idle=True, timeout=90000
+    )
 
     items: list[dict[str, Any]] = []
     for node in page.css(item_sel, auto_save=True):
@@ -31,7 +34,19 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
         href = _first_attr(node, link_sel, "href")
         if not title_text or not href:
             continue
-        items.append({"url": urljoin(url, href), "title": title_text.strip(), "lang": "en"})
+        raw: dict[str, Any] = {}
+        if rank_sel:
+            rank = _first_text(node, rank_sel)
+            if rank:
+                raw["rank"] = rank.strip()
+        items.append(
+            {
+                "url": urljoin(url, href),
+                "title": title_text.strip(),
+                "lang": "en",
+                "rawContent": raw or None,
+            }
+        )
     return items
 
 
