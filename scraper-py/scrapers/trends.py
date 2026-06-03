@@ -1,29 +1,49 @@
 """
 Google Trends via pytrends (D01). Each keyword becomes a RawItem whose
-rawContent carries the recent interest series; downstream Sprint-004 trend
-diffusion consumes these snapshots.
+rawContent carries the recent interest series; downstream Sprint-004 diffusion
+consumes these snapshots.
 
-Sprint-001 skeleton: structure + pytrends wiring. Rate limit: <=5 req/min.
+NOTE: Google aggressively rate-limits unauthenticated Trends (HTTP 429). We
+space requests and retry with backoff. For reliable high-volume use, switch to
+a paid provider (SerpAPI / DataForSEO Google Trends) — see sprint-004 notes.
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import Any
+
+
+def _now_z() -> str:
+    # Z-suffixed UTC (zod datetime-friendly)
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def scrape_trends(keywords: list[str], geo: str | None) -> list[dict[str, Any]]:
     if not keywords:
         return []
     from pytrends.request import TrendReq
+    from pytrends.exceptions import TooManyRequestsError
 
-    pytrends = TrendReq(hl="en-US", tz=0)
+    pytrends = TrendReq(hl="en-US", tz=0, retries=2, backoff_factor=0.5)
     items: list[dict[str, Any]] = []
-    now = datetime.now(timezone.utc).isoformat()
+    now = _now_z()
 
-    # batch up to 5 keywords per pytrends payload (its limit)
-    for batch in _chunks(keywords, 5):
-        pytrends.build_payload(batch, timeframe="now 7-d", geo=geo or "")
-        df = pytrends.interest_over_time()
+    for bi, batch in enumerate(_chunks(keywords, 5)):
+        if bi > 0:
+            time.sleep(8)  # space batches to avoid 429
+        df = None
+        for attempt in range(3):
+            try:
+                pytrends.build_payload(batch, timeframe="now 7-d", geo=geo or "")
+                df = pytrends.interest_over_time()
+                break
+            except TooManyRequestsError:
+                time.sleep(15 * (attempt + 1))  # 15s, 30s, 45s backoff
+            except Exception:
+                break
+        if df is None:
+            continue  # skip this batch on persistent failure
         for kw in batch:
             series = df[kw].tolist() if kw in df else []
             items.append(

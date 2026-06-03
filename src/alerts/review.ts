@@ -23,13 +23,25 @@ export async function listPending(): Promise<PendingAlert[]> {
   });
 }
 
-/** Approve → published (push pipeline picks it up in Sprint 004). */
+/** Approve → published, then dispatch instant push (Sprint 004 T3). */
 export async function approveAlert(id: string, reviewer = "cli"): Promise<boolean> {
   const res = await prisma.alert.updateMany({
     where: { id, status: "pending_review" },
     data: { status: "published", publishedAt: new Date(), reviewedBy: reviewer },
   });
-  return res.count > 0;
+  if (res.count === 0) return false;
+
+  // instant push for the just-published alert (no-ops if channels unconfigured)
+  const a = await prisma.alert.findUnique({ where: { id } });
+  if (a) {
+    const { dispatchPush } = await import("../push/send.js");
+    await dispatchPush({
+      title: a.title, summary: a.summary, urgencyScore: a.urgencyScore,
+      category: a.category, regions: a.regions as string[],
+      actionRequired: a.actionRequired, sourceUrls: a.sourceUrls,
+    }).catch(() => undefined);
+  }
+  return true;
 }
 
 export async function rejectAlert(id: string, reviewer = "cli"): Promise<boolean> {

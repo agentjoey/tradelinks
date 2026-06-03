@@ -5,8 +5,8 @@ import { z } from "zod";
 export const RawItemSchema = z.object({
   url: z.string().url(),
   title: z.string().min(1),
-  // nullish: producers (incl. the Python service via Pydantic) may send null
-  publishedAt: z.string().datetime().nullish(),
+  // nullish + offset: producers may send null or +00:00-offset ISO (Python isoformat)
+  publishedAt: z.string().datetime({ offset: true }).nullish(),
   rawContent: z.unknown().nullish(),
   lang: z.string().nullish(),
 });

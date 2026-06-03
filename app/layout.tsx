@@ -51,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <nav className="ticker text-[11px] uppercase tracking-[0.2em] text-muted flex gap-5">
                 <Link href="/" className="hover:text-paper transition-colors">Wire</Link>
+                <Link href="/trends" className="hover:text-paper transition-colors">Radar</Link>
                 <Link href="/admin/review" className="hover:text-paper transition-colors">Desk</Link>
                 <a href="/feed.xml" className="hover:text-paper transition-colors">RSS</a>
               </nav>

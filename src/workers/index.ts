@@ -4,7 +4,9 @@ import { registerScrapeWorker } from "./scrape.js";
 import { registerIngestWorker } from "./ingest.js";
 import { registerProcessorWorker } from "./processor.js";
 import { registerScoringWorker } from "./scoring.js";
+import { registerTrendsWorker } from "./trends.js";
 import { registerScheduler } from "./scheduler.js";
+import { QUEUES } from "../queue/queues.js";
 import { logger } from "../lib/logger.js";
 
 async function main() {
@@ -19,8 +21,11 @@ async function main() {
   await registerIngestWorker(boss);
   await registerProcessorWorker(boss);
   await registerScoringWorker(boss);
+  await registerTrendsWorker(boss);
   await registerScheduler(boss);
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score (pg-boss)");
+  // daily trends ingest + diffusion at 02:00 UTC
+  await boss.schedule(QUEUES.trends, "0 2 * * *");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");

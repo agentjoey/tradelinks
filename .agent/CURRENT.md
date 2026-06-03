@@ -1,14 +1,21 @@
 # Current Status — TradeLinks
 
 Version:        v0.4.1
-Sprint:         003
-Sprint Status:  ✅ Done
+Sprint:         004
+Sprint Status:  🔄 In Progress
 Last Updated:   2026-06-04 by claude-opus-4-8
-Sprint File:    .agent/sprints/sprint-003.md
+Sprint File:    .agent/sprints/sprint-004.md
 
 ## Open Bugs（P0/P1 必须本 Sprint 修复）
 🟢 无已知 P0/P1 bug。
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
+
+## Sprint 004 Summary（趋势 + 扩散 + 推送）
+T1 趋势摄取 ✅（keywords + score.ts + trends worker + daily schedule；pytrends 单次取 169 点验证；**429 限流记为生产风险**，已加退避，高可用需付费源）
+T2 跨区扩散 ✅（diffusion.ts lead-lag 算法 + 5 单测；真实算法产出 5 个直观信号；**/trends Radar 页已上线**，沿用 Wire 视觉）
+T3 即时推送 ✅（Telegram/Slack 渲染+发送，approve→dispatchPush；真实发送 gated on token）
+延后：Amazon BSR 多源佐证、Phase 1.5 源扩展 → Sprint 005。
+69 单测 / lint 0 / next build ✓ / 真实 Neon+pytrends 管道验证。
 
 ## Sprint 003 Summary（Web + 分发）
 Next.js 14 + Tailwind 接入(与 worker 共存，webpack extensionAlias 解析 .js→.ts)。

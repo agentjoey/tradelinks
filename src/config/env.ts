@@ -14,6 +14,9 @@ const EnvSchema = z.object({
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
   RESEND_API_KEY: z.string().optional(), // daily digest email (Sprint 003 T3)
   FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
+  TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)
+  TELEGRAM_CHAT_ID: z.string().optional(),
+  SLACK_WEBHOOK_URL: z.string().optional(),
   LOG_LEVEL: z.string().default("info"),
 });
 
