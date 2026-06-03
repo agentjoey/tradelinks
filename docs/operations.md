@@ -27,6 +27,13 @@ psql $DATABASE_URL -c "SELECT source_id, count(*) FROM items WHERE crawled_at > 
 
 - LLM target: <$15/week (≈$60/month)
 - If DeepSeek cost spikes: check for crawl loop bug or runaway retries in BullMQ
+- **Upstash (Redis) command cost — watch this (ADR-003):** BullMQ is command-heavy
+  (blocking pops, polling). Upstash bills per command, so a 24/7 worker can run up
+  cost. Check Upstash dashboard weekly; if commands/day is high, tune:
+  - increase poll/backoff intervals, reduce queues' concurrency
+  - if still expensive, migrate Redis to a fixed-price Railway Redis instance
+- Neon: scale-to-zero saves cost when idle, but workers keep it warm 24/7 — monitor
+  compute-hours; consider Neon autoscaling limits.
 
 ## Troubleshooting
 

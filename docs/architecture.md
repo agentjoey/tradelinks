@@ -135,10 +135,13 @@ alert.urgency_score
 
 ## Hosting & Infra
 
-| Component | Host | Notes |
+| Component | Host | Notes (ADR-003) |
 |-----------|------|-------|
 | Next.js app | Vercel | serverless |
-| Workers (BullMQ) | Railway | always-on service |
-| PostgreSQL 16 | Railway | 1 GB starter |
-| Redis | Railway | BullMQ queue backend |
+| Node worker + Python Scraper | Railway | always-on services |
+| PostgreSQL 16 | **Neon** | serverless, scale-to-zero, built-in PgBouncer pooler, DB branching, pg_trgm |
+| Redis | **Upstash** | BullMQ backend via `rediss://`; monitor command cost (see operations.md) |
 | Images proxy | `/api/img-proxy` | Vercel edge function |
+
+**Connection wiring:** runtime (Vercel + Railway workers) → Neon **pooled** `DATABASE_URL`;
+`prisma migrate` → Neon **direct** `DIRECT_URL`. Local dev/test → Neon dev branch.

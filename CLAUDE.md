@@ -31,7 +31,7 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 | Push | Telegram Bot API + Slack Webhooks |
 | Auth | NextAuth.js v5 |
 | Payment | Stripe (USD, global) |
-| Hosting | Vercel (frontend) + Railway (workers + Postgres + Redis) |
+| Hosting | Vercel (frontend) + Railway (Node+Python workers) + Neon (Postgres) + Upstash (Redis) — ADR-003 |
 
 ## Key Implementation Details
 - Alert pipeline forks at classification: urgency×impact score ≥4 triggers immediate push; <4 queues to daily digest
@@ -41,6 +41,8 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 - Blocked-detection: HTTP 200 with captcha/Cloudflare body must NOT be naively retried — route to Python StealthyFetcher instead
 - DeepSeek API requires `User-Agent: Mozilla/5.0` workaround for some fetch contexts
 - Postgres trigram: `CREATE EXTENSION pg_trgm; CREATE INDEX ON items USING GIN (title gin_trgm_ops)`
+- Neon needs TWO urls (ADR-003): `DATABASE_URL` (pooled, runtime) + `DIRECT_URL` (direct, migrations). Migrations can't run over the transaction pooler.
+- Local dev/test connects to a Neon dev branch (no local Postgres); unit tests stay DB-free
 - Sources with login walls (Amazon SC, Temu) captured via secondary media sources only — never scrape authenticated sessions
 
 ## Dev Commands

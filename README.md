@@ -20,17 +20,23 @@
 
 ```bash
 pnpm install
-cp .env.example .env          # 填入 DATABASE_URL / REDIS_URL / API keys
+cp .env.example .env          # 填入 Neon DATABASE_URL+DIRECT_URL / Upstash REDIS_URL / API keys
 pnpm db:gen                   # 生成 Prisma Client（无需 DB）
 pnpm db:validate              # 校验 schema
-pnpm test                     # 单元测试（adapters / blocked-detection）
+pnpm test                     # 单元测试（adapters / blocked / AI stage1，无需 DB）
 
-# 本地调试单个源（RSS 源无需 DB/Redis）
-pnpm worker:run-once --source=F01
+# 本地调试单个 RSS 源（dry-run，无需 DB/Redis）
+pnpm worker:run-once --source=A02
 
-# 启动 worker（需要 Redis + Postgres）
+# 迁移到 Neon dev 分支（用 DIRECT_URL）
+pnpm db:migrate
+
+# 启动 worker（需要 Neon + Upstash 连接串）
 pnpm worker
 ```
+
+> 基础设施：Neon(PG) + Upstash(Redis) + Railway(workers) + Vercel(前端)，见 ADR-003 / docs/deployment.md。
+> 本地无需安装 Postgres——连 Neon dev 分支即可。
 
 ## 架构速览（ADR-002 混合爬虫）
 
