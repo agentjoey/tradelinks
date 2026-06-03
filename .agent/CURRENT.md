@@ -1,8 +1,8 @@
 # Current Status — TradeLinks
 
-Version:        v0.4.1
+Version:        v0.5.0
 Sprint:         004
-Sprint Status:  🔄 In Progress
+Sprint Status:  ✅ Done
 Last Updated:   2026-06-04 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-004.md
 
@@ -45,17 +45,18 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 测试现状：`pnpm test` 40 passed / `pnpm lint` 0 error / `pnpm db:validate` ok / py_compile ok。
 **基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
 
-## Next Sprint Candidates（Sprint 004：趋势 + Push）
-- [ ] [EP-004] [HIGH] 趋势时序摄取（Google Trends pytrends + Amazon BSR 快照）
-- [ ] [EP-004] [HIGH] 跨区扩散信号 v1（3 源交叉 + 置信度）+ /trends 看板
-- [ ] [EP-003] [HIGH] 即时 Push（Telegram/Slack，urgency≥4 approved alert）
-- [ ] [EP-001] [MED] Phase 1.5 源扩展（SEA/ME/LatAm/ANZ）
-- [ ] [EP-008] [HIGH] Auth(NextAuth)+Stripe+关键词监控（Sprint 005）
+## Next Sprint Candidates（Sprint 005：账户 + 变现 + 扩源）
+- [ ] [EP-008] [HIGH] Auth(NextAuth v5)：登录 + 管理页鉴权 + 用户订阅设置
+- [ ] [EP-008] [HIGH] Stripe 订阅(Free/Pro/Team) + 计费页
+- [ ] [EP-009] [MED] 关键词监控(Pro)：自定义品类/品牌/竞品盯防
+- [ ] [EP-001] [MED] Phase 1.5 源扩展(SEA/ME/LatAm/ANZ 35 源)
+- [ ] [EP-005] [LOW] UI 增强：urgency 排序/已读置灰/中英切换
 
 
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.5.0 | 2026-06-04 | Sprint 004：趋势摄取(pytrends)+跨区扩散信号(/trends Radar)+即时推送(gated)，差异化卖点上线 |
 | v0.4.1 | 2026-06-04 | UI 重做：Intelligence Wire 编辑风(Fraunces+Plex Mono+琥珀信号色)，用户确认采用 + Neon 连接池修复 |
 | v0.4.0 | 2026-06-03 | Sprint 003：Next.js Web(时间线+过滤)+REST API+RSS+审核UI+日报生成，真实验证 |
 | v0.3.0 | 2026-06-03 | Sprint 002：评分(MiniMax)+Alert生成+状态路由+审核队列，全链真实验证 |
