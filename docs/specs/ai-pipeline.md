@@ -7,13 +7,14 @@
 
 | Model | Use | When |
 |-------|-----|------|
-| **MiniMax-M2** (OpenAI-compat) | all Stage-1 (prefilter/translate/categorize), multilingual | **primary** — when `MINIMAX_API_KEY` set |
-| DeepSeek V3.2 | bulk pre-filter, translate (en/zh/pt/es), categorize | fallback |
-| Qwen-Plus | translate AR/ID/TH | fallback (small-lang) |
+| **deepseek-v4-flash** (thinking OFF) | all Stage-1 (prefilter/translate/categorize) | **primary** — `DEEPSEEK_API_KEY` set (ADR-005) |
+| MiniMax-M2 (Anthropic endpoint) | Sprint-002 urgency scoring (`scoringClient()`) | reasoning task |
+| deepseek-chat / Qwen-Plus | fallbacks | when no DeepSeek key |
 
-Provider routing (`pickClient(lang)` in src/ai/client.ts):
-- `MINIMAX_API_KEY` set → **MiniMax-M2 for everything** (one provider, multilingual)
-- else: `ar`/`id`/`th` → Qwen-Plus; otherwise → DeepSeek V3.2
+Provider routing (`pickClient(lang)` in src/ai/client.ts) — ADR-005:
+- `DEEPSEEK_API_KEY` set → **deepseek-v4-flash (thinking disabled)** for all Stage-1
+- else `MINIMAX_API_KEY` → MiniMax-M2; else `ar`/`id`/`th` → Qwen, otherwise deepseek-chat
+- Chosen via bench (4× faster, 5× leaner, equal accuracy, better region precision)
 
 > MiniMax token-plan keys (`sk-cp-`) use the **Anthropic-compatible** endpoint
 > `https://api.minimax.io/anthropic` (`AnthropicCompatClient`, x-api-key auth).

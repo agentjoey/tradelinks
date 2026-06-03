@@ -9,6 +9,7 @@ const EnvSchema = z.object({
   MINIMAX_BASE_URL: z.string().default("https://api.minimax.io/anthropic"),
   MINIMAX_MODEL: z.string().default("MiniMax-M2"),
   DEEPSEEK_API_KEY: z.string().optional(),
+  DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
   LOG_LEVEL: z.string().default("info"),

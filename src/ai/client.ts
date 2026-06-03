@@ -178,6 +178,17 @@ export const deepseekChat = new OpenAiCompatClient({
   model: "deepseek-chat",
 });
 
+// Stage-1 primary (ADR-005): deepseek-v4-flash with thinking OFF — fast, lean,
+// precise region tags. Benchmarked 4× faster / 5× leaner vs MiniMax-M2.7-hs at
+// equal accuracy.
+export const deepseekFlash = new OpenAiCompatClient({
+  name: `deepseek:${env.DEEPSEEK_STAGE1_MODEL}`,
+  baseUrl: "https://api.deepseek.com/v1",
+  apiKey: env.DEEPSEEK_API_KEY,
+  model: env.DEEPSEEK_STAGE1_MODEL,
+  extraBody: { thinking: { type: "disabled" } },
+});
+
 export const qwenPlus = new OpenAiCompatClient({
   name: "qwen-plus",
   baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -186,12 +197,20 @@ export const qwenPlus = new OpenAiCompatClient({
 });
 
 /**
- * Provider routing — see docs/specs/ai-pipeline.md.
- * If MINIMAX_API_KEY is set, MiniMax-M2 (multilingual) handles everything — one
- * provider, simplest. Otherwise fall back to the DeepSeek + Qwen(AR/ID/TH) split.
+ * Stage-1 provider routing (ADR-005). Primary = deepseek-v4-flash (thinking off):
+ * fast, lean, precise region tags. Falls back to MiniMax, then deepseek-chat/Qwen.
  */
 const QWEN_LANGS = new Set(["ar", "id", "th"]);
 export function pickClient(lang: string): LlmClient {
+  if (env.DEEPSEEK_API_KEY) return deepseekFlash;
   if (env.MINIMAX_API_KEY) return minimax;
   return QWEN_LANGS.has(lang.toLowerCase()) ? qwenPlus : deepseekChat;
+}
+
+/**
+ * Scoring client for Sprint-002 urgency scoring — low-frequency, benefits from
+ * reasoning depth, so prefer the MiniMax reasoning model (ADR-005).
+ */
+export function scoringClient(): LlmClient {
+  return env.MINIMAX_API_KEY ? minimax : deepseekChat;
 }

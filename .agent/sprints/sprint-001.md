@@ -54,8 +54,8 @@ Assignee:  claude
 - [!] 修正：F01 Marketplace Pulse 无公开 RSS（/feed 全 404）→ 改 fetch adapter，选择器待线上验证
 - [~] 全量 worker 跑 24h 多区域数据：需 AI key(processor) + worker 常驻，留待集成
 
-### T4: AI 粗筛 + 翻译管道（MiniMax-M2 primary / DeepSeek fallback） [HIGH] [claude]
-**Status:** ✅ Done（**真实 MiniMax-M2 端到端验证**：scripts/verify-ai.ts + verify-e2e.ts）
+### T4: AI 粗筛 + 翻译管道（deepseek-v4-flash primary, ADR-005） [HIGH] [claude]
+**Status:** ✅ Done（**真实端到端验证**；模型经 bench 对比后定 deepseek-v4-flash 关思考）
 **Epic:** EP-002
 **Acceptance:**
 - [x] `src/ai/client.ts` DeepSeek + Qwen（OpenAI 兼容）+ 语言路由（AR/ID/TH→Qwen）+ token 累计日志
