@@ -5,9 +5,10 @@ import { z } from "zod";
 export const RawItemSchema = z.object({
   url: z.string().url(),
   title: z.string().min(1),
-  publishedAt: z.string().datetime().optional(),
-  rawContent: z.unknown().optional(),
-  lang: z.string().optional(),
+  // nullish: producers (incl. the Python service via Pydantic) may send null
+  publishedAt: z.string().datetime().nullish(),
+  rawContent: z.unknown().nullish(),
+  lang: z.string().nullish(),
 });
 export type RawItem = z.infer<typeof RawItemSchema>;
 

@@ -1,5 +1,6 @@
 # Python >= 3.10 required (Scrapling)
 fastapi>=0.115,<1.0
-uvicorn[standard]>=0.32,<1.0
-scrapling>=0.2.9
+uvicorn>=0.32,<1.0
+# [fetchers] extra pulls the browser engines + curl_cffi needed by StealthyFetcher
+scrapling[fetchers]>=0.4,<1.0
 pytrends>=4.9.2

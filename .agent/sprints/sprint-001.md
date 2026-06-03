@@ -31,7 +31,7 @@ Assignee:  claude
 - [x] `pnpm test` 11 passed，`pnpm lint`(tsc) 0 error
 
 ### T6: Python Scraper 服务（Scrapling + FastAPI） [HIGH] [claude]
-**Status:** ✅ Done（骨架 + Node 桥接 + 测试；Python 服务待 3.10+/Chromium 环境实跑）
+**Status:** ✅ Done（**Python 服务已本地实跑验证**：py3.11 venv + scrapling 0.4.8 + Chromium）
 **Epic:** EP-001
 **架构:** HTTP 桥接模型（见更新后的 crawler-contract.md §4）：Node 持有全部 pg-boss 队列，Python 是无状态 HTTP 抓取服务
 **Acceptance:**
@@ -39,8 +39,9 @@ Assignee:  claude
 - [x] `scrapers/stealth.py` 集成 Scrapling `StealthyFetcher(solve_cloudflare=True)` + `adaptive=True`（自愈选择器）
 - [x] `scrapers/trends.py` 集成 pytrends（mode=trends，keyword 快照含 series）
 - [x] **Node 桥接** `src/workers/scrape.ts`：消费 scrape-queue → HTTP POST Python → 回 `ingest-queue`（schema 一致）；3 个单测（200/非200/schema 校验）
-- [x] Dockerfile 基于 Scrapling Chromium 镜像 + requirements.txt + README
-- [~] 真抓 TikTok CC(D07)/Amazon BSR(D02)/Shopee：需 3.10+ 环境 + Chromium，选择器线上迭代（本地 py3.9 无法跑）
+- [x] Dockerfile 基于 Scrapling Chromium 镜像 + requirements.txt(scrapling[fetchers]) + README
+- [x] **本地实跑验证**：FastAPI `/health`+`/scrape`(stealth) 真实 Scrapling 浏览器抓 quotes.toscrape.com 得 10 条；**Node 桥接 callScraper→Python→10 RawItems** 打通
+- [~] 真抓 TikTok CC(D07)/Amazon BSR(D02)/Shopee：浏览器路径已验证，各源选择器留待线上迭代调优
 
 ### T3: Phase 1 信息源接入（24 个核心源） [HIGH] [claude]
 **Status:** ✅ Done（配置+ingest+真实入库已验证；img-proxy 推迟 Sprint 003）

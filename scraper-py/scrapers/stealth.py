@@ -2,45 +2,53 @@
 Stealth scraping via Scrapling StealthyFetcher (anti-bot sources: TikTok CC,
 Amazon BSR, Shopee/Lazada). Adaptive mode self-heals selectors on redesign.
 
-This is the Sprint-001 skeleton: structure + Scrapling wiring. Per-source
-selector tuning is iterative (see docs/specs/sources.md). Returns RawItem dicts
-matching the Node RawItem schema (crawler-contract.md §2).
+Scrapling API (verified v0.2.x):
+  StealthyFetcher.adaptive = True                  # enable self-healing globally
+  page = StealthyFetcher.fetch(url, headless=True, solve_cloudflare=True)
+  page.css('sel::text').get() / page.css('sel')[i].attrib['href']
+
+Returns RawItem dicts matching the Node RawItem schema (crawler-contract.md §2).
 """
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urljoin
 
 
 def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
-    # Imported lazily so the module imports even before Scrapling is installed.
     from scrapling.fetchers import StealthyFetcher
 
     item_sel = selectors.get("item", "article")
     title_sel = selectors.get("title", "h2, h3")
     link_sel = selectors.get("link", "a")
 
-    fetcher = StealthyFetcher(adaptive=True)  # Smart Element Tracking / auto-heal
-    page = fetcher.fetch(url, headless=True, solve_cloudflare=True)
+    StealthyFetcher.adaptive = True  # Smart Element Tracking / auto-heal
+    page = StealthyFetcher.fetch(url, headless=True, solve_cloudflare=True)
 
     items: list[dict[str, Any]] = []
-    for node in page.css(item_sel):
-        title = node.css_first(title_sel)
-        href = node.css_first(link_sel)
-        title_text = title.text.strip() if title else None
-        link = href.attrib.get("href") if href else None
-        if not title_text or not link:
+    for node in page.css(item_sel, auto_save=True):
+        title_text = _first_text(node, title_sel)
+        href = _first_attr(node, link_sel, "href")
+        if not title_text or not href:
             continue
-        items.append(
-            {
-                "url": _absolutize(link, url),
-                "title": title_text,
-                "lang": "en",
-            }
-        )
+        items.append({"url": urljoin(url, href), "title": title_text.strip(), "lang": "en"})
     return items
 
 
-def _absolutize(href: str, base: str) -> str:
-    from urllib.parse import urljoin
+def _first_text(node, sel: str) -> str | None:
+    try:
+        res = node.css(f"{sel}::text")
+        return res.get() if res else None
+    except Exception:
+        return None
 
-    return urljoin(base, href)
+
+def _first_attr(node, sel: str, attr: str) -> str | None:
+    try:
+        els = node.css(sel)
+        if els:
+            return els[0].attrib.get(attr)
+        # node itself may be the anchor
+        return node.attrib.get(attr)
+    except Exception:
+        return None

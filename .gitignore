@@ -5,3 +5,8 @@ node_modules/
 .env*.local
 *.bak
 .DS_Store
+
+# Python scraper service
+scraper-py/.venv/
+__pycache__/
+*.pyc
