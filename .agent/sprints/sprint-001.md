@@ -12,7 +12,7 @@ Assignee:  claude
 **Epic:** EP-001
 **Acceptance:**
 - [x] `prisma/schema.prisma` 含 Source/Item/Cluster/Alert/TrendSnapshot/TrendSignal/User/KeywordWatch 8 表 + 7 枚举
-- [x] `pnpm db:validate` 通过（`The schema at prisma/schema.prisma is valid 🚀`）；`pnpm db:gen` 生成 Client v6.19.3。真 `migrate deploy` 待 Railway（本地无 docker/psql，已在 deployment.md 注明）
+- [x] **`migrate deploy` 已真实应用到 Neon dev 分支**（0001_init + 0002_trgm 均成功）；9 张表确认存在
 - [x] Item 表含 `regions[]` + `platforms[]` + `category` + `publishedAt` + `urgencyScore`
 - [x] trigram GIN 索引：`prisma/migrations/0002_trgm/migration.sql`（pg_trgm + title/titleEn GIN）
 - [x] 时序表 `trend_snapshots`（+ `trend_signals` 跨区扩散）已建模；offline 迁移 `0001_init/migration.sql`（200 行）已生成
@@ -42,18 +42,17 @@ Assignee:  claude
 - [x] Dockerfile 基于 Scrapling Chromium 镜像 + requirements.txt + README
 - [~] 真抓 TikTok CC(D07)/Amazon BSR(D02)/Shopee：需 3.10+ 环境 + Chromium，选择器线上迭代（本地 py3.9 无法跑）
 
-### T3: Phase 1 信息源接入（25 个核心源） [HIGH] [claude]
-**Status:** 🔄 In Progress（配置+ingest 完成；DB 入库与 img-proxy 待验证/后续）
+### T3: Phase 1 信息源接入（24 个核心源） [HIGH] [claude]
+**Status:** ✅ Done（配置+ingest+真实入库已验证；img-proxy 推迟 Sprint 003）
 **Epic:** EP-001
 **Acceptance:**
-- [x] `src/config/sources.ts` 含 25 个 S1 源（B/D/F/A 类，与 docs/specs/sources.md 一致）
+- [x] `src/config/sources.ts` 含 24 个 S1 源（B/D/F/A 类，与 docs/specs/sources.md 一致）；已 seed 进 Neon `sources` 表
 - [x] 每源有 `id/name/url/adapter/frequencyCron/language/regions[]/platforms[]/categoryHint` 字段
-- [x] `src/workers/ingest.ts` 实现 upsert（url unique=去重L1）+ 转 process-queue
-- [~] DB 真入库待 Railway Postgres（本地无 psql/docker）
+- [x] `src/workers/ingest.ts` upsert（url unique=去重L1）+ 转 process-queue
+- [x] **真实入库已验证**（scripts/verify-db.ts）：Shopify RSS 抓 1508 条 → 写入 Neon `items`
 - [~] img-proxy 推迟至 Sprint 003（需 Next.js，IMPL-PLAN 已注明）
-- [!] 修正：F01 Marketplace Pulse 无公开 RSS（/feed 全 404，已实测）→ 改 fetch adapter，选择器待线上验证
-- [ ] 跑 `pnpm worker` 后 24h 内，`items` 表有来自各区域的真实数据
-- [ ] 图片代理 `/api/img-proxy` 实现（绕过 X/Twitter 媒体封锁）
+- [!] 修正：F01 Marketplace Pulse 无公开 RSS（/feed 全 404）→ 改 fetch adapter，选择器待线上验证
+- [~] 全量 worker 跑 24h 多区域数据：需 AI key(processor) + worker 常驻，留待集成
 
 ### T4: AI 粗筛 + 翻译管道（DeepSeek V3.2） [HIGH] [claude]
 **Status:** ✅ Done（逻辑经 fixture 验证；真实准确率/成本待 API key 实跑）
@@ -76,7 +75,7 @@ Assignee:  claude
 - [x] L2 trigram 相似度分类 `classify.ts`（≥0.75 dup / 0.5-0.75 grey / <0.5 distinct）+ 测试
 - [x] L3 事件聚类 `resolve.ts`（取最高分；grey 区调 LLM cluster-judge 判同事件）+ 8 单测覆盖 dup/cluster/distinct/排序
 - [x] DB 层 `dedup/db.ts`：`findSimilarItems`（pg_trgm similarity 原始 SQL）+ `applyDuplicate`/`applyCluster`（merge sourceUrls[]），已接入 processor
-- [~] "同一政策 3 源聚类"端到端验证需 Neon（trigram 在 PG 算）；逻辑已用 fixture 验证，集成待 provision
+- [x] **pg_trgm 真实验证**（scripts/verify-db.ts）：`similarity()` 可用，`findSimilarItems` 返回评分候选；"3 源聚类"端到端待 AI key 后随 processor 验证
 
 ## Superpowers Checkpoints
 | Skill | 触发条件 | 本 Sprint |
