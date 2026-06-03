@@ -1,8 +1,8 @@
 # Current Status — TradeLinks
 
-Version:        v0.2.0
+Version:        v0.3.0
 Sprint:         002
-Sprint Status:  🔄 In Progress
+Sprint Status:  ✅ Done
 Last Updated:   2026-06-03 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-002.md
 
@@ -31,15 +31,17 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 测试现状：`pnpm test` 40 passed / `pnpm lint` 0 error / `pnpm db:validate` ok / py_compile ok。
 **基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
 
-## Next Sprint Candidates
-- [ ] [EP-002] [HIGH] AI 精筛/打分管道（Sprint 002）
-- [ ] [EP-003] [HIGH] 预警分类 + 区域标签 + Push 系统（Sprint 002）
-- [ ] [EP-005] [HIGH] Next.js 网站骨架 + 时间线 feed（Sprint 003）
-- [ ] [EP-006] [MED] 每日日报生成 + 邮件发送（Sprint 003）
+## Next Sprint Candidates（Sprint 003：Web + 分发）
+- [ ] [EP-005] [HIGH] Next.js 网站骨架 + Alert 时间线 feed（区域/类别/平台过滤）
+- [ ] [EP-005] [HIGH] 审核 UI `/admin/review`（替代 scripts/review.ts CLI）
+- [ ] [EP-007] [MED] REST API 公开端点（/api/public/alerts, OpenAPI 3.1）+ RSS feed
+- [ ] [EP-006] [MED] 每日日报生成（5 段式）+ Resend 邮件
 - [ ] [EP-004] [HIGH] 趋势看板 + 跨区扩散信号 v1（Sprint 004）
+- [ ] [EP-003] [MED] 即时 Push（Telegram/Slack，urgency≥4）（Sprint 004）
 
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.3.0 | 2026-06-03 | Sprint 002：评分(MiniMax)+Alert生成+状态路由+审核队列，全链真实验证 |
 | v0.2.0 | 2026-06-03 | Sprint 001 完成：数据摄取管道（pg-boss/Neon + deepseek-v4-flash + Scrapling）全链真实验证 |
 | v0.1.0 | 2026-06-03 | 项目立项，规范初始化，数据源清单确认 |
