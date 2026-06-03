@@ -98,9 +98,72 @@ class OpenAiCompatClient implements LlmClient {
   }
 }
 
-export const minimax = new OpenAiCompatClient({
+interface AnthropicCompatConfig {
+  name: string;
+  baseUrl: string; // e.g. https://api.minimax.io/anthropic
+  apiKey: string | undefined;
+  model: string;
+}
+
+/**
+ * Anthropic Messages API client (for MiniMax token-plan `sk-cp-` keys, which
+ * only work on the /anthropic endpoint). No native JSON mode — our prompts ask
+ * for JSON and extractJson() is tolerant.
+ */
+class AnthropicCompatClient implements LlmClient {
+  readonly name: string;
+  constructor(private readonly cfg: AnthropicCompatConfig) {
+    this.name = cfg.name;
+  }
+
+  async complete(opts: LlmCompleteOpts): Promise<LlmResult> {
+    if (!this.cfg.apiKey) throw new Error(`${this.name}: API key not configured`);
+
+    const body: Record<string, unknown> = {
+      model: this.cfg.model,
+      // MiniMax-M2 is a reasoning model: it emits a `thinking` block before the
+      // answer, so max_tokens must cover reasoning + answer. Floor at 2048 to
+      // avoid truncating the answer away (the answer is in the `text` block).
+      max_tokens: Math.max(opts.maxTokens ?? 1024, 2048),
+      temperature: opts.temperature ?? 0.2,
+      messages: [{ role: "user", content: opts.user }],
+    };
+    if (opts.system) body.system = opts.system;
+
+    const res = await fetch(`${this.cfg.baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.cfg.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) {
+      throw new Error(`${this.name} HTTP ${res.status}: ${await res.text()}`);
+    }
+    const data = (await res.json()) as {
+      content: { type: string; text?: string }[];
+      usage?: { input_tokens: number; output_tokens: number };
+    };
+    const text = (data.content ?? [])
+      .filter((b) => b.type === "text")
+      .map((b) => b.text ?? "")
+      .join("");
+    const usage: LlmUsage = {
+      promptTokens: data.usage?.input_tokens ?? 0,
+      completionTokens: data.usage?.output_tokens ?? 0,
+    };
+    recordUsage(this.cfg.model, usage, opts.system?.slice(0, 16) ?? "?");
+    return { text, usage, model: this.cfg.model };
+  }
+}
+
+// MiniMax token-plan key (sk-cp-) → Anthropic-compatible endpoint (ADR + token-plan docs)
+export const minimax = new AnthropicCompatClient({
   name: `minimax:${env.MINIMAX_MODEL}`,
-  baseUrl: env.MINIMAX_BASE_URL, // https://api.minimax.io/v1 (OpenAI-compatible)
+  baseUrl: env.MINIMAX_BASE_URL, // https://api.minimax.io/anthropic
   apiKey: env.MINIMAX_API_KEY,
   model: env.MINIMAX_MODEL, // MiniMax-M2
 });

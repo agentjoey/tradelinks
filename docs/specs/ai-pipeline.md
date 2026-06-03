@@ -15,10 +15,16 @@ Provider routing (`pickClient(lang)` in src/ai/client.ts):
 - `MINIMAX_API_KEY` set → **MiniMax-M2 for everything** (one provider, multilingual)
 - else: `ar`/`id`/`th` → Qwen-Plus; otherwise → DeepSeek V3.2
 
-> MiniMax base/model overridable via `MINIMAX_BASE_URL` / `MINIMAX_MODEL`.
-> Caveat: if a "coding plan" key only works on MiniMax's Anthropic-compatible
-> endpoint (`/anthropic`), we'd add an Anthropic-format client; the OpenAI path
-> (`/v1`) is wired now and is the common case.
+> MiniMax token-plan keys (`sk-cp-`) use the **Anthropic-compatible** endpoint
+> `https://api.minimax.io/anthropic` (`AnthropicCompatClient`, x-api-key auth).
+> M2 is a **reasoning model**: responses carry a `thinking` block + a `text`
+> block; the client reads the text block and floors `max_tokens` ≥2048 so the
+> answer isn't truncated by reasoning tokens. Tunable via `MINIMAX_MODEL`.
+> DeepSeek (fallback) uses the OpenAI `/v1` path.
+>
+> **Tuning note (observed 2026-06-03):** the prefilter prompt is somewhat strict
+> — it dropped a new-marketplace launch and a creator-GMV milestone as
+> "not actionable". Revisit prefilter wording when tuning recall vs. noise.
 
 ## Stage 1 — Bulk (Sprint 001 T4)
 

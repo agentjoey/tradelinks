@@ -23,7 +23,7 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 | Scraping (TS) | RSS + fetch — simple sources (~50%) |
 | Scraping (Python svc) | **Scrapling** (StealthyFetcher + self-healing selectors) for anti-bot sources (TikTok CC / Amazon BSR / Shopee) + pytrends — see ADR-002 |
 | Database | PostgreSQL 16 + trigram GIN index + time-series views |
-| AI (primary) | MiniMax-M2 (OpenAI-compatible) when MINIMAX_API_KEY set — all Stage-1 |
+| AI (primary) | MiniMax-M2 via Anthropic endpoint (sk-cp- token-plan key) when MINIMAX_API_KEY set — all Stage-1; reasoning model |
 | AI (fallback bulk) | DeepSeek V3.2 — translation, pre-filter, categorize |
 | AI (fallback small-lang) | Qwen-Plus — AR/ID/TH |
 | Scraping | Playwright (JS-heavy) + fetch (RSS/JSON) |

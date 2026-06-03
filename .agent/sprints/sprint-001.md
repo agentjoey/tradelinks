@@ -54,8 +54,8 @@ Assignee:  claude
 - [!] 修正：F01 Marketplace Pulse 无公开 RSS（/feed 全 404）→ 改 fetch adapter，选择器待线上验证
 - [~] 全量 worker 跑 24h 多区域数据：需 AI key(processor) + worker 常驻，留待集成
 
-### T4: AI 粗筛 + 翻译管道（DeepSeek V3.2） [HIGH] [claude]
-**Status:** ✅ Done（逻辑经 fixture 验证；真实准确率/成本待 API key 实跑）
+### T4: AI 粗筛 + 翻译管道（MiniMax-M2 primary / DeepSeek fallback） [HIGH] [claude]
+**Status:** ✅ Done（**真实 MiniMax-M2 端到端验证**：scripts/verify-ai.ts + verify-e2e.ts）
 **Epic:** EP-002
 **Acceptance:**
 - [x] `src/ai/client.ts` DeepSeek + Qwen（OpenAI 兼容）+ 语言路由（AR/ID/TH→Qwen）+ token 累计日志
@@ -64,8 +64,10 @@ Assignee:  claude
 - [x] 每条输出 `category`(6类) + `regions[]`(1-N)；空 regions 回退到 source 配置区域
 - [x] 粗筛准确率：20 条 golden set + FakeLlmClient，**≥85%** 断言通过（真实 prompt 准确率需 DeepSeek key 实测）
 - [x] 区域覆盖：kept 项 **≥98%** 有 ≥1 region（fallback 强制，单测断言）
-- [x] token 日志：`recordUsage` 累计；**成本测算 ~¥1.8/周**（550条/天，远 < ¥100，详见 commit）
-- 测试：`pnpm test` 24 passed（含 13 条 AI 测试），`pnpm lint` 0 error
+- [x] token 日志：`recordUsage` 累计；MiniMax 走订阅套餐（M2 推理 token 偏高，后续可换非推理模型/DeepSeek 跑量）
+- [x] **真实验证**：MiniMax-M2 经 Anthropic 端点；英文 GPSR→regulatory、中文 FBA→译英+platform_policy、垃圾广告→丢弃；全链路 crawl→AI→DB 通（verify-e2e.ts）
+- [!] 调优项：prefilter 偏严（丢了"新平台上线/达人GMV"），recall 待调（已记 ai-pipeline.md）
+- 测试：`pnpm test` 40 passed，`pnpm lint` 0 error
 
 ### T5: 去重 / 事件聚类 v1 [MED] [claude]
 **Status:** ✅ Done（逻辑+测试完成；trigram DB 层 integration-gated）
