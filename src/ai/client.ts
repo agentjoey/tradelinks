@@ -40,14 +40,16 @@ function recordUsage(model: string, usage: LlmUsage, step: string) {
   logger.debug({ model, step, ...usage, cumulative: { ...usageTotals } }, "llm usage");
 }
 
-interface OpenAiCompatConfig {
+export interface OpenAiCompatConfig {
   name: string;
   baseUrl: string;
   apiKey: string | undefined;
   model: string;
+  /** extra top-level body params, e.g. { thinking: { type: "disabled" } } for DeepSeek V4 */
+  extraBody?: Record<string, unknown>;
 }
 
-class OpenAiCompatClient implements LlmClient {
+export class OpenAiCompatClient implements LlmClient {
   readonly name: string;
   constructor(private readonly cfg: OpenAiCompatConfig) {
     this.name = cfg.name;
@@ -66,6 +68,7 @@ class OpenAiCompatClient implements LlmClient {
       messages,
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens ?? 1024,
+      ...this.cfg.extraBody,
     };
     if (opts.json) body.response_format = { type: "json_object" };
 
@@ -98,7 +101,7 @@ class OpenAiCompatClient implements LlmClient {
   }
 }
 
-interface AnthropicCompatConfig {
+export interface AnthropicCompatConfig {
   name: string;
   baseUrl: string; // e.g. https://api.minimax.io/anthropic
   apiKey: string | undefined;
@@ -110,7 +113,7 @@ interface AnthropicCompatConfig {
  * only work on the /anthropic endpoint). No native JSON mode — our prompts ask
  * for JSON and extractJson() is tolerant.
  */
-class AnthropicCompatClient implements LlmClient {
+export class AnthropicCompatClient implements LlmClient {
   readonly name: string;
   constructor(private readonly cfg: AnthropicCompatConfig) {
     this.name = cfg.name;
