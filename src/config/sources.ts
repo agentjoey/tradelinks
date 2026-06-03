@@ -244,6 +244,29 @@ export const SOURCES: SourceConfig[] = [
     categoryHint: "trend",
     scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
   },
+  // Amazon US best-seller categories — broaden hot-product coverage
+  // (slugs verified 2026-06-04, 30 items each; staggered to be polite to Amazon)
+  ...(
+    [
+      ["D30", "Home & Garden", "home-garden", 5],
+      ["D31", "Kitchen", "kitchen", 15],
+      ["D32", "Toys & Games", "toys-and-games", 25],
+      ["D33", "Beauty", "beauty", 35],
+      ["D34", "Sports & Outdoors", "sporting-goods", 45],
+    ] as const
+  ).map(([id, label, slug, min]) => ({
+    id,
+    name: `Amazon Best Sellers US (${label})`,
+    url: `https://www.amazon.com/gp/bestsellers/${slug}/`,
+    adapter: "scrapling" as const,
+    scrapeMode: "stealth" as const,
+    frequencyCron: `${min} */6 * * *`,
+    language: "en",
+    regions: ["north_america"] as Region[],
+    platforms: ["amazon"],
+    categoryHint: "trend" as Category,
+    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
+  })),
   {
     id: "D07",
     name: "TikTok Creative Center",
@@ -453,7 +476,21 @@ export const SOURCES: SourceConfig[] = [
     platforms: ["temu"],
     categoryHint: "trend",
     enabled: false,
-    note: "data embedded in window.rawData JSON but aggressive anti-bot (verify/captcha markers). Needs stealth + JSON extraction; brittle.",
+    note: "BLOCKED (verified 2026-06-04): scrapling → bgn_verification slider-captcha page, no product data. Needs captcha-solving + residential proxy or paid API (Bright Data/Apify). Phase 2.",
+  },
+  {
+    id: "D23",
+    name: "AliExpress — Best Selling",
+    url: "https://www.aliexpress.com/category/best-selling.html",
+    adapter: "scrapling",
+    scrapeMode: "stealth",
+    frequencyCron: "0 */12 * * *",
+    language: "en",
+    regions: ["north_america", "europe", "southeast_asia"],
+    platforms: ["aliexpress"],
+    categoryHint: "trend",
+    enabled: false,
+    note: "BLOCKED (verified 2026-06-04): Alibaba x5sec anti-bot 'punish' page (captcha). Needs paid API/residential proxy. Phase 2.",
   },
   {
     id: "D22",
