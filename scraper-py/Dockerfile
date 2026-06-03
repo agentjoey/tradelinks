@@ -7,6 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 # Install Scrapling's browser fetchers (Chromium) if not already in base image
 RUN scrapling install || true
+RUN patchright install chromium || true
 
 COPY . .
 
