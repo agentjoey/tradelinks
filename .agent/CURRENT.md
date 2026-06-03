@@ -1,8 +1,8 @@
 # Current Status — TradeLinks
 
-Version:        v0.3.0
+Version:        v0.4.0
 Sprint:         003
-Sprint Status:  🔄 In Progress
+Sprint Status:  ✅ Done
 Last Updated:   2026-06-03 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-003.md
 
@@ -38,17 +38,18 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 测试现状：`pnpm test` 40 passed / `pnpm lint` 0 error / `pnpm db:validate` ok / py_compile ok。
 **基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
 
-## Next Sprint Candidates（Sprint 003：Web + 分发）
-- [ ] [EP-005] [HIGH] Next.js 网站骨架 + Alert 时间线 feed（区域/类别/平台过滤）
-- [ ] [EP-005] [HIGH] 审核 UI `/admin/review`（替代 scripts/review.ts CLI）
-- [ ] [EP-007] [MED] REST API 公开端点（/api/public/alerts, OpenAPI 3.1）+ RSS feed
-- [ ] [EP-006] [MED] 每日日报生成（5 段式）+ Resend 邮件
-- [ ] [EP-004] [HIGH] 趋势看板 + 跨区扩散信号 v1（Sprint 004）
-- [ ] [EP-003] [MED] 即时 Push（Telegram/Slack，urgency≥4）（Sprint 004）
+## Next Sprint Candidates（Sprint 004：趋势 + Push）
+- [ ] [EP-004] [HIGH] 趋势时序摄取（Google Trends pytrends + Amazon BSR 快照）
+- [ ] [EP-004] [HIGH] 跨区扩散信号 v1（3 源交叉 + 置信度）+ /trends 看板
+- [ ] [EP-003] [HIGH] 即时 Push（Telegram/Slack，urgency≥4 approved alert）
+- [ ] [EP-001] [MED] Phase 1.5 源扩展（SEA/ME/LatAm/ANZ）
+- [ ] [EP-008] [HIGH] Auth(NextAuth)+Stripe+关键词监控（Sprint 005）
+
 
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.4.0 | 2026-06-03 | Sprint 003：Next.js Web(时间线+过滤)+REST API+RSS+审核UI+日报生成，真实验证 |
 | v0.3.0 | 2026-06-03 | Sprint 002：评分(MiniMax)+Alert生成+状态路由+审核队列，全链真实验证 |
 | v0.2.0 | 2026-06-03 | Sprint 001 完成：数据摄取管道（pg-boss/Neon + deepseek-v4-flash + Scrapling）全链真实验证 |
 | v0.1.0 | 2026-06-03 | 项目立项，规范初始化，数据源清单确认 |
