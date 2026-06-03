@@ -34,3 +34,9 @@ export const IngestJobSchema = z.object({
   items: z.array(RawItemSchema),
 });
 export type IngestJob = z.infer<typeof IngestJobSchema>;
+
+/** Response shape from the Python scraper service POST /scrape. */
+export const ScrapeResponseSchema = z.object({
+  items: z.array(RawItemSchema),
+});
+export type ScrapeResponse = z.infer<typeof ScrapeResponseSchema>;

@@ -11,9 +11,10 @@ Sprint File:    .agent/sprints/sprint-001.md
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
 
 ## Current Sprint Summary
-Sprint 001 目标：搭建数据摄取基础设施。**进度**：T1 Schema ✅、T2 爬虫框架 ✅（RSS 实测 1508 条）、T3 源接入 🔄（25 源+ingest，DB 入库待 Railway）、T4 AI 粗筛/翻译 ✅（client+prompts+stage1+processor，24 单测全过，成本测算 ~¥1.8/周）。**剩余**：T5 去重聚类、T6 Python Scraper 服务。
-SPEC/PLAN 文档已就绪：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint-001}.md。
-测试现状：`pnpm test` 24 passed / `pnpm lint` 0 error / `pnpm db:validate` ok。
+Sprint 001 目标：搭建数据摄取基础设施。**代码全部完成**：T1 Schema ✅、T2 爬虫框架 ✅（RSS 实测 1508 条）、T3 源接入 🔄（25 源+ingest，DB 入库待 provision）、T4 AI 粗筛/翻译 ✅、T5 去重聚类 ✅、T6 Python Scraper 骨架+Node 桥接 ✅。
+**整条管道 code-complete + 单测验证（40 tests）**；待 provision（Neon + DeepSeek key + py3.10 环境）后做端到端集成验证，届时可发 v0.2.0。
+SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint-001}.md。ADR-001~004 见 Obsidian。
+测试现状：`pnpm test` 40 passed / `pnpm lint` 0 error / `pnpm db:validate` ok / py_compile ok。
 **基础设施已定（ADR-003/004）**：Neon(PG, pooled+direct 双 URL，并承载 pg-boss 队列) + Railway(workers) + Vercel(前端)。**已删 Redis/Upstash**——队列改用 pg-boss(纯 SQL，跑在 Neon)，组件 4→3。本地连 Neon dev 分支（无本地 PG）。**需 provision**：Neon 项目+dev分支、DeepSeek key — 到位后 T3 入库 / T5 trigram 可真验证。
 
 ## Next Sprint Candidates

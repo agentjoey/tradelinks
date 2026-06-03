@@ -5,6 +5,8 @@ import { SOURCES_BY_ID } from "../config/sources.js";
 import { pickClient } from "../ai/client.js";
 import { runStage1, type Stage1Input } from "../ai/stage1.js";
 import { REGIONS } from "../ai/prompts/categorize.js";
+import { resolveDuplication } from "../dedup/resolve.js";
+import { findSimilarItems, applyDuplicate, applyCluster } from "../dedup/db.js";
 import { logger } from "../lib/logger.js";
 
 type Region = (typeof REGIONS)[number];
@@ -56,6 +58,20 @@ export async function registerProcessorWorker(boss: PgBoss) {
         },
       });
       logger.debug({ itemId, category: out.category, regions: out.regions }, "processed");
+
+      // Dedup level 2/3 (trigram + LLM cluster-judge). URL-exact already done at ingest.
+      const dedupTitle = out.titleEn ?? item.title;
+      const candidates = await findSimilarItems(dedupTitle, item.id);
+      if (candidates.length > 0) {
+        const res = await resolveDuplication(dedupTitle, candidates, pickClient(item.lang));
+        if (res.action === "duplicate") {
+          await applyDuplicate(item.id);
+          logger.debug({ itemId, ofId: res.ofId }, "marked duplicate");
+        } else if (res.action === "cluster") {
+          await applyCluster(item.id, res.withId, res.clusterId, item.url);
+          logger.debug({ itemId, withId: res.withId }, "clustered");
+        }
+      }
     }
   });
 }

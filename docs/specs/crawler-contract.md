@@ -76,16 +76,29 @@ interface SourceAdapter {
 - On `blocked: true` → worker enqueues a `scrape-queue` job (mode=stealth) and
   marks the original crawl as deferred (does NOT count as a hard failure).
 
-## 4. Python Scraper Service (T6)
+## 4. Python Scraper Service (T6) — HTTP bridge model
 
-- FastAPI app `scraper-py/`, also a pg-boss consumer of `scrape-queue` (Postgres).
-- `POST /scrape` (sync, for debugging) and queue consumer (production path).
-- Uses Scrapling `StealthyFetcher(solve_cloudflare=True)` + adaptive mode
-  (Smart Element Tracking, auto-save) so selectors self-heal on redesign.
-- `mode=trends` → pytrends; returns RawItem[] where each item is a keyword
-  snapshot (rawContent carries the numeric series).
-- On success → produces `ingest-queue` job (same IngestJob schema).
-- On failure/block → writes `scrape_failures` log; does NOT loop back to TS.
+pg-boss is Node-only, so Python does NOT touch the queue tables. Instead Node
+owns all queues and a **Node `scrape-queue` worker bridges to Python over HTTP**:
+
+```
+scrape-queue (pg-boss)  →  Node scrape worker  →  HTTP POST {SCRAPER_URL}/scrape
+                                                       ↓ { items: RawItem[] }
+                                            Node sends ingest-queue (same schema)
+```
+
+- **Python `scraper-py/` is a stateless FastAPI service** (no queue knowledge):
+  - `GET /health`
+  - `POST /scrape { sourceId, url, mode, selectors? }` → `{ items: RawItem[] }`
+  - `mode=stealth` → Scrapling `StealthyFetcher(solve_cloudflare=True)` + adaptive
+    mode (Smart Element Tracking, auto-save) so selectors self-heal on redesign.
+  - `mode=trends` → pytrends; each RawItem is a keyword snapshot (rawContent
+    carries the numeric series).
+- **Node scrape worker** (`src/workers/scrape.ts`): consume scrape-queue → POST
+  to Python → on success `boss.send(ingest-queue, {sourceId, items})`; on
+  failure throw → pg-boss retry; persistent failure → dead-letter/log.
+- Requires Python ≥3.10 (Scrapling); deployed on Railway via Scrapling's
+  Chromium-bundled Docker image.
 
 ## 5. Blocked Detection (TS, before declaring success)
 

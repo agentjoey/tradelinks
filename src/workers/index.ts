@@ -1,5 +1,6 @@
 import { getBoss, ensureQueues } from "../queue/queues.js";
 import { registerCrawlerWorker } from "./crawler.js";
+import { registerScrapeWorker } from "./scrape.js";
 import { registerIngestWorker } from "./ingest.js";
 import { registerProcessorWorker } from "./processor.js";
 import { registerScheduler } from "./scheduler.js";
@@ -13,10 +14,11 @@ async function main() {
   await ensureQueues(boss);
 
   await registerCrawlerWorker(boss);
+  await registerScrapeWorker(boss);
   await registerIngestWorker(boss);
   await registerProcessorWorker(boss);
   await registerScheduler(boss);
-  logger.info("workers online: scheduler + crawl + ingest + process (pg-boss)");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");

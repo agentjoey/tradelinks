@@ -31,17 +31,16 @@ Assignee:  claude
 - [x] `pnpm test` 11 passed，`pnpm lint`(tsc) 0 error
 
 ### T6: Python Scraper 服务（Scrapling + FastAPI） [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done（骨架 + Node 桥接 + 测试；Python 服务待 3.10+/Chromium 环境实跑）
 **Epic:** EP-001
-**架构:** 见 ADR-002
+**架构:** HTTP 桥接模型（见更新后的 crawler-contract.md §4）：Node 持有全部 pg-boss 队列，Python 是无状态 HTTP 抓取服务
 **Acceptance:**
-- [ ] `scraper-py/` FastAPI 服务，暴露 `POST /scrape { sourceId, url, mode }`
-- [ ] 集成 Scrapling `StealthyFetcher(solve_cloudflare=True)` 抓反爬源
-- [ ] 验证可抓到：TikTok Creative Center(D07) + Amazon BSR US(D02) + Shopee SG(D08，Phase1.5 先验证可达)
-- [ ] 启用 Scrapling 自适应模式（Smart Element Tracking / auto-save），改版后选择器可自愈
-- [ ] pytrends（Google Trends D01）收纳进本服务，暴露 `POST /trends`
-- [ ] 抓取结果经 pg-boss `ingest-queue` 回写，schema 与 TS adapter 输出一致
-- [ ] Dockerfile 基于 Scrapling 官方镜像（含 Chromium），可在 Railway 部署
+- [x] `scraper-py/` FastAPI：`GET /health` + `POST /scrape {sourceId,url,mode,selectors?}` → `{items:RawItem[]}`（py_compile 通过）
+- [x] `scrapers/stealth.py` 集成 Scrapling `StealthyFetcher(solve_cloudflare=True)` + `adaptive=True`（自愈选择器）
+- [x] `scrapers/trends.py` 集成 pytrends（mode=trends，keyword 快照含 series）
+- [x] **Node 桥接** `src/workers/scrape.ts`：消费 scrape-queue → HTTP POST Python → 回 `ingest-queue`（schema 一致）；3 个单测（200/非200/schema 校验）
+- [x] Dockerfile 基于 Scrapling Chromium 镜像 + requirements.txt + README
+- [~] 真抓 TikTok CC(D07)/Amazon BSR(D02)/Shopee：需 3.10+ 环境 + Chromium，选择器线上迭代（本地 py3.9 无法跑）
 
 ### T3: Phase 1 信息源接入（25 个核心源） [HIGH] [claude]
 **Status:** 🔄 In Progress（配置+ingest 完成；DB 入库与 img-proxy 待验证/后续）
@@ -70,12 +69,14 @@ Assignee:  claude
 - 测试：`pnpm test` 24 passed（含 13 条 AI 测试），`pnpm lint` 0 error
 
 ### T5: 去重 / 事件聚类 v1 [MED] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done（逻辑+测试完成；trigram DB 层 integration-gated）
 **Epic:** EP-002
 **Acceptance:**
-- [ ] 标题 trigram 相似度 > 0.75 的 item 自动标记 `isDuplicate=true`
-- [ ] 同一事件多源来源合并为一个 Alert，保留 `sourceUrls[]`
-- [ ] 已验证：同一天对同一政策变更的 3 条不同来源被正确聚类
+- [x] L1 URL 精确去重（ingest 的 url unique，已在 T3）
+- [x] L2 trigram 相似度分类 `classify.ts`（≥0.75 dup / 0.5-0.75 grey / <0.5 distinct）+ 测试
+- [x] L3 事件聚类 `resolve.ts`（取最高分；grey 区调 LLM cluster-judge 判同事件）+ 8 单测覆盖 dup/cluster/distinct/排序
+- [x] DB 层 `dedup/db.ts`：`findSimilarItems`（pg_trgm similarity 原始 SQL）+ `applyDuplicate`/`applyCluster`（merge sourceUrls[]），已接入 processor
+- [~] "同一政策 3 源聚类"端到端验证需 Neon（trigram 在 PG 算）；逻辑已用 fixture 验证，集成待 provision
 
 ## Superpowers Checkpoints
 | Skill | 触发条件 | 本 Sprint |
