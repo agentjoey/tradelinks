@@ -10,7 +10,7 @@ cat .agent/CURRENT.md
 TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台政策/物流中断）和**趋势预测**（跨区爆品扩散信号），面向全球卖家、服务商和投研机构。  
 **Location:** ~/Playground/claudecode/tradelinks-mvp  
 **GitHub:**   agentjoey/tradelinks-mvp  
-**Version:**  v0.5.1
+**Version:**  v0.5.2
 
 **Technical docs:** [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Operations](docs/operations.md) · [Sources](docs/specs/sources.md)
 
