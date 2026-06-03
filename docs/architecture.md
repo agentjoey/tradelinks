@@ -8,9 +8,18 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  INGESTION LAYER                                                │
-│  RSS Adapter │ Fetch Adapter │ Playwright Adapter               │
-│  BullMQ crawl-queue (Redis) — per-source cron schedule          │
+│  INGESTION LAYER (polyglot — see ADR-002)                       │
+│                                                                 │
+│  Node/TS worker (BullMQ crawl-queue, per-source cron):          │
+│    RSS Adapter │ Fetch Adapter  — simple sources (~50%)         │
+│    blocked-detection → route hard sources to scrape-queue       │
+│                                                                 │
+│  Python Scraper Service (Scrapling + FastAPI):                  │
+│    StealthyFetcher(solve_cloudflare) — TikTok CC / Amazon BSR / │
+│      Shopee / Lazada (anti-bot ~20%)                            │
+│    Smart Element Tracking — self-healing selectors on redesign  │
+│    pytrends — Google Trends (D01)                               │
+│    results → Redis → back to Node crawl-queue (same schema)     │
 └────────────────────────┬────────────────────────────────────────┘
                          │ raw items
 ┌────────────────────────▼────────────────────────────────────────┐

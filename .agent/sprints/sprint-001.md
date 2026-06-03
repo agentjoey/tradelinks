@@ -17,15 +17,31 @@ Assignee:  claude
 - [ ] trigram GIN 索引建立（title + summary 字段）
 - [ ] 时序视图 `trend_daily_snapshots` 建立
 
-### T2: 爬虫框架搭建（RSS + Fetch + Playwright + BullMQ） [HIGH] [claude]
+### T2: 爬虫框架搭建（TS adapters + BullMQ） [HIGH] [claude]
 **Status:** 🔲 Todo
 **Epic:** EP-001
+**架构:** 见 ADR-002（混合 polyglot：TS 管 RSS/简单 fetch，Python/Scrapling 管反爬源）
 **Acceptance:**
-- [ ] `src/workers/crawler.ts` 实现三种 adapter：RssAdapter / FetchAdapter / PlaywrightAdapter
+- [ ] `src/workers/crawler.ts` 实现两种 TS adapter：RssAdapter / FetchAdapter
+- [ ] 反爬源经 `scrape-queue` 转发给 Python 服务（见 T6），不在 TS 内做 Playwright
 - [ ] BullMQ 队列 `crawl-queue` 可接受 `{ sourceId, url, adapter }` job
 - [ ] 每个 Source 可配置 `cronSchedule`（如 `0 */2 * * *` 每 2 小时一次）
 - [ ] 失败自动重试 3 次，超时 30s
+- [ ] **被封检测**：HTTP 200 但内容命中验证页特征（Cloudflare/captcha/异常短）→ 标记 `blocked`，不简单重试，转 Python 服务
 - [ ] `pnpm worker` 启动无报错，日志输出 job 处理结果
+
+### T6: Python Scraper 服务（Scrapling + FastAPI） [HIGH] [claude]
+**Status:** 🔲 Todo
+**Epic:** EP-001
+**架构:** 见 ADR-002
+**Acceptance:**
+- [ ] `scraper-py/` FastAPI 服务，暴露 `POST /scrape { sourceId, url, mode }`
+- [ ] 集成 Scrapling `StealthyFetcher(solve_cloudflare=True)` 抓反爬源
+- [ ] 验证可抓到：TikTok Creative Center(D07) + Amazon BSR US(D02) + Shopee SG(D08，Phase1.5 先验证可达)
+- [ ] 启用 Scrapling 自适应模式（Smart Element Tracking / auto-save），改版后选择器可自愈
+- [ ] pytrends（Google Trends D01）收纳进本服务，暴露 `POST /trends`
+- [ ] 抓取结果经 Redis 队列回写 Node `crawl-queue`，schema 与 TS adapter 输出一致
+- [ ] Dockerfile 基于 Scrapling 官方镜像（含 Chromium），可在 Railway 部署
 
 ### T3: Phase 1 信息源接入（25 个核心源） [HIGH] [claude]
 **Status:** 🔲 Todo
