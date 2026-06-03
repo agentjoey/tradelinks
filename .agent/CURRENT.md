@@ -1,16 +1,24 @@
 # Current Status — TradeLinks
 
 Version:        v0.2.0
-Sprint:         001
-Sprint Status:  ✅ Done
+Sprint:         002
+Sprint Status:  🔄 In Progress
 Last Updated:   2026-06-03 by claude-opus-4-8
-Sprint File:    .agent/sprints/sprint-001.md
+Sprint File:    .agent/sprints/sprint-002.md
 
 ## Open Bugs（P0/P1 必须本 Sprint 修复）
 🟢 无已知 P0/P1 bug。
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
 
-## Current Sprint Summary
+## Sprint 002 Summary（评分与预警生成）
+T1 Stage-2 评分 ✅（score prompt + stage2 + MiniMax 真实验证：de minimis→5/GPSR→4/tips→1）
+T2 Alert 生成 ✅（score-queue + scoring worker + 聚类合并 + 状态路由；真实验证 pending_review/published）
+T3 审核队列后端 ✅（review CLI list/approve/reject，真实 approve 验证）
+管道现已贯通：crawl→ingest→Stage1(deepseek-flash)→dedup→Stage2(MiniMax 评分)→alerts(状态路由)→人工审核。
+反爬源：Amazon BSR(D02/D03) 选择器已验证；TikTok CC(D07) 门禁停用。
+49 单测 / lint 0 / 真实 Neon+模型 e2e 全过。
+
+## (历史) Sprint 001 Summary
 Sprint 001（数据摄取基础设施）**全部完成并真实验证** —— T1 Schema✅ / T2 爬虫框架(pg-boss)✅ / T3 源接入✅ / T4 AI 粗筛翻译(deepseek-v4-flash)✅ / T5 去重聚类✅ / T6 Python Scraper✅。
 真实 e2e 验证：
 - Neon dev：migrate(9表)、pg_trgm、RSS 抓取→入库、trigram 查询

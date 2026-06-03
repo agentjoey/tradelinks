@@ -3,6 +3,7 @@ import { registerCrawlerWorker } from "./crawler.js";
 import { registerScrapeWorker } from "./scrape.js";
 import { registerIngestWorker } from "./ingest.js";
 import { registerProcessorWorker } from "./processor.js";
+import { registerScoringWorker } from "./scoring.js";
 import { registerScheduler } from "./scheduler.js";
 import { logger } from "../lib/logger.js";
 
@@ -17,8 +18,9 @@ async function main() {
   await registerScrapeWorker(boss);
   await registerIngestWorker(boss);
   await registerProcessorWorker(boss);
+  await registerScoringWorker(boss);
   await registerScheduler(boss);
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process (pg-boss)");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");

@@ -11,6 +11,7 @@ export const QUEUES = {
   scrape: "scrape-queue",
   ingest: "ingest-queue",
   process: "process-queue",
+  score: "score-queue",
 } as const;
 
 /** Per-queue defaults: 3 retries, 2s base delay, exponential backoff. */

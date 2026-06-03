@@ -1,5 +1,5 @@
 import type PgBoss from "pg-boss";
-import { QUEUES } from "../queue/queues.js";
+import { QUEUES, sendOpts } from "../queue/queues.js";
 import { prisma } from "../db/client.js";
 import { SOURCES_BY_ID } from "../config/sources.js";
 import { pickClient } from "../ai/client.js";
@@ -62,15 +62,22 @@ export async function registerProcessorWorker(boss: PgBoss) {
       // Dedup level 2/3 (trigram + LLM cluster-judge). URL-exact already done at ingest.
       const dedupTitle = out.titleEn ?? item.title;
       const candidates = await findSimilarItems(dedupTitle, item.id);
+      let isDup = false;
       if (candidates.length > 0) {
         const res = await resolveDuplication(dedupTitle, candidates, pickClient(item.lang));
         if (res.action === "duplicate") {
           await applyDuplicate(item.id);
+          isDup = true;
           logger.debug({ itemId, ofId: res.ofId }, "marked duplicate");
         } else if (res.action === "cluster") {
           await applyCluster(item.id, res.withId, res.clusterId, item.url);
           logger.debug({ itemId, withId: res.withId }, "clustered");
         }
+      }
+
+      // Stage 2: non-duplicates go to scoring → alert generation
+      if (!isDup) {
+        await boss.send(QUEUES.score, { itemId: item.id }, sendOpts);
       }
     }
   });
