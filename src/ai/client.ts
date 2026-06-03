@@ -98,6 +98,13 @@ class OpenAiCompatClient implements LlmClient {
   }
 }
 
+export const minimax = new OpenAiCompatClient({
+  name: `minimax:${env.MINIMAX_MODEL}`,
+  baseUrl: env.MINIMAX_BASE_URL, // https://api.minimax.io/v1 (OpenAI-compatible)
+  apiKey: env.MINIMAX_API_KEY,
+  model: env.MINIMAX_MODEL, // MiniMax-M2
+});
+
 export const deepseekChat = new OpenAiCompatClient({
   name: "deepseek-v3.2",
   baseUrl: "https://api.deepseek.com/v1",
@@ -112,8 +119,13 @@ export const qwenPlus = new OpenAiCompatClient({
   model: "qwen-plus",
 });
 
-/** Language routing — see docs/specs/ai-pipeline.md. AR/ID/TH → Qwen, else DeepSeek. */
+/**
+ * Provider routing — see docs/specs/ai-pipeline.md.
+ * If MINIMAX_API_KEY is set, MiniMax-M2 (multilingual) handles everything — one
+ * provider, simplest. Otherwise fall back to the DeepSeek + Qwen(AR/ID/TH) split.
+ */
 const QWEN_LANGS = new Set(["ar", "id", "th"]);
 export function pickClient(lang: string): LlmClient {
+  if (env.MINIMAX_API_KEY) return minimax;
   return QWEN_LANGS.has(lang.toLowerCase()) ? qwenPlus : deepseekChat;
 }

@@ -5,16 +5,20 @@
 
 ## Models & Routing
 
-| Model | Use | Cost target |
-|-------|-----|-------------|
-| DeepSeek V3.2 | bulk pre-filter, translate (en/zh/pt/es), categorize | primary |
-| DeepSeek V4 Pro | urgency scoring, summary, trend signal (Sprint 002) | quality |
-| Qwen-Plus | translate AR/ID/TH (small-lang fallback) | fallback |
+| Model | Use | When |
+|-------|-----|------|
+| **MiniMax-M2** (OpenAI-compat) | all Stage-1 (prefilter/translate/categorize), multilingual | **primary** — when `MINIMAX_API_KEY` set |
+| DeepSeek V3.2 | bulk pre-filter, translate (en/zh/pt/es), categorize | fallback |
+| Qwen-Plus | translate AR/ID/TH | fallback (small-lang) |
 
-Language routing (item.lang → model):
-- `zh`,`pt`,`es`,`en` → DeepSeek V3.2
-- `ar`,`id`,`th` → Qwen-Plus
-- else → DeepSeek V3.2
+Provider routing (`pickClient(lang)` in src/ai/client.ts):
+- `MINIMAX_API_KEY` set → **MiniMax-M2 for everything** (one provider, multilingual)
+- else: `ar`/`id`/`th` → Qwen-Plus; otherwise → DeepSeek V3.2
+
+> MiniMax base/model overridable via `MINIMAX_BASE_URL` / `MINIMAX_MODEL`.
+> Caveat: if a "coding plan" key only works on MiniMax's Anthropic-compatible
+> endpoint (`/anthropic`), we'd add an Anthropic-format client; the OpenAI path
+> (`/v1`) is wired now and is the common case.
 
 ## Stage 1 — Bulk (Sprint 001 T4)
 
