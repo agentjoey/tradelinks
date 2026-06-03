@@ -11,8 +11,9 @@ Sprint File:    .agent/sprints/sprint-001.md
 - 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
 
 ## Current Sprint Summary
-Sprint 001 目标：搭建数据摄取基础设施。**进度**：T1 Schema ✅（8 表/7 枚举，validate 通过，offline 迁移+trgm 已生成）、T2 爬虫框架 ✅（RSS/Fetch adapter + blocked 检测 + BullMQ worker + scheduler，11 单测全过，Shopify RSS 实测 1508 条）、T3 源接入 🔄（25 源配置+ingest 完成，DB 入库待 Railway）。**剩余**：T4 AI 粗筛/翻译、T5 去重聚类、T6 Python Scraper 服务。
+Sprint 001 目标：搭建数据摄取基础设施。**进度**：T1 Schema ✅、T2 爬虫框架 ✅（RSS 实测 1508 条）、T3 源接入 🔄（25 源+ingest，DB 入库待 Railway）、T4 AI 粗筛/翻译 ✅（client+prompts+stage1+processor，24 单测全过，成本测算 ~¥1.8/周）。**剩余**：T5 去重聚类、T6 Python Scraper 服务。
 SPEC/PLAN 文档已就绪：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint-001}.md。
+测试现状：`pnpm test` 24 passed / `pnpm lint` 0 error / `pnpm db:validate` ok。
 
 ## Next Sprint Candidates
 - [ ] [EP-002] [HIGH] AI 精筛/打分管道（Sprint 002）
