@@ -173,7 +173,9 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.com/gp/bestsellers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
-    frequencyCron: "0 */4 * * *",
+    // bestseller lists change slowly → 12h cadence; minutes staggered across
+    // D02–D34 so the 10 Amazon crawls never burst the (serialized) scraper.
+    frequencyCron: "0 */12 * * *",
     language: "en",
     regions: ["north_america"],
     platforms: ["amazon"],
@@ -192,7 +194,7 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.com/gp/movers-and-shakers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
-    frequencyCron: "0 */4 * * *",
+    frequencyCron: "8 */12 * * *",
     language: "en",
     regions: ["north_america"],
     platforms: ["amazon"],
@@ -212,7 +214,7 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.co.uk/gp/bestsellers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
-    frequencyCron: "0 */6 * * *",
+    frequencyCron: "16 */12 * * *",
     language: "en",
     regions: ["europe"],
     platforms: ["amazon"],
@@ -225,7 +227,7 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.ae/gp/bestsellers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
-    frequencyCron: "0 */6 * * *",
+    frequencyCron: "24 */12 * * *",
     language: "en",
     regions: ["middle_east"],
     platforms: ["amazon"],
@@ -238,7 +240,7 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.com.au/gp/bestsellers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
-    frequencyCron: "0 */6 * * *",
+    frequencyCron: "32 */12 * * *",
     language: "en",
     regions: ["australia_nz"],
     platforms: ["amazon"],
@@ -246,14 +248,15 @@ export const SOURCES: SourceConfig[] = [
     scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
   },
   // Amazon US best-seller categories — broaden hot-product coverage
-  // (slugs verified 2026-06-04, 30 items each; staggered to be polite to Amazon)
+  // (slugs verified 2026-06-04, 30 items each). 12h cadence, minutes staggered
+  // after D02–D06 (0/8/16/24/32) so the 10 Amazon crawls never collide.
   ...(
     [
-      ["D30", "Home & Garden", "home-garden", 5],
-      ["D31", "Kitchen", "kitchen", 15],
-      ["D32", "Toys & Games", "toys-and-games", 25],
-      ["D33", "Beauty", "beauty", 35],
-      ["D34", "Sports & Outdoors", "sporting-goods", 45],
+      ["D30", "Home & Garden", "home-garden", 40],
+      ["D31", "Kitchen", "kitchen", 48],
+      ["D32", "Toys & Games", "toys-and-games", 56],
+      ["D33", "Beauty", "beauty", 4],
+      ["D34", "Sports & Outdoors", "sporting-goods", 12],
     ] as const
   ).map(([id, label, slug, min]) => ({
     id,
@@ -261,7 +264,7 @@ export const SOURCES: SourceConfig[] = [
     url: `https://www.amazon.com/gp/bestsellers/${slug}/`,
     adapter: "scrapling" as const,
     scrapeMode: "stealth" as const,
-    frequencyCron: `${min} */6 * * *`,
+    frequencyCron: `${min} */12 * * *`,
     language: "en",
     regions: ["north_america"] as Region[],
     platforms: ["amazon"],

@@ -31,7 +31,11 @@ async function main() {
   // so this is "alive?" even when slow feeds yield no new items.
   const beat = await prisma.source.findFirst({ where: { lastCrawledAt: { not: null } }, orderBy: { lastCrawledAt: "desc" }, select: { lastCrawledAt: true, id: true } });
   const beatMin = beat?.lastCrawledAt ? (now - new Date(beat.lastCrawledAt).getTime()) / 60000 : Infinity;
-  const workerAlive = beatMin < 15;
+  const newestMin = newest?.crawledAt ? (now - new Date(newest.crawledAt).getTime()) / 60000 : Infinity;
+  // Crawl heartbeat alone is misleading: most crons are hours apart (bestsellers
+  // 12h), so lastCrawledAt ages for hours even while the worker is busy draining
+  // the scrape/ingest queues. Treat fresh item ingestion as proof-of-life too.
+  const workerAlive = beatMin < 15 || newestMin < 15;
 
   console.log(`\n  TradeLinks pipeline — ${new Date().toISOString()}`);
   console.log(`  ${"─".repeat(46)}`);
@@ -44,7 +48,7 @@ async function main() {
   console.log(`  ${"─".repeat(46)}`);
   if (workerAlive && scrapeItems > 0) console.log(`  ✅ HEALTHY — worker alive, scrapling working`);
   else if (workerAlive) console.log(`  🟡 worker ALIVE but scrapling produces nothing (Python scraper / SCRAPER_SERVICE_URL?)`);
-  else console.log(`  ⚠️  worker DOWN — no crawl heartbeat in 15m`);
+  else console.log(`  ⚠️  worker DOWN — no crawl heartbeat AND no new items in 15m`);
   console.log("");
 
   await prisma.$disconnect();

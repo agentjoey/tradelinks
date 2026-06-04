@@ -30,9 +30,15 @@ export async function callScraper(job: ScrapeJob, baseUrl: string): Promise<RawI
 
 /**
  * scrape-queue worker. Bridges pg-boss → Python HTTP scraper → ingest-queue.
+ *
+ * batchSize:1 (default teamSize 1) → exactly one scrape job in flight at a time.
+ * The Python scraper launches a Chromium per request and only has headroom for
+ * one; pulling a batch and firing them back-to-back overran the container
+ * (driver crashes / fork EAGAIN). One-at-a-time here + a browser lock there =
+ * end-to-end serialized, so failures stop cascading.
  */
 export async function registerScrapeWorker(boss: PgBoss) {
-  await boss.work(QUEUES.scrape, async (jobs) => {
+  await boss.work(QUEUES.scrape, { batchSize: 1 }, async (jobs) => {
     for (const job of jobs) {
       const data = ScrapeJobSchema.parse(job.data);
       const items = await callScraper(data, env.SCRAPER_SERVICE_URL); // throw → pg-boss retry

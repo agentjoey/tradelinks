@@ -14,13 +14,25 @@ Requires Python >= 3.10 (Scrapling). Run: uvicorn main:app --port 8000
 """
 from __future__ import annotations
 
+import logging
+import threading
 from typing import Any, Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from scrapers.stealth import scrape_stealth
 from scrapers.trends import scrape_trends
+
+logger = logging.getLogger("scraper")
+
+# Serialize browser launches: only ONE Chromium at a time. Concurrent
+# launch_persistent_context calls spike memory and kill the driver mid-launch
+# ("Connection closed while reading from the driver"), and earlier exhausted the
+# container (fork EAGAIN). The browser is the scarce resource, so a single global
+# lock is the right backpressure. With the worker's batchSize=1 this is
+# serialized end-to-end. (trends mode = pytrends/HTTP, no browser → no lock.)
+_browser_lock = threading.Lock()
 
 app = FastAPI(title="TradeLinks Scraper", version="0.1.0")
 
@@ -53,8 +65,16 @@ def health() -> dict[str, str]:
 
 @app.post("/scrape", response_model=ScrapeResponse)
 def scrape(req: ScrapeRequest) -> ScrapeResponse:
-    if req.mode == "trends":
-        items = scrape_trends(keywords=req.trendsKeywords or [], geo=req.geo)
-    else:
-        items = scrape_stealth(url=req.url, selectors=req.selectors or {})
+    try:
+        if req.mode == "trends":
+            items = scrape_trends(keywords=req.trendsKeywords or [], geo=req.geo)
+        else:
+            with _browser_lock:  # one Chromium at a time
+                items = scrape_stealth(url=req.url, selectors=req.selectors or {})
+    except Exception as e:  # noqa: BLE001 — convert to a clean 503
+        # Log ONE concise line. Full tracebacks here were flooding Railway's
+        # 500-logs/sec limit (1500+ msgs dropped) and obscuring real signal.
+        logger.warning("scrape failed: source=%s mode=%s err=%s: %s",
+                       req.sourceId, req.mode, type(e).__name__, str(e)[:200])
+        raise HTTPException(status_code=503, detail=f"scrape failed: {type(e).__name__}") from None
     return ScrapeResponse(items=[RawItem(**it) for it in items])
