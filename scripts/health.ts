@@ -29,7 +29,7 @@ async function main() {
   const newest = await prisma.item.findFirst({ orderBy: { crawledAt: "desc" }, select: { crawledAt: true, sourceId: true } });
   // worker heartbeat: the worker stamps source.lastCrawledAt on every crawl,
   // so this is "alive?" even when slow feeds yield no new items.
-  const beat = await prisma.source.findFirst({ orderBy: { lastCrawledAt: "desc" }, select: { lastCrawledAt: true, id: true } });
+  const beat = await prisma.source.findFirst({ where: { lastCrawledAt: { not: null } }, orderBy: { lastCrawledAt: "desc" }, select: { lastCrawledAt: true, id: true } });
   const beatMin = beat?.lastCrawledAt ? (now - new Date(beat.lastCrawledAt).getTime()) / 60000 : Infinity;
   const workerAlive = beatMin < 15;
 
