@@ -62,8 +62,14 @@ function Row({ h, spark }: { h: SourceHealth; spark: number[] }) {
           <div className="ticker mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
             <span>24h <span className="text-paper">{h.items24h}</span></span>
             <span>7d <span className="text-paper">{h.items7d}</span></span>
-            {passRate !== null && !h.isBestseller && <span>pass <span className="text-paper">{passRate}%</span></span>}
-            {h.avgUrgency != null && <span>urg <span className="text-paper">{h.avgUrgency.toFixed(1)}</span></span>}
+            {h.isBestseller ? (
+              <span className="text-faint">Radar source · no AI scoring (pass/urg n/a)</span>
+            ) : (
+              <>
+                {passRate !== null && <span>pass <span className="text-paper">{passRate}%</span></span>}
+                {h.avgUrgency != null && <span>urg <span className="text-paper">{h.avgUrgency.toFixed(1)}</span></span>}
+              </>
+            )}
           </div>
           {h.reasons.length > 0 && h.tier !== "healthy" && (
             <p className="mt-1.5 text-[12px] text-muted">{h.reasons.join(" · ")}</p>
