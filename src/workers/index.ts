@@ -6,11 +6,13 @@ import { registerProcessorWorker } from "./processor.js";
 import { registerScoringWorker } from "./scoring.js";
 import { registerTrendsWorker } from "./trends.js";
 import { registerScheduler } from "./scheduler.js";
+import { seedSources } from "./seed-sources.js";
 import { QUEUES } from "../queue/queues.js";
 import { logger } from "../lib/logger.js";
 
 async function main() {
   logger.info("TradeLinks worker starting…");
+  await seedSources(); // ensure source rows exist (markOk + scheduler depend on them)
   const boss = getBoss();
   boss.on("error", (err) => logger.error(err, "pg-boss error"));
   await boss.start();

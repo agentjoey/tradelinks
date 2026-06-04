@@ -24,6 +24,7 @@ export async function registerCrawlerWorker(boss: PgBoss) {
       const adapter = buildAdapter(source);
       if (!adapter) {
         await routeToScrape(boss, source.id, url, source.scrapeMode ?? "stealth", source.scrapeSelectors);
+        await markOk(source.id); // mark dispatched so the scheduler doesn't re-fire every tick
         log.info("routed to scrape-queue (scrapling/json source)");
         continue;
       }

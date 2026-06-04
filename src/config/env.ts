@@ -18,7 +18,10 @@ const EnvSchema = z.object({
   FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
   TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)
   TELEGRAM_CHAT_ID: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(), // verifies Telegram callback webhook
   SLACK_WEBHOOK_URL: z.string().optional(),
+  // auto-push alerts at/above this urgency to Telegram (with in-chat Approve/Reject)
+  PUSH_THRESHOLD: z.coerce.number().default(4.5),
   LOG_LEVEL: z.string().default("info"),
 });
 

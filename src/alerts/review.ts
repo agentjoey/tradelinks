@@ -23,25 +23,24 @@ export async function listPending(): Promise<PendingAlert[]> {
   });
 }
 
-/** Approve → published, then dispatch instant push (Sprint 004 T3). */
+/**
+ * Approve → published (appears on the public Wire). Push already happened at
+ * review time (Sprint 006), so approval just flips status — no re-push.
+ */
 export async function approveAlert(id: string, reviewer = "cli"): Promise<boolean> {
   const res = await prisma.alert.updateMany({
     where: { id, status: "pending_review" },
     data: { status: "published", publishedAt: new Date(), reviewedBy: reviewer },
   });
-  if (res.count === 0) return false;
+  return res.count > 0;
+}
 
-  // instant push for the just-published alert (no-ops if channels unconfigured)
-  const a = await prisma.alert.findUnique({ where: { id } });
-  if (a) {
-    const { dispatchPush } = await import("../push/send.js");
-    await dispatchPush({
-      title: a.title, summary: a.summary, urgencyScore: a.urgencyScore,
-      category: a.category, regions: a.regions as string[],
-      actionRequired: a.actionRequired, sourceUrls: a.sourceUrls,
-    }).catch(() => undefined);
-  }
-  return true;
+/** Look up an alert for rendering a Telegram confirmation. */
+export async function getAlertBrief(id: string) {
+  return prisma.alert.findUnique({
+    where: { id },
+    select: { id: true, title: true, status: true, urgencyScore: true },
+  });
 }
 
 export async function rejectAlert(id: string, reviewer = "cli"): Promise<boolean> {
