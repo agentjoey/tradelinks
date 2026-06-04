@@ -9,9 +9,11 @@ Sprint File:    .agent/sprints/sprint-005.md
 ## 🚀 LIVE
 - **生产**: https://tradelinks-mvp.vercel.app （Vercel，5 路由全 200，31 条真实预警）
 - **GitHub**: agentjoey/tradelinks-mvp（main，作者已为 agentjoey）
-- **DB**: Neon dev branch `ep-bitter-wildflower-ao1u2qbn` / `neondb`（数据所在；prod 父 branch 为空）
-- **部署分工**: Vercel=只读前端+API；worker+Python scraper=本地按需(`pnpm worker`)，未常驻；待选 GCP e2-micro/Fly/Railway 上线
-- Vercel env 已配：DATABASE_URL(指向 dev branch)+ TELEGRAM_*
+- **DB**: Neon **production** branch `ep-mute-base-aotkza3n` / `neondb`（统一用 production，dev 弃用）
+  - ⚠️ 该分支 **direct 端点不可达**(P1001)，故 `DIRECT_URL` 也用 **pooled host**(migrate+pg-boss 已验证可跑)
+- **部署分工**: Vercel=只读前端+API(已指 production)；worker+Python scraper→Railway
+- **Telegram 推送**：已验证可发（/api/push-test → telegram:"sent"）
+- ⚠️ **Railway 根因**：worker service 在跑 `next start`(网页)而非 `pnpm worker`(worker)→ 管道没动。需改 Start Command（见下）
 
 ## 数据源现状（36 源 / 23 enabled）
 - ✅ RSS 法规/行业(9)：USTR(B01) CBP(B02) UK Gov(B06) ACCC召回(B16) ModernRetail(F02) RetailDive(F03) Tamebay(F04) Shopify(A02) …
