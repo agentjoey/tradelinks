@@ -12,6 +12,8 @@ const EnvSchema = z.object({
   DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
+  // cap items processed per crawl (newest-first) — bounds AI cost on big feeds
+  MAX_ITEMS_PER_CRAWL: z.coerce.number().int().positive().default(12),
   RESEND_API_KEY: z.string().optional(), // daily digest email (Sprint 003 T3)
   FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
   TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)
