@@ -145,6 +145,24 @@ Unique: `@@unique([date, region, keyword])`
 | isActive | Boolean @default(true) | |
 | createdAt | DateTime | |
 
+## SourceHealthSnapshot (`source_health_snapshots`) — migration 0004
+
+Daily per-source health for the `/admin/sources` dashboard (trend lines + regression
+alerts). One row per source per day. Query-only elsewhere; written by `source-health-tick`.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | String @id @default(cuid()) | |
+| date | DateTime @db.Date | |
+| sourceId | String | source id (not FK-enforced) |
+| score | Int | 0–100 health score |
+| tier | String | healthy / degraded / unhealthy / silent |
+| items24h | Int | items ingested in the prior 24h |
+| fails | Int | consecutiveFailures at snapshot time |
+| createdAt | DateTime @default(now()) | |
+
+Indexes: `@@unique([date, sourceId])`, `@@index([sourceId, date])`.
+
 ## Migration Notes
 
 - `pg_trgm` extension + GIN indexes go in a raw-SQL follow-up migration:

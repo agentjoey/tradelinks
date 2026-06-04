@@ -1,21 +1,24 @@
 # TradeLinks — Operations Manual
 
-> Last updated: 2026-06-03 v0.1.0
+> Last updated: 2026-06-05 v0.7.0
 
-## Daily Health Checks
+## Source health dashboard
+
+**`/admin/sources`** is the primary health view — every source with its data flow,
+cadence and a 0–100 score, worst-first. Tiers: 🟢 Healthy / 🟡 Degraded / 🔴 Unhealthy /
+💀 **Silent** (active but 0 items — the "200 OK but empty" detector) / ⏸ Disabled.
+A daily `source-health-tick` (02:30 UTC) snapshots health and Telegram-pings any source
+newly crossing into 🔴/💀. ⚠️ `/admin/*` has no auth yet — add before exposing.
+
+## Ops scripts
 
 ```bash
-# Check worker is running
-railway logs --service worker --tail 50
-
-# Check crawl queue depth (should be near 0 most of the time)
-pnpm worker:queue-stats
-
-# Check LLM cost this week
-pnpm ops:llm-cost-report
-
-# Check items ingested last 24h
-psql $DATABASE_URL -c "SELECT source_id, count(*) FROM items WHERE crawled_at > now()-'24h'::interval GROUP BY source_id ORDER BY count DESC;"
+pnpm tsx scripts/health.ts          # pipeline alive? (worker heartbeat / items / scrapling)
+pnpm tsx scripts/db-size.ts         # storage breakdown by relation (catches bloat)
+pnpm tsx scripts/db-cleanup.ts      # purge finished pg-boss jobs + VACUUM (safe, re-runnable)
+pnpm tsx scripts/dedup-amazon.ts    # one-off: collapse Amazon dup items by /dp/<ASIN>
+# items ingested last 24h, by source:
+psql "$DATABASE_URL" -c "SELECT \"sourceId\", count(*) FROM items WHERE \"crawledAt\" > now()-'24h'::interval GROUP BY 1 ORDER BY 2 DESC;"
 ```
 
 ## Alert Monitoring
@@ -38,11 +41,34 @@ psql $DATABASE_URL -c "SELECT source_id, count(*) FROM items WHERE crawled_at > 
   new connection from the connection pool". Neon's pgbouncer already pools, so
   keep Prisma's own pool small.
 
+## Storage & cost playbook (Neon 0.5 GB / Railway credit)
+
+Incidents on 2026-06-04/05 and their root causes — keep these in mind:
+
+- **Neon storage near full.** ~95% was pg-boss: ingest jobs store the full scraped
+  items array as JSONB, and at default retention finished jobs piled up (~300 MB).
+  Fix shipped: short retention (`retentionMinutes:30` + maintenance every 5 min).
+  To reclaim now: `db-cleanup.ts`. **Don't `VACUUM FULL` on Neon** — it rewrites
+  pages → inflates *history*/WAL, which Neon bills. Lower **history retention**
+  (Neon console → Storage; we run ~0–1h) to drop billed storage fast.
+- **Railway credit burned by Chromium.** The scraper launches a browser per request;
+  concurrent launches crashed the driver and ran up compute. Fix: serialized
+  (one Chromium, worker `batchSize:1`), `disable_resources`, BSR crons 4–6h→12h.
+  The scraper idle-sleeps between the 12h crawls (Serverless) — "shut down" in
+  Railway is usually idle, not a crash. The Wire does **not** need the scraper
+  (only Radar/trends/BSR do).
+- **Item table bloat** from Amazon URL dedup failure — fixed by `/dp/<ASIN>`
+  canonicalization (`normalizeUrl`) + `dedup-amazon.ts`.
+
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| No new items for >4h | Worker crashed / Neon unreachable | `railway restart --service worker`; check DIRECT_URL |
-| 403 on playwright sources | IP blocked | Rotate proxy / reduce frequency |
-| DeepSeek 429 | Rate limit hit | Widen pg-boss poll/retry delay; reduce work batchSize |
-| Telegram push not firing | Bot token expired or chat ID wrong | Re-check `TELEGRAM_BOT_TOKEN` env var |
+| Source shows 💀 Silent on /admin/sources | feed returns 200 but selectors match 0 | fix selectors / route via scrapling / disable |
+| No new items for >4h | Worker crashed / Neon unreachable | `railway restart`; check `DIRECT_URL`; `scripts/health.ts` |
+| scraper `/scrape` 500 flood + driver crashes | concurrent Chromium / tiny /dev/shm | serialized lock + `--disable-dev-shm-usage` (shipped) |
+| Neon storage near limit | pg-boss job bloat / WAL history | `db-size.ts` → `db-cleanup.ts`; lower Neon history retention |
+| items table growing fast | Amazon URL dedup failure | `dedup-amazon.ts`; ensure `normalizeUrl` canonicalizes |
+| AI 429 / empty MiniMax response | rate limit / reasoning token exhaustion | widen retry delay; floor max_tokens |
+| Telegram push not firing | Bot token / chat ID wrong | re-check `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` |
+| pg SSL warning in logs | `sslmode=require` v9 deprecation | pinned to `verify-full` in queues.ts (shipped) |

@@ -1,6 +1,6 @@
 # TradeLinks — System Architecture
 
-> Last updated: 2026-06-03 v0.1.0
+> Last updated: 2026-06-05 v0.7.0
 
 ## Overview
 
@@ -15,41 +15,47 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 │    blocked-detection → route hard sources to scrape-queue       │
 │                                                                 │
 │  Python Scraper Service (Scrapling + FastAPI):                  │
-│    StealthyFetcher(solve_cloudflare) — TikTok CC / Amazon BSR / │
-│      Shopee / Lazada (anti-bot ~20%)                            │
+│    StealthyFetcher — Amazon BSR (anti-bot). SERIALIZED: one     │
+│      Chromium at a time (global lock) + worker batchSize=1;     │
+│      disable_resources + --disable-dev-shm-usage; cf-solve OFF  │
 │    Smart Element Tracking — self-healing selectors on redesign  │
-│    pytrends — Google Trends (D01)                               │
+│    pytrends — Google Trends (trends-tick worker, not scheduler) │
 │    results → pg-boss ingest-queue (same schema as TS adapters)  │
+│    503 + 1-line log on failure (no traceback flood)             │
 └────────────────────────┬────────────────────────────────────────┘
                          │ raw items
 ┌────────────────────────▼────────────────────────────────────────┐
 │  AI PROCESSING LAYER                                            │
 │                                                                 │
-│  [Stage 1 — Bulk / Cheap]                                       │
-│  DeepSeek V3.2:  pre-filter spam → translate → categorize       │
+│  [Stage 1 — Bulk / Cheap]  (deepseek-v4-flash, ADR-005)         │
+│  pre-filter spam → translate → categorize                       │
 │                  → tag region[] + platform[] + category         │
 │  Qwen-Plus:      fallback for AR/ID/TH/PT small-lang docs       │
 │                                                                 │
 │  Dedup/Cluster:  trigram GIN similarity > 0.75 → mark dup       │
 │                  same-event multi-source → merge into Alert     │
 │                                                                 │
-│  [Stage 2 — Quality / Scoring]                                  │
-│  DeepSeek V4 Pro: urgency×impact score (0-5)                    │
+│  [Stage 2 — Quality / Scoring]  (MiniMax-M2, Anthropic-compat)  │
+│                   urgency×impact score (0-5)                    │
 │                   → generate EN summary + recommendation note   │
-│                   → trend signal: slope + confidence            │
 │                                                                 │
-│  Human review queue: urgencyScore ≥ 4 alerts → editor verify   │
+│  Human review queue: urgencyScore ≥ PUSH_THRESHOLD → editor     │
+│                                                                 │
+│  ⑂ Bestseller fork: scrapling BSR sources (D02–D06, D30–D34)   │
+│    SKIP this layer — stored as terminal `processed`, tagged     │
+│    region/platform/category, feed the Radar board (not Wire)    │
 └────────────────────────┬────────────────────────────────────────┘
                          │ processed items / alerts / trends
 ┌────────────────────────▼────────────────────────────────────────┐
 │  STORAGE LAYER (PostgreSQL 16 on Railway)                       │
 │                                                                 │
-│  sources          — source registry (58 sources, Phase1=25)     │
-│  items            — all ingested items (trigram GIN index)      │
+│  sources          — source registry (25 active / 16 disabled)   │
+│  items            — all ingested items (trigram GIN; url canon.) │
 │  alerts           — classified + scored alert objects           │
 │  trend_snapshots  — time-series: region × category × date rank  │
 │  trend_signals    — cross-region diffusion signals              │
-│  users / subs     — auth + subscription tiers                   │
+│  source_health_snapshots — daily per-source health (monitoring) │
+│  users            — auth + subscription tiers                   │
 │  keyword_watches  — user-defined keyword monitors               │
 └────────────────────────┬────────────────────────────────────────┘
                          │
@@ -57,10 +63,11 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 │  DISTRIBUTION LAYER                                             │
 │                                                                 │
 │  Website (Vercel / Next.js)                                     │
-│    /          — alert timeline (region/category/platform filter)│
-│    /trends    — trend dashboard + diffusion map                 │
-│    /daily     — daily digest archive                            │
-│    /api/public/* — REST API (OpenAPI 3.1)                       │
+│    /          — Wire: alert timeline (region/category filter)   │
+│    /trends    — Radar: Bestsellers board + diffusion signals    │
+│    /admin/review  — editor review queue (≥ threshold alerts)    │
+│    /admin/sources — source-health dashboard (monitoring)        │
+│    /api/public/* — REST API                                     │
 │                                                                 │
 │  Push (urgencyScore ≥ 4 → immediate)                            │
 │    Telegram Bot API + Slack Webhooks + Email (Resend)           │
@@ -145,3 +152,34 @@ alert.urgency_score
 
 **Connection wiring:** runtime (Vercel + Railway workers) → Neon **pooled** `DATABASE_URL`;
 `prisma migrate` → Neon **direct** `DIRECT_URL`. Local dev/test → Neon dev branch.
+pg-boss pins `sslmode=verify-full` on its connection (silences the `pg` v9 deprecation).
+
+## Queues & Scheduling (pg-boss)
+
+One queue per stage: `crawl · scrape · ingest · process · score · trends-tick · source-health-tick`.
+A per-minute `scheduler-tick` fans out crawl jobs (cron-parser `isDue()` per source).
+Daily schedules: trends-tick `0 2 * * *`, source-health-tick `30 2 * * *`.
+
+**Retention (storage guard):** completed jobs are deleted after **30 min**
+(`retentionMinutes: 30`, `deleteAfterMinutes: 30`, maintenance every 5 min), and the
+scrape queue runs `batchSize: 1`. Without this, ingest jobs (which carry the full
+scraped items array as JSONB) bloated pg-boss to ~300 MB and nearly filled Neon's
+0.5 GB. See operations.md.
+
+## Monitoring & Source Health
+
+`src/monitoring/health.ts` computes a **0–100 health score** per source =
+reachability(40) + cadence(20) + productivity(20) + quality(20), mapped to a tier:
+🟢 Healthy / 🟡 Degraded / 🔴 Unhealthy / 💀 Silent (active but 0 items — the
+"200 OK but empty" detector) / ⏸ Disabled. Bestseller sources are judged on volume
+(they bypass AI). `getSourceHealth()` is a single aggregate query (no writes).
+
+- **`/admin/sources`** renders it live, worst-first, with sub-score bars + 7-day sparkline.
+- **`source-health-tick`** (daily) writes a `source_health_snapshots` row per source
+  and Telegram-pings any source that newly crosses into 🔴/💀 (baseline-only on first run).
+
+## Dedup / URL canonicalization
+
+`normalizeUrl()` (used by `urlHash` and the stored `item.url`) drops tracking params and
+**canonicalizes Amazon `/dp/<ASIN>`** (any TLD) — the per-crawl `/ref=…/<session-id>`
+suffix otherwise defeats dedup and re-stores the same products every crawl.

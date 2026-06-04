@@ -1,32 +1,49 @@
 # Current Status — TradeLinks
 
-Version:        v0.6.0
-Sprint:         005 (Web polish + deploy)
-Sprint Status:  ✅ Web v2 done（部署+4项优化）
-Last Updated:   2026-06-04 by claude-opus-4-8
+Version:        v0.7.0
+Sprint:         006 (Ops hardening + Source-health monitoring)
+Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
+Last Updated:   2026-06-05 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-005.md
 
 ## 🚀 LIVE
-- **生产**: https://tradelinks-mvp.vercel.app （Vercel，5 路由全 200，31 条真实预警）
-- **GitHub**: agentjoey/tradelinks-mvp（main，作者已为 agentjoey）
-- **DB**: Neon **production** branch `ep-mute-base-aotkza3n` / `neondb`（统一用 production，dev 弃用）
-  - ⚠️ 该分支 **direct 端点不可达**(P1001)，故 `DIRECT_URL` 也用 **pooled host**(migrate+pg-boss 已验证可跑)
-- **部署分工**: Vercel=只读前端+API(已指 production)；worker+Python scraper→Railway
-- **Telegram 推送**：已验证可发（/api/push-test → telegram:"sent"）
-- ⚠️ **Railway 根因**：worker service 在跑 `next start`(网页)而非 `pnpm worker`(worker)→ 管道没动。需改 Start Command（见下）
+- **生产**: https://tradelinks-mvp.vercel.app （Wire `/` · Radar `/trends` · 审核台 `/admin/review` · 源监控 `/admin/sources`）
+- **GitHub**: agentjoey/tradelinks-mvp（main）
+- **DB**: Neon **production** branch `ep-mute-base-aotkza3n` / `neondb`
+  - `DIRECT_URL` 也用 **pooled host**；pg-boss 连接已 pin `sslmode=verify-full`
+  - **History retention 调低（~0–1h）** 控制计费存储；**勿在 Neon 上 VACUUM FULL**（会增 history/WAL）
+  - schema 已加 `source_health_snapshots`（migration 0004，已上生产）
+- **部署分工**: Vercel=只读前端+API；worker + Python scraper → Railway
+  - scraper 12h 才用一次，闲时 Serverless **休眠＝正常**（非崩溃）；Wire 内容不依赖 scraper
 
-## 数据源现状（36 源 / 23 enabled）
-- ✅ RSS 法规/行业(9)：USTR(B01) CBP(B02) UK Gov(B06) ACCC召回(B16) ModernRetail(F02) RetailDive(F03) Tamebay(F04) Shopify(A02) …
-- ✅ JSON：B03 Federal Register（JsonAdapter，已产出真实数据）
-- ✅ Amazon 爆品(scrapling,10)：US 电子+5品类(D02/D03/D30-34) + UK(D04)/UAE(D05,中东)/AU(D06)
-- ✅ Google Trends(D01,pytrends,429-prone)
-- ⛔ 反爬停用(enabled:false)：TikTok CC(D07)、CIFNews(F09)、亿邦(F10) / backlog：Temu(D21)、AliExpress(D23)、MercadoLibre(D20)、Noon(D22)——均需付费抓取API/代理
-- 死源已停：B04 EU OJ、B07 LUCID、A01 eBay、F05 Momentum Works（URL 失效/反爬）
+## 数据源现状（25 active / 16 disabled）— 详见 docs/specs/sources.md（live registry）
+- **法规 B(5)**：B01/B02/B03/B06/B16 —— 已 4–6h→**12h** 限流降占比
+- **平台 A(4)**：A02 Shopify、**A04 TikTok Shop(Google News RSS,新增)**、F04 Tamebay、A01 eBay(选择器已修)
+- **物流 E(2,新增)**：E01 Supply Chain Dive、E02 FreightWaves（此前物流类目为空）
+- **行业/媒体 F(4)**：**F11 EcommerceBytes(新增,平台政策主力)**、F12 Practical Ecommerce(新增)、F02、F03、F01(选择器已修)
+- **爆品 D(10,BSR)**：D02/D04/D05/D06 + D30-34 —— **不进 Wire，进 Radar**；URL 按 /dp/ASIN 规范化去重（18330→268）
+- **停用**：A03(消费PR非卖家政策)、D03(Movers&Shakers 无头渲染不出网格)、D01(trends-tick 专管)、反爬/死源若干
+- **Wire 占比**：法规 61%→**48%**，物流 7%→12%(真源)，平台 7%→13%，行业 14%→18%
 
 ## Open Bugs（P0/P1）
-🟢 无已知 P0/P1 bug。
-- ⚠️ `/admin/review` 无鉴权（裸奔，待 Auth/Vercel password）
-- 注：F01 Marketplace Pulse fetch 选择器未验证
+🟢 无 P0/P1。
+- ⚠️ `/admin/*`（review + sources）**无鉴权**，待加 Auth
+- TikTok Shop 官方卖家中心需登录态（A04 用 Google News 兜底）
+
+## 本轮硬化要点（2026-06-05）
+- **稳定性**：scraper 串行(单 Chromium) + disable_resources + --disable-dev-shm-usage + 队列 batchSize=1 → 修复 driver 崩溃与日志洪水
+- **成本/存储**：bestsellers 移出 Wire；BSR 12h 错峰；pg-boss 短保留(30min) → 存储 325MB→29MB
+- **监控**：`/admin/sources` 源健康评分(0–100/五档) + 每日快照 + 转🔴/💀 Telegram 告警
+- 工具脚本：`scripts/{health,db-size,db-cleanup,dedup-amazon}.ts`
+
+## Next TODOs（优先级）
+1. **F01/A01 恢复验证**（00:00/06:00 UTC 抓取后翻 🟢；已排期自动核查）+ scraper 唤醒确认
+2. **/admin/* 加鉴权**（暴露源 URL/配置，上线前必做）
+3. **物流/平台再补源**：EU 稳定法规 feed（替 B04/B05）、ME/LatAm/SEA 平台与物流覆盖
+4. **反爬 backlog（Phase 2，需付费API/代理）**：Temu(D21)/AliExpress(D23)/MercadoLibre(D20)/Noon(D22)/CIFNews(F09)/Ebrun(F10)
+5. **Radar 深化**：BSR rank delta 时序（目前 first-seen rank）+ 三源扩散佐证
+6. **D03 Movers&Shakers**（可选）：非无头/交互式抓取方案
+7. 收尾：F01 “Read more” 噪声项、Neon retention 最终值
 
 ## Sprint 004 Summary（趋势 + 扩散 + 推送）
 T1 趋势摄取 ✅（keywords + score.ts + trends worker + daily schedule；pytrends 单次取 169 点验证；**429 限流记为生产风险**，已加退避，高可用需付费源）
