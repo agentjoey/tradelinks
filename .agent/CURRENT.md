@@ -1,8 +1,8 @@
 # Current Status — TradeLinks
 
-Version:        v0.5.3
+Version:        v0.6.0
 Sprint:         005 (Web polish + deploy)
-Sprint Status:  🔄 In Progress
+Sprint Status:  ✅ Web v2 done（部署+4项优化）
 Last Updated:   2026-06-04 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-005.md
 
@@ -72,6 +72,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 5 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.6.0 | 2026-06-04 | 上线 Vercel + Web v2(时间线分段/紧急度档位/标题跳转/og:image)+ JsonAdapter + Amazon多区品类 + cap |
 | v0.5.3 | 2026-06-04 | 平台爆品源扩展：Amazon BSR UK/UAE/AU 验证上线(各30条)+ Temu/MELI/Noon backlog |
 | v0.5.2 | 2026-06-04 | JsonAdapter(Federal Register 20条上线)+ 死源清理(EU OJ/LUCID/Momentum/Ebrun/Reddit 停用) |
 | v0.5.1 | 2026-06-04 | 修复 3 个死源(USTR/ACCC 换 RSS、CIFNews 停用)+ Prisma Neon 冷启动重试 |

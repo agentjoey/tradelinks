@@ -11,26 +11,26 @@ Assignee:  claude
 ## Tasks（Web 体验优化，用户反馈）
 
 ### T1: 时间线分段展示 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Acceptance:**
 - [ ] feed 按日期分组（Today / Yesterday / 具体日期 分隔头），信息流按时间切割
 - [ ] 组内按发布时间倒序
 
 ### T2: 重设紧急度标识 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Acceptance:**
 - [ ] 替换含义不清的 "2.0 Watch"/"1.0 Note"
 - [ ] 用面向卖家、语义清晰的三档：Act now(≥4,红) / Worth knowing(2-4,琥珀) / FYI(<2,灰)
 - [ ] 数字分作为次要信息或去除
 
 ### T3: 标题点击直达 source [MED] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Acceptance:**
 - [ ] 卡片标题即链接（新窗口打开 sourceUrls[0]），去掉单独的 source 按钮
 - [ ] 多源时附 "+N sources" 次要标注
 
 ### T4: 原文标题配图 [HIGH] [claude]
-**Status:** 🔲 Todo
+**Status:** ✅ Done
 **Acceptance:**
 - [ ] Item/Alert 增 `imageUrl`（迁移）；og:image 提取器（文章页 meta）
 - [ ] processor 抓 og:image 存 item；alert 生成时拷贝；正文下展示
