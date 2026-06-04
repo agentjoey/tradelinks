@@ -7,7 +7,7 @@ const EnvSchema = z.object({
   // AI providers — MiniMax is primary when set (OpenAI-compatible); DeepSeek/Qwen are fallbacks
   MINIMAX_API_KEY: z.string().optional(), // sk-cp- token-plan key → Anthropic endpoint
   MINIMAX_BASE_URL: z.string().default("https://api.minimax.io/anthropic"),
-  MINIMAX_MODEL: z.string().default("MiniMax-M2"),
+  MINIMAX_MODEL: z.string().default("MiniMax-M2.7-highspeed"),
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
