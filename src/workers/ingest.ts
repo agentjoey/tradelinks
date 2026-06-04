@@ -2,7 +2,7 @@ import type PgBoss from "pg-boss";
 import { QUEUES, sendOpts } from "../queue/queues.js";
 import { IngestJobSchema } from "../queue/schemas.js";
 import { prisma } from "../db/client.js";
-import { urlHash } from "../lib/hash.js";
+import { urlHash, normalizeUrl } from "../lib/hash.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { BESTSELLER_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
@@ -30,14 +30,15 @@ export async function registerIngestWorker(boss: PgBoss) {
       // Bestseller crawls are storage-only (no AI), so keep the full grid.
       const capped = isBestseller ? items : items.slice(0, env.MAX_ITEMS_PER_CRAWL);
       for (const raw of capped) {
-        const hash = urlHash(raw.url);
+        const url = normalizeUrl(raw.url); // canonical (e.g. amazon → /dp/<ASIN>)
+        const hash = urlHash(raw.url); // == sha256(normalizeUrl(raw.url))
         const existing = await prisma.item.findUnique({ where: { urlHash: hash } });
         if (existing) continue;
 
         const item = await prisma.item.create({
           data: {
             sourceId,
-            url: raw.url,
+            url,
             urlHash: hash,
             title: raw.title,
             lang: raw.lang ?? "en",
