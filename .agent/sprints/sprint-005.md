@@ -1,64 +1,45 @@
 # Sprint 005
 
-Goal:      物流预警 + Auth + Stripe 付费 + 关键词监控（Pro）→ MVP 公开上线
-Period:    2026-08-05 ~ 2026-08-19
-Version:   v1.0.0
+Goal:      MVP 上线 Vercel + Web 端体验优化（时间线/紧急度标识/标题跳转/原文配图）
+Period:    2026-06-04 ~
+Version:   v0.6.0
 Assignee:  claude
 
-## Tasks
+> 前序已完成（未单列 sprint）：Vercel 部署上线、5 死源修复、Amazon BSR 多区+多品类、
+> JsonAdapter(B03)、Temu/Ali 反爬评估、MAX_ITEMS_PER_CRAWL cap、本地 worker 实跑(12→31 alerts)。
 
-### T1: 物流运价 + 中断预警 [MED] [claude]
+## Tasks（Web 体验优化，用户反馈）
+
+### T1: 时间线分段展示 [HIGH] [claude]
 **Status:** 🔲 Todo
-**Epic:** EP-003
 **Acceptance:**
-- [ ] Freightos FBX 每周快照，亚-美 / 亚-欧 / 亚-LatAm 三条航线
-- [ ] 运价 7 日涨跌 > 20% → 生成 urgencyScore=3 的 logistics alert
-- [ ] Lloyd's List RSS 每 4h 扫描，关键词（Suez / Panama / port strike / congestion）命中 → alert
-- [ ] 物流 alert 在时间线中有 🚢 分类标签
+- [ ] feed 按日期分组（Today / Yesterday / 具体日期 分隔头），信息流按时间切割
+- [ ] 组内按发布时间倒序
 
-### T2: Auth（NextAuth v5）+ 用户订阅设置 [HIGH] [claude]
+### T2: 重设紧急度标识 [HIGH] [claude]
 **Status:** 🔲 Todo
-**Epic:** EP-008
 **Acceptance:**
-- [ ] Email magic link 登录（Resend）
-- [ ] Google OAuth 登录
-- [ ] 用户可在 `/settings` 配置：感兴趣区域 / 平台 / 品类 / 推送渠道（email/Telegram/Slack）
-- [ ] Free tier：访问延迟 24h alert，无推送
-- [ ] Pro tier：实时 alert + 推送 + 关键词监控
+- [ ] 替换含义不清的 "2.0 Watch"/"1.0 Note"
+- [ ] 用面向卖家、语义清晰的三档：Act now(≥4,红) / Worth knowing(2-4,琥珀) / FYI(<2,灰)
+- [ ] 数字分作为次要信息或去除
 
-### T3: Stripe 付费（Free / Pro / Team） [HIGH] [claude]
+### T3: 标题点击直达 source [MED] [claude]
 **Status:** 🔲 Todo
-**Epic:** EP-008
 **Acceptance:**
-- [ ] Stripe Checkout 集成，USD 定价（$0 / $29 / $149 per month）
-- [ ] Stripe Webhook → 订阅状态同步到 `users.tier` 字段
-- [ ] 付费用户实时访问权限生效，降级（取消订阅）24h 内降到 Free tier
-- [ ] `/billing` 页面可查看和管理订阅
+- [ ] 卡片标题即链接（新窗口打开 sourceUrls[0]），去掉单独的 source 按钮
+- [ ] 多源时附 "+N sources" 次要标注
 
-### T4: 关键词监控 v1（Pro 功能） [MED] [claude]
+### T4: 原文标题配图 [HIGH] [claude]
 **Status:** 🔲 Todo
-**Epic:** EP-009
 **Acceptance:**
-- [ ] Pro 用户可在 `/monitors` 添加最多 3 个关键词（品类/品牌/竞品名）
-- [ ] 每次新 alert/item 摄取后，触发关键词匹配（PostgreSQL 全文 + trigram）
-- [ ] 命中 → 按用户推送设置发送（email/Telegram/Slack）
-- [ ] UI：关键词命中历史列表，可开关/删除监控
+- [ ] Item/Alert 增 `imageUrl`（迁移）；og:image 提取器（文章页 meta）
+- [ ] processor 抓 og:image 存 item；alert 生成时拷贝；正文下展示
+- [ ] `/api/img-proxy` 代理外链图（绕 hotlink/referer + 失败优雅降级）
+- [ ] 回填现有 31 条 alert 的图
 
-### T5: 上线前检查 + SEO + Landing Page [MED] [claude]
-**Status:** 🔲 Todo
-**Epic:** EP-005
-**Acceptance:**
-- [ ] Landing page 英文，清晰呈现"6大区预警 + 趋势预测"价值主张
-- [ ] OG tags + meta description 完整
-- [ ] Core Web Vitals：LCP < 2.5s，CLS < 0.1（Vercel Analytics 验证）
-- [ ] 隐私政策 + 服务条款页面（用于 Stripe/OAuth 合规）
+## Next Sprint Candidates
+- [ ] [EP-008] Auth(NextAuth)+`/admin/review` 鉴权 + Stripe 变现
+- [ ] worker 常驻部署（GCP e2-micro / Fly / Railway）
 
-## Superpowers Checkpoints
-| Skill | 触发条件 | 本 Sprint |
-|-------|---------|---------|
-| brainstorming | 付费产品设计前 | ❌ 待触发 |
-| verification-before-completion | Task Done 前 | ❌ 待触发 |
-| systematic-debugging | 发现 Bug 时 | N/A |
-
-## Sprint 回顾（v1.0.0 发版后填写）
-**Done:** — ｜ **Deferred:** — → Phase 2
+## Sprint 回顾
+**Done:** — ｜ **Deferred:** —

@@ -7,6 +7,7 @@ import { runStage1, type Stage1Input } from "../ai/stage1.js";
 import { REGIONS } from "../ai/prompts/categorize.js";
 import { resolveDuplication } from "../dedup/resolve.js";
 import { findSimilarItems, applyDuplicate, applyCluster } from "../dedup/db.js";
+import { fetchOgImage } from "../lib/ogimage.js";
 import { logger } from "../lib/logger.js";
 
 type Region = (typeof REGIONS)[number];
@@ -46,18 +47,20 @@ export async function registerProcessorWorker(boss: PgBoss) {
         continue;
       }
 
+      const imageUrl = item.imageUrl ?? (await fetchOgImage(item.url)); // best-effort article image
       await prisma.item.update({
         where: { id: itemId },
         data: {
           status: "processed",
           titleEn: out.titleEn,
           summaryEn: out.summaryEn,
+          imageUrl,
           category: out.category,
           regions: out.regions,
           platforms: out.platforms,
         },
       });
-      logger.debug({ itemId, category: out.category, regions: out.regions }, "processed");
+      logger.debug({ itemId, category: out.category, regions: out.regions, img: !!imageUrl }, "processed");
 
       // Dedup level 2/3 (trigram + LLM cluster-judge). URL-exact already done at ingest.
       const dedupTitle = out.titleEn ?? item.title;

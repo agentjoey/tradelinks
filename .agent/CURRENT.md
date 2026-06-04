@@ -1,14 +1,30 @@
 # Current Status — TradeLinks
 
 Version:        v0.5.3
-Sprint:         004
-Sprint Status:  ✅ Done
+Sprint:         005 (Web polish + deploy)
+Sprint Status:  🔄 In Progress
 Last Updated:   2026-06-04 by claude-opus-4-8
-Sprint File:    .agent/sprints/sprint-004.md
+Sprint File:    .agent/sprints/sprint-005.md
 
-## Open Bugs（P0/P1 必须本 Sprint 修复）
+## 🚀 LIVE
+- **生产**: https://tradelinks-mvp.vercel.app （Vercel，5 路由全 200，31 条真实预警）
+- **GitHub**: agentjoey/tradelinks-mvp（main，作者已为 agentjoey）
+- **DB**: Neon dev branch `ep-bitter-wildflower-ao1u2qbn` / `neondb`（数据所在；prod 父 branch 为空）
+- **部署分工**: Vercel=只读前端+API；worker+Python scraper=本地按需(`pnpm worker`)，未常驻；待选 GCP e2-micro/Fly/Railway 上线
+- Vercel env 已配：DATABASE_URL(指向 dev branch)+ TELEGRAM_*
+
+## 数据源现状（36 源 / 23 enabled）
+- ✅ RSS 法规/行业(9)：USTR(B01) CBP(B02) UK Gov(B06) ACCC召回(B16) ModernRetail(F02) RetailDive(F03) Tamebay(F04) Shopify(A02) …
+- ✅ JSON：B03 Federal Register（JsonAdapter，已产出真实数据）
+- ✅ Amazon 爆品(scrapling,10)：US 电子+5品类(D02/D03/D30-34) + UK(D04)/UAE(D05,中东)/AU(D06)
+- ✅ Google Trends(D01,pytrends,429-prone)
+- ⛔ 反爬停用(enabled:false)：TikTok CC(D07)、CIFNews(F09)、亿邦(F10) / backlog：Temu(D21)、AliExpress(D23)、MercadoLibre(D20)、Noon(D22)——均需付费抓取API/代理
+- 死源已停：B04 EU OJ、B07 LUCID、A01 eBay、F05 Momentum Works（URL 失效/反爬）
+
+## Open Bugs（P0/P1）
 🟢 无已知 P0/P1 bug。
-- 注：F01 Marketplace Pulse 无公开 RSS（已改 fetch adapter，选择器待线上验证，非阻塞）
+- ⚠️ `/admin/review` 无鉴权（裸奔，待 Auth/Vercel password）
+- 注：F01 Marketplace Pulse fetch 选择器未验证
 
 ## Sprint 004 Summary（趋势 + 扩散 + 推送）
 T1 趋势摄取 ✅（keywords + score.ts + trends worker + daily schedule；pytrends 单次取 169 点验证；**429 限流记为生产风险**，已加退避，高可用需付费源）

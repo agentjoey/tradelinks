@@ -6,7 +6,7 @@ let n = 0;
 function a(p: Partial<AlertRow> & { title: string; category: string; urgencyScore: number }): AlertRow {
   return {
     id: `id${n++}`, summary: "", regions: ["north_america"], platforms: [],
-    actionRequired: null, sourceUrls: ["https://x"], publishedAt: new Date(), createdAt: new Date(),
+    actionRequired: null, imageUrl: null, sourceUrls: ["https://x"], publishedAt: new Date(), createdAt: new Date(),
     ...p,
   };
 }

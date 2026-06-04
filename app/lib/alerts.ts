@@ -25,6 +25,7 @@ export interface AlertRow {
   platforms: string[];
   category: string;
   actionRequired: string | null;
+  imageUrl: string | null;
   sourceUrls: string[];
   publishedAt: Date | null;
   createdAt: Date;
@@ -54,7 +55,7 @@ export async function getAlerts(f: AlertFilters): Promise<AlertPage> {
     ...(f.cursor ? { cursor: { id: f.cursor }, skip: 1 } : {}),
     select: {
       id: true, title: true, summary: true, urgencyScore: true, regions: true,
-      platforms: true, category: true, actionRequired: true, sourceUrls: true,
+      platforms: true, category: true, actionRequired: true, imageUrl: true, sourceUrls: true,
       publishedAt: true, createdAt: true,
     },
   });

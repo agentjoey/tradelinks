@@ -40,6 +40,7 @@ export async function upsertAlertForItem(item: Item, score: ScoreResult): Promis
       platforms: item.platforms,
       category: item.category,
       actionRequired: score.recommendation,
+      imageUrl: item.imageUrl,
       sourceUrls: [item.url],
       status: routeAlertStatus(score.urgencyScore),
     },

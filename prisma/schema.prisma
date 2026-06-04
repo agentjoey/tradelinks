@@ -95,6 +95,7 @@ model Item {
   title          String
   titleEn        String?
   summaryEn      String?
+  imageUrl       String?
   rawContent     Json?
   publishedAt    DateTime
   crawledAt      DateTime   @default(now())
@@ -141,6 +142,7 @@ model Alert {
   category       Category
   affectedSkus   String[]
   actionRequired String?
+  imageUrl       String?
   sourceUrls     String[]
   status         AlertStatus @default(pending_review)
   publishedAt    DateTime?
