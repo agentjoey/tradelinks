@@ -64,6 +64,35 @@ export default async function TrendsPage() {
         <p className="mt-3 max-w-xl text-[15px] text-muted">{t.radarSub}</p>
       </div>
 
+      {/* bestsellers board — richest data, surfaced first */}
+      <div className="mb-12">
+        <div className="mb-4 flex items-baseline justify-between gap-4">
+          <div>
+            <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
+            <p className="max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
+          </div>
+          {bestsellers.length > 0 && (
+            <span className="ticker shrink-0 text-[11px] text-faint">{bestsellers.length} tracked</span>
+          )}
+        </div>
+        {bestsellers.length === 0 ? (
+          <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
+        ) : (
+          <div className="space-y-8">
+            {[...byCategory.entries()].map(([category, rows]) => (
+              <div key={category}>
+                <h3 className="font-display mb-3 text-[17px] text-paper">{category}</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {rows.map((b, i) => (
+                    <BestsellerItem key={b.url + i} b={b} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* diffusion signals */}
       <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.diffusionSignals}</h2>
       {signals.length === 0 ? (
@@ -117,28 +146,6 @@ export default async function TrendsPage() {
           ))}
         </div>
       )}
-
-      {/* bestsellers board */}
-      <div className="mt-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-faint">{t.bestsellers}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
-        {bestsellers.length === 0 ? (
-          <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
-        ) : (
-          <div className="space-y-8">
-            {[...byCategory.entries()].map(([category, rows]) => (
-              <div key={category}>
-                <h3 className="font-display mb-3 text-[17px] text-paper">{category}</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {rows.map((b, i) => (
-                    <BestsellerItem key={b.url + i} b={b} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -62,6 +62,12 @@ export default async function Home({
           {t.heroPre}<span className="italic text-signal">{t.heroEm}</span>{t.heroPost}
         </h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">{t.heroSub}</p>
+        <Link
+          href="/trends"
+          className="ticker mt-4 inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
+        >
+          🔥 {t.bestsellersTeaser} →
+        </Link>
       </div>
 
       <Filters region={sp.region} category={sp.category} t={t} />

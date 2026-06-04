@@ -22,11 +22,16 @@ export function parseHtml(
   const items: RawItem[] = [];
   $(config.itemSelector).each((_, el) => {
     const node = $(el);
-    const title = node.find(config.titleSelector).first().text().trim();
-    const href = config.linkSelector
+    // title: prefer the configured selector; fall back to the node's own text
+    // (handles the common "item IS the anchor" pattern: <a href=…>Headline</a>).
+    let title = node.find(config.titleSelector).first().text().trim();
+    if (!title) title = node.text().replace(/\s+/g, " ").trim();
+    let href = config.linkSelector
       ? node.find(config.linkSelector).first().attr("href")
       : node.find("a").first().attr("href");
+    if (!href && node.is("a")) href = node.attr("href"); // node itself is the link
     if (!title || !href) return;
+    title = title.slice(0, 300);
     let url: string;
     try {
       url = new URL(href, baseUrl).toString();

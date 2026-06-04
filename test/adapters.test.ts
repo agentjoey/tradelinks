@@ -66,6 +66,26 @@ describe("parseHtml (FetchAdapter)", () => {
     });
     expect(items[1]?.url).toBe("https://www.ebay.com/news/shipping");
   });
+
+  it("handles 'item IS the anchor' with title fallback to node text", () => {
+    // Marketplace Pulse / eBay seller-updates pattern: list of <a> links, no
+    // inner h2/.title — the anchor itself is the item and carries the headline.
+    const html = `<div>
+      <a href="/articles/amazon-haul">Amazon Haul Has Over 3,000 Sellers</a>
+      <a href="/articles/walmart-growth">Walmart Marketplace Growth Reaches Fastest Pace</a>
+      <a href="/about">Footer link</a>
+    </div>`;
+    const items = parseHtml(html, "https://www.marketplacepulse.com/articles", {
+      itemSelector: "a[href*='/articles/']",
+      titleSelector: "h2, h3, .title",
+    });
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      url: "https://www.marketplacepulse.com/articles/amazon-haul",
+      title: "Amazon Haul Has Over 3,000 Sellers",
+    });
+    expect(items[1]?.title).toBe("Walmart Marketplace Growth Reaches Fastest Pace");
+  });
 });
 
 describe("url hashing / normalization", () => {
