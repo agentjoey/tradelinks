@@ -1,0 +1,6 @@
+# Vercel deploys the Next.js app only. Workers + Python scraper run on Railway.
+# (Next build only bundles what app/ imports; we just trim the upload here.)
+scraper-py/
+.agent/
+docs/
+test/

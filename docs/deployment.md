@@ -1,14 +1,35 @@
 # TradeLinks — Deployment Guide
 
-> Last updated: 2026-06-03 v0.2.0 | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
+> Last updated: 2026-06-04 v0.5.x | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
 
 ## Stack Overview
 
-| Service | Provider | Tier |
-|---------|----------|------|
-| Frontend + API routes | Vercel | Hobby → Pro |
-| Node worker + Python Scraper | Railway | Starter services |
-| PostgreSQL 16 (data + pg-boss queue) | Neon | Free → Launch |
+| Service | Provider | What runs there |
+|---------|----------|-----------------|
+| Next.js app (Wire / Radar / Desk / API / RSS) | **Vercel** | read-only frontend + API + admin (server actions) |
+| Node worker (pg-boss) + Python Scraper (FastAPI) | **Railway** | crawl → AI → dedup → score → write alerts; trends |
+| PostgreSQL 16 (data + pg-boss queue) | **Neon** | shared DB; Vercel reads, worker writes |
+
+**Split:** Vercel only reads/serves; all ingestion/AI happens on Railway. They
+share Neon. Deploying Vercel does NOT deploy the worker (separate `railway up`).
+
+## Deploy to Vercel (Next.js app)
+
+1. Import `agentjoey/tradelinks-mvp` into Vercel (framework auto-detected: Next.js).
+2. Build command is pinned in `vercel.json`: `prisma generate && next build`
+   (Prisma client must be generated at build — verified locally).
+3. Set Environment Variables (Production):
+   - `DATABASE_URL` — Neon **pooled** url; append `&connection_limit=1` for
+     serverless functions (each lambda holds its own tiny pool).
+   - `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`/`SLACK_WEBHOOK_URL` — only if you
+     want approve-on-Desk to push (server action calls dispatchPush). Optional.
+   - (The app does NOT need AI keys — classification/scoring run on the worker.)
+4. Deploy. Pages are `force-dynamic` (live from Neon); the Prisma client has a
+   cold-start retry wrapper so Neon scale-to-zero won't surface as 500s.
+5. `.vercelignore` trims scraper-py/.agent/docs/test from the upload.
+
+> Auth on `/admin/review` is not yet implemented (Sprint 005) — protect it via
+> Vercel password protection or deploy behind a preview-only URL until then.
 
 ## Environment Variables
 
