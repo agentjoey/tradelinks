@@ -18,6 +18,9 @@ export interface Dict {
   all: string;
   today: string;
   yesterday: string;
+  last1h: string;
+  last4h: string;
+  last8h: string;
   empty: string;
   loadEarlier: string;
   footer: string;
@@ -53,8 +56,11 @@ const en: Dict = {
   region: "region",
   type: "type",
   all: "All",
-  today: "Today",
+  today: "Earlier today",
   yesterday: "Yesterday",
+  last1h: "Last hour",
+  last4h: "Last 4 hours",
+  last8h: "Last 8 hours",
   empty: "no dispatches match this filter",
   loadEarlier: "load earlier ↓",
   footer: "TradeLinks · 6-region cross-border intelligence · alerts are summaries — verify at source",
@@ -88,8 +94,11 @@ const zh: Dict = {
   region: "区域",
   type: "类型",
   all: "全部",
-  today: "今天",
+  today: "今天早些",
   yesterday: "昨天",
+  last1h: "最近 1 小时",
+  last4h: "最近 4 小时",
+  last8h: "最近 8 小时",
   empty: "没有符合该筛选的情报",
   loadEarlier: "加载更早 ↓",
   footer: "TradeLinks · 六大区跨境情报 · 预警为摘要 —— 请以原文为准",

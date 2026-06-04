@@ -38,7 +38,10 @@ Sprint File:    .agent/sprints/sprint-005.md
 
 ## Next TODOs（优先级）
 1. **F01/A01 恢复验证**（00:00/06:00 UTC 抓取后翻 🟢；已排期自动核查）+ scraper 唤醒确认
-2. **/admin/* 加鉴权**（暴露源 URL/配置，上线前必做）
+2. **/admin/* 加鉴权**（基于 **Neon Auth / Stack Auth** + admin 邮箱白名单 + middleware；方案见下/ADR-006 待写）
+2b. **UI 深度优化**：
+   - ✅ Wire 时间线改为「最近1h/4h/8h/今天/昨天/日期」递进分桶（2026-06-05）
+   - 待办：移动端布局与卡片密度、urgency 视觉层级、Radar 爆品卡（缩略图/榜位/区域 chip）、骨架屏/加载态、空态与错误态、字体与间距打磨、暗色对比度可达性
 3. **物流/平台再补源**：EU 稳定法规 feed（替 B04/B05）、ME/LatAm/SEA 平台与物流覆盖
 4. **反爬 backlog（Phase 2，需付费API/代理）**：Temu(D21)/AliExpress(D23)/MercadoLibre(D20)/Noon(D22)/CIFNews(F09)/Ebrun(F10)
 5. **Radar 深化**：BSR rank delta 时序（目前 first-seen rank）+ 三源扩散佐证

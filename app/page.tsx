@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAlerts, type AlertRow } from "./lib/alerts";
-import { getDict } from "./lib/i18n";
+import { getDict, type Dict, type Lang } from "./lib/i18n";
 import { AlertCard } from "./components/AlertCard";
 import { Filters } from "./components/Filters";
 
@@ -9,22 +9,45 @@ export const dynamic = "force-dynamic";
 function dayKey(d: Date) {
   return new Date(d).toISOString().slice(0, 10);
 }
-function groupByDay(items: AlertRow[]): [string, AlertRow[]][] {
-  const m = new Map<string, AlertRow[]>();
+
+interface Bucket { key: string; label: string; rows: AlertRow[]; ts: number }
+
+/**
+ * Recency-first timeline buckets: Last hour / 4h / 8h (pure recency), then the
+ * rest of Today, Yesterday, and older dates. Buckets are ordered by their newest
+ * item (so 1h→4h→8h→today→yesterday→dates falls out naturally) and within a
+ * bucket by urgency then time. Empty buckets are omitted.
+ */
+function bucketAlerts(items: AlertRow[], t: Dict, lang: Lang): Bucket[] {
+  const now = Date.now();
+  const H = 3_600_000;
+  const tsOf = (a: AlertRow) => new Date(a.publishedAt ?? a.createdAt).getTime();
+  const today = dayKey(new Date(now));
+  const yday = dayKey(new Date(now - 24 * H));
+  const buckets = new Map<string, Bucket>();
+  const put = (key: string, label: string, a: AlertRow) => {
+    const b = buckets.get(key) ?? buckets.set(key, { key, label, rows: [], ts: 0 }).get(key)!;
+    b.rows.push(a);
+  };
   for (const a of items) {
-    const k = dayKey(a.publishedAt ?? a.createdAt);
-    (m.get(k) ?? m.set(k, []).get(k)!).push(a);
+    const age = now - tsOf(a);
+    if (age <= H) put("b1", t.last1h, a);
+    else if (age <= 4 * H) put("b4", t.last4h, a);
+    else if (age <= 8 * H) put("b8", t.last8h, a);
+    else {
+      const dk = dayKey(new Date(tsOf(a)));
+      if (dk === today) put("today", t.today, a);
+      else if (dk === yday) put("yday", t.yesterday, a);
+      else put(dk, new Date(dk + "T00:00:00Z").toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US",
+        { month: "short", day: "numeric", weekday: "short", timeZone: "UTC" }), a);
+    }
   }
-  // newest day first; within a day, highest urgency first (then newest)
-  for (const rows of m.values()) {
-    rows.sort((a, b) => {
-      if (b.urgencyScore !== a.urgencyScore) return b.urgencyScore - a.urgencyScore;
-      const ta = new Date(a.publishedAt ?? a.createdAt).getTime();
-      const tb = new Date(b.publishedAt ?? b.createdAt).getTime();
-      return tb - ta;
-    });
+  const out = [...buckets.values()];
+  for (const b of out) {
+    b.rows.sort((x, y) => (y.urgencyScore - x.urgencyScore) || (tsOf(y) - tsOf(x)));
+    b.ts = Math.max(...b.rows.map(tsOf));
   }
-  return [...m.entries()].sort((x, y) => (x[0] < y[0] ? 1 : -1));
+  return out.sort((a, b) => b.ts - a.ts);
 }
 
 export default async function Home({
@@ -36,15 +59,7 @@ export default async function Home({
   const { lang, t } = await getDict();
   const { items, nextCursor } = await getAlerts(sp);
   const live = items.filter((a) => a.urgencyScore >= 4).length;
-  const groups = groupByDay(items);
-
-  const today = new Date().toISOString().slice(0, 10);
-  const yday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const dayLabel = (key: string) =>
-    key === today ? t.today
-    : key === yday ? t.yesterday
-    : new Date(key + "T00:00:00Z").toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US",
-        { month: "short", day: "numeric", weekday: "short", timeZone: "UTC" });
+  const buckets = bucketAlerts(items, t, lang);
 
   let idx = 0;
   return (
@@ -78,15 +93,15 @@ export default async function Home({
         </div>
       ) : (
         <div className="space-y-8">
-          {groups.map(([key, rows]) => (
-            <section key={key}>
+          {buckets.map((b) => (
+            <section key={b.key}>
               <div className="sticky top-[57px] z-[5] -mx-1 mb-3 flex items-center gap-3 bg-ink/85 px-1 py-1 backdrop-blur">
-                <h2 className="ticker text-[11px] font-semibold uppercase tracking-[0.22em] text-paper">{dayLabel(key)}</h2>
-                <span className="ticker text-[10px] text-faint">{rows.length}</span>
+                <h2 className="ticker text-[11px] font-semibold uppercase tracking-[0.22em] text-paper">{b.label}</h2>
+                <span className="ticker text-[10px] text-faint">{b.rows.length}</span>
                 <div className="h-px flex-1 bg-line" />
               </div>
               <div className="space-y-2.5">
-                {rows.map((a) => <AlertCard key={a.id} a={a} index={idx++} t={t} />)}
+                {b.rows.map((a) => <AlertCard key={a.id} a={a} index={idx++} t={t} />)}
               </div>
             </section>
           ))}
