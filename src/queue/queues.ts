@@ -22,6 +22,20 @@ const RETRY: PgBoss.RetryOptions = {
   retryBackoff: true,
 };
 
+/**
+ * Queue policy = retry + SHORT retention. ingest jobs carry the full scraped
+ * items array (big JSONB); at pg-boss's long default retention, finished jobs
+ * bloated storage to ~300MB and nearly filled Neon's 0.5GB. Keep finished jobs
+ * only 30min, and expire stuck-active jobs after 15min (the slowest job —
+ * stealth scrape — has a 120s client timeout, well under 15min).
+ */
+const QUEUE_POLICY: PgBoss.Queue = {
+  name: "", // set per-queue below
+  ...RETRY,
+  retentionMinutes: 30,
+  expireInMinutes: 15,
+};
+
 let _boss: PgBoss | null = null;
 
 /** Lazily construct pg-boss so importing this module never requires env/DB. */
@@ -31,15 +45,21 @@ export function getBoss(): PgBoss {
     if (!cs) {
       throw new Error("pg-boss needs DIRECT_URL (or DATABASE_URL). See .env.example");
     }
-    _boss = new PgBoss({ connectionString: cs });
+    // Maintenance every 5min + delete finished jobs after 30min so the job
+    // tables can't bloat storage again (see QUEUE_POLICY).
+    _boss = new PgBoss({ connectionString: cs, maintenanceIntervalMinutes: 5, deleteAfterMinutes: 30 });
   }
   return _boss;
 }
 
-/** Create all queues with retry policy. Idempotent. */
+/** Create all queues with retry + retention policy. Idempotent. */
 export async function ensureQueues(boss: PgBoss): Promise<void> {
   for (const name of Object.values(QUEUES)) {
-    await boss.createQueue(name, { name, ...RETRY });
+    const policy = { ...QUEUE_POLICY, name };
+    await boss.createQueue(name, policy);
+    // createQueue no-ops on existing queues, so push the policy explicitly to
+    // apply the new short retention to queues created before this change.
+    await boss.updateQueue(name, policy).catch(() => undefined);
   }
 }
 
