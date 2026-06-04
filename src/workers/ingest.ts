@@ -5,21 +5,30 @@ import { prisma } from "../db/client.js";
 import { urlHash } from "../lib/hash.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
+import { BESTSELLER_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
 
 /**
  * ingest-queue worker. Upserts RawItems into `items` (url unique = dedup
  * level 1), status=raw, then enqueues each new item onto process-queue.
+ *
+ * Exception: Amazon best-seller sources (BESTSELLER_SOURCE_IDS) are stored as
+ * terminal `processed` rows tagged with the source's region/platform/category
+ * and are NOT enqueued to process-queue — they feed the Trend Radar's
+ * Bestsellers board directly, never the Wire (no AI scoring, no alerts).
  */
 export async function registerIngestWorker(boss: PgBoss) {
   await boss.work(QUEUES.ingest, async (jobs) => {
     for (const job of jobs) {
       const { sourceId, items } = IngestJobSchema.parse(job.data);
+      const isBestseller = BESTSELLER_SOURCE_IDS.has(sourceId);
+      const src = SOURCES_BY_ID.get(sourceId);
       let created = 0;
 
       // newest-first cap: only process the latest N per crawl (bounds AI cost
       // on large feeds, e.g. Shopify changelog ~1500 items). Already-seen items
       // are skipped by url-hash anyway, so steady-state only new items flow.
-      const capped = items.slice(0, env.MAX_ITEMS_PER_CRAWL);
+      // Bestseller crawls are storage-only (no AI), so keep the full grid.
+      const capped = isBestseller ? items : items.slice(0, env.MAX_ITEMS_PER_CRAWL);
       for (const raw of capped) {
         const hash = urlHash(raw.url);
         const existing = await prisma.item.findUnique({ where: { urlHash: hash } });
@@ -34,13 +43,24 @@ export async function registerIngestWorker(boss: PgBoss) {
             lang: raw.lang ?? "en",
             publishedAt: raw.publishedAt ? new Date(raw.publishedAt) : new Date(),
             rawContent: (raw.rawContent ?? undefined) as object | undefined,
+            ...(isBestseller
+              ? {
+                  status: "processed" as const,
+                  regions: (src?.regions ?? []) as never[],
+                  platforms: src?.platforms ?? [],
+                  category: (src?.categoryHint ?? "trend") as never,
+                }
+              : {}),
           },
         });
         created++;
-        await boss.send(QUEUES.process, { itemId: item.id }, sendOpts);
+        if (!isBestseller) await boss.send(QUEUES.process, { itemId: item.id }, sendOpts);
       }
 
-      logger.info({ sourceId, received: items.length, capped: capped.length, created }, "ingested");
+      logger.info(
+        { sourceId, received: items.length, capped: capped.length, created, bestseller: isBestseller },
+        "ingested",
+      );
     }
   });
 }

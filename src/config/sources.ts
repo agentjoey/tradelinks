@@ -163,7 +163,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america", "europe", "southeast_asia", "middle_east", "latin_america", "australia_nz"],
     platforms: [],
     categoryHint: "trend",
-    note: "pytrends in Python service (T6)",
+    enabled: false,
+    note: "pytrends handled by the dedicated trends-tick worker (writes trend_snapshots directly); disabled in the crawl scheduler to avoid double-handling + Wire noise",
   },
   {
     id: "D02",
@@ -509,3 +510,13 @@ export const SOURCES: SourceConfig[] = [
 ];
 
 export const SOURCES_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
+
+/**
+ * Amazon best-seller sources. These produce hot-PRODUCT rows (dozens per crawl),
+ * not "event" news. We ingest them for the Trend Radar's Bestsellers board but
+ * DON'T run them through AI scoring / alert generation — otherwise every product
+ * floods the Wire as a low-value "trend" alert + burns AI tokens. See ingest.ts.
+ */
+export const BESTSELLER_SOURCE_IDS = new Set<string>([
+  "D02", "D03", "D04", "D05", "D06", "D30", "D31", "D32", "D33", "D34",
+]);

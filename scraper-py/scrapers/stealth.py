@@ -24,8 +24,11 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
     rank_sel = selectors.get("rank")  # optional (e.g. Amazon BSR badge)
 
     StealthyFetcher.adaptive = True  # Smart Element Tracking / auto-heal
+    # solve_cloudflare off: our scrapable sources (Amazon BSR) don't use
+    # Cloudflare, so enabling it only added latency + a noisy "No Cloudflare
+    # challenge found" ERROR log. Re-enable per-source if a CF-gated source is added.
     page = StealthyFetcher.fetch(
-        url, headless=True, solve_cloudflare=True, network_idle=True, timeout=90000
+        url, headless=True, network_idle=True, timeout=90000
     )
 
     items: list[dict[str, Any]] = []
