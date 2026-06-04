@@ -1,4 +1,5 @@
 import type { AlertRow } from "../lib/alerts";
+import type { Dict } from "../lib/i18n";
 
 const CAT_LABEL: Record<string, string> = {
   regulatory: "REGULATORY", platform_policy: "PLATFORM", logistics: "LOGISTICS",
@@ -9,19 +10,18 @@ const REGION_LABEL: Record<string, string> = {
   middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
 };
 
-// Seller-facing urgency tiers (replaces the opaque "2.0 Watch" / "1.0 Note").
-function urgency(s: number) {
-  if (s >= 4) return { label: "Act now", cls: "bg-urgent/15 text-urgent border-urgent/40", rail: "bg-urgent", dot: "bg-urgent" };
-  if (s >= 2) return { label: "Worth knowing", cls: "bg-watch/15 text-watch border-watch/40", rail: "bg-watch", dot: "bg-watch" };
-  return { label: "FYI", cls: "bg-faint/15 text-muted border-faint/40", rail: "bg-faint", dot: "bg-faint" };
+function urgency(s: number, t: Dict) {
+  if (s >= 4) return { label: t.tierAct, cls: "bg-urgent/15 text-urgent border-urgent/40", rail: "bg-urgent", dot: "bg-urgent" };
+  if (s >= 2) return { label: t.tierWatch, cls: "bg-watch/15 text-watch border-watch/40", rail: "bg-watch", dot: "bg-watch" };
+  return { label: t.tierFyi, cls: "bg-faint/15 text-muted border-faint/40", rail: "bg-faint", dot: "bg-faint" };
 }
 
 function hhmm(d: Date | null) {
   return new Date(d ?? Date.now()).toISOString().slice(11, 16) + "Z";
 }
 
-export function AlertCard({ a, index = 0 }: { a: AlertRow; index?: number }) {
-  const u = urgency(a.urgencyScore);
+export function AlertCard({ a, index = 0, t }: { a: AlertRow; index?: number; t: Dict }) {
+  const u = urgency(a.urgencyScore, t);
   const href = a.sourceUrls[0];
   const more = a.sourceUrls.length - 1;
   const img = a.imageUrl ? `/api/img-proxy?u=${encodeURIComponent(a.imageUrl)}` : null;
@@ -33,7 +33,6 @@ export function AlertCard({ a, index = 0 }: { a: AlertRow; index?: number }) {
     >
       <div className={`absolute left-0 top-0 h-full w-[3px] ${u.rail}`} />
       <div className="p-4 pl-5">
-        {/* meta row */}
         <div className="ticker mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.12em]">
           <span className={`inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 ${u.cls}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${u.dot}`} />
@@ -50,37 +49,41 @@ export function AlertCard({ a, index = 0 }: { a: AlertRow; index?: number }) {
           <span className="ml-auto text-faint">{hhmm(a.publishedAt ?? a.createdAt)}</span>
         </div>
 
-        {/* title = source link (T3) */}
-        {href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer"
-             className="group/title block font-display text-[19px] font-medium leading-snug text-paper transition-colors hover:text-signal">
-            {a.title}
-            <span className="ml-1 text-[13px] text-faint transition-colors group-hover/title:text-signal">↗</span>
-          </a>
-        ) : (
-          <h2 className="font-display text-[19px] font-medium leading-snug text-paper">{a.title}</h2>
-        )}
+        {/* layout: text + optional right-side thumbnail (image is constrained, never cropped to full width) */}
+        <div className={img ? "flex gap-4" : ""}>
+          <div className="min-w-0 flex-1">
+            {href ? (
+              <a href={href} target="_blank" rel="noopener noreferrer"
+                 className="group/title block font-display text-[19px] font-medium leading-snug text-paper transition-colors hover:text-signal">
+                {a.title}
+                <span className="ml-1 text-[13px] text-faint transition-colors group-hover/title:text-signal">↗</span>
+              </a>
+            ) : (
+              <h2 className="font-display text-[19px] font-medium leading-snug text-paper">{a.title}</h2>
+            )}
+            {a.summary && <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{a.summary}</p>}
+          </div>
 
-        {a.summary && <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{a.summary}</p>}
-
-        {/* og:image (T4) */}
-        {img && (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="mt-3 block overflow-hidden rounded border border-line">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img} alt="" loading="lazy"
-                 className="max-h-64 w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]" />
-          </a>
-        )}
+          {img && (
+            <a href={href} target="_blank" rel="noopener noreferrer"
+               className="hidden shrink-0 sm:block">
+              <span className="flex h-[88px] w-[132px] items-center justify-center overflow-hidden rounded border border-line bg-ink">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </span>
+            </a>
+          )}
+        </div>
 
         {a.actionRequired && (
           <div className="mt-3 flex gap-2 border-l border-signal/30 pl-3 text-[13px] leading-relaxed">
-            <span className="ticker shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-signal">act</span>
+            <span className="ticker shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-signal">{t.act}</span>
             <span className="text-paper/90">{a.actionRequired}</span>
           </div>
         )}
 
         {more > 0 && (
-          <div className="ticker mt-2 text-[10px] uppercase tracking-[0.12em] text-faint">+{more} more source{more > 1 ? "s" : ""}</div>
+          <div className="ticker mt-2 text-[10px] uppercase tracking-[0.12em] text-faint">{t.moreSources(more)}</div>
         )}
       </div>
     </article>

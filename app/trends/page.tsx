@@ -1,4 +1,5 @@
 import { getTrendsView } from "../../src/trends/db.js";
+import { getDict } from "../lib/i18n";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,23 +18,21 @@ function Bar({ v }: { v: number }) {
 }
 
 export default async function TrendsPage() {
+  const { t } = await getDict();
   const { signals, rising } = await getTrendsView();
 
   return (
     <div>
       <div className="mb-7">
-        <div className="ticker text-[10px] uppercase tracking-[0.2em] text-signal/80 mb-2">◆ Trend Radar</div>
+        <div className="ticker text-[10px] uppercase tracking-[0.2em] text-signal/80 mb-2">{t.radarEyebrow}</div>
         <h1 className="font-display text-4xl leading-[1.05] tracking-tight">
-          Cross-region <span className="italic text-signal">diffusion</span>.
+          {t.radarPre}<span className="italic text-signal">{t.radarEm}</span>.
         </h1>
-        <p className="mt-3 max-w-xl text-[15px] text-muted">
-          Where a product is already hot in mature markets but still lagging elsewhere —
-          an early window before it spreads. Signal, not prophecy.
-        </p>
+        <p className="mt-3 max-w-xl text-[15px] text-muted">{t.radarSub}</p>
       </div>
 
       {/* diffusion signals */}
-      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">diffusion signals</h2>
+      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.diffusionSignals}</h2>
       {signals.length === 0 ? (
         <p className="mb-8 text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
       ) : (
@@ -68,7 +67,7 @@ export default async function TrendsPage() {
       )}
 
       {/* rising board */}
-      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">rising now</h2>
+      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.risingNow}</h2>
       {rising.length === 0 ? (
         <p className="text-sm text-muted">No rising keywords captured yet.</p>
       ) : (

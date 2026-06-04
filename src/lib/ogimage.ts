@@ -4,7 +4,15 @@ import * as cheerio from "cheerio";
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-/** Parse og:image / twitter:image from page HTML. Pure, unit-tested. */
+// Generic site banners / logos / social-share placeholders — NOT article images.
+// Skip these so a card shows a real photo or no image (cleaner than GOV.UK banners).
+const GENERIC_IMAGE = /banner|opengraph|og[-_]?image|og[-_]?default|meta[-_%0-9 ]{0,4}tag|placeholder|default[-_]?(image|share|og)|share[-_]?image|social[-_]?(share|card|image)|site[-_]?image|logo|seal|favicon|sprite|govuk-opengraph/i;
+
+export function isGenericBanner(url: string): boolean {
+  return GENERIC_IMAGE.test(url);
+}
+
+/** Parse og:image / twitter:image from page HTML, skipping generic banners. Pure. */
 export function parseOgImage(html: string, baseUrl: string): string | null {
   const $ = cheerio.load(html);
   const cand =
@@ -17,7 +25,9 @@ export function parseOgImage(html: string, baseUrl: string): string | null {
   if (!cand) return null;
   try {
     const u = new URL(cand.trim(), baseUrl).toString();
-    return u.startsWith("http") ? u : null;
+    if (!u.startsWith("http")) return null;
+    if (isGenericBanner(u)) return null; // prefer no image over a generic banner
+    return u;
   } catch {
     return null;
   }
