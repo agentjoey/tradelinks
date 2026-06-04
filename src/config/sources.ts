@@ -196,6 +196,8 @@ export const SOURCES: SourceConfig[] = [
     url: "https://www.amazon.com/gp/movers-and-shakers/electronics/",
     adapter: "scrapling",
     scrapeMode: "stealth",
+    enabled: false,
+    note: "DISABLED 2026-06-05: page loads (correct title) but the product grid is NOT in the headless DOM (#gridItemRoot=0 vs 30 on bestsellers; scrolling doesn't reveal it) — Amazon serves Movers&Shakers a gridless/bot-gated render. Overlaps D02 (Electronics bestsellers). Revisit in Phase 2 with a non-headless/interaction approach if 'fastest risers' is wanted.",
     frequencyCron: "8 */12 * * *",
     language: "en",
     regions: ["north_america"],
@@ -507,6 +509,20 @@ export const SOURCES: SourceConfig[] = [
       titleSelector: "h2, h3, .headline",
       expectedSelectors: ["tiktok", "newsroom"],
     },
+  },
+  {
+    id: "A04",
+    name: "TikTok Shop (news)",
+    // Google News RSS aggregator — robust fill for the TikTok Shop gap; the
+    // official seller center is auth-walled and newsroom.tiktok.com is consumer PR.
+    url: "https://news.google.com/rss/search?q=%22TikTok+Shop%22+(seller+OR+policy+OR+commission+OR+fee)&hl=en-US&gl=US&ceid=US:en",
+    adapter: "rss",
+    frequencyCron: "0 */8 * * *",
+    language: "en",
+    regions: ["north_america", "europe", "southeast_asia"],
+    platforms: ["tiktok-shop"],
+    categoryHint: "platform_policy",
+    note: "verified 2026-06-05: valid RSS, strong TikTok Shop seller/policy coverage (commission changes, shipping policy, seller reactions). Items are news.google.com redirect links.",
   },
 
   // ---- Platform hot-product backlog (assessed 2026-06-04; need per-source

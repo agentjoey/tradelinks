@@ -39,13 +39,23 @@ const QUEUE_POLICY: PgBoss.Queue = {
 
 let _boss: PgBoss | null = null;
 
+/**
+ * `pg` (used by pg-boss) warns that `sslmode=require` will stop meaning
+ * verify-full in pg v9. Pin the current secure behavior explicitly so the
+ * warning goes away and the semantics don't silently change on upgrade.
+ */
+function pinSslMode(cs: string): string {
+  return /[?&]sslmode=/.test(cs) ? cs.replace(/([?&])sslmode=[^&]*/i, "$1sslmode=verify-full") : cs;
+}
+
 /** Lazily construct pg-boss so importing this module never requires env/DB. */
 export function getBoss(): PgBoss {
   if (!_boss) {
-    const cs = env.DIRECT_URL ?? env.DATABASE_URL;
-    if (!cs) {
+    const raw = env.DIRECT_URL ?? env.DATABASE_URL;
+    if (!raw) {
       throw new Error("pg-boss needs DIRECT_URL (or DATABASE_URL). See .env.example");
     }
+    const cs = pinSslMode(raw);
     // Maintenance every 5min + delete finished jobs after 30min so the job
     // tables can't bloat storage again (see QUEUE_POLICY).
     _boss = new PgBoss({ connectionString: cs, maintenanceIntervalMinutes: 5, deleteAfterMinutes: 30 });
