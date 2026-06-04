@@ -13,6 +13,7 @@ export const QUEUES = {
   process: "process-queue",
   score: "score-queue",
   trends: "trends-tick",
+  health: "source-health-tick",
 } as const;
 
 /** Per-queue defaults: 3 retries, 2s base delay, exponential backoff. */

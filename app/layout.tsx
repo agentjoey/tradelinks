@@ -56,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/" className="hover:text-paper transition-colors">{t.nav.wire}</Link>
                 <Link href="/trends" className="hover:text-paper transition-colors">{t.nav.radar}</Link>
                 <Link href="/admin/review" className="hover:text-paper transition-colors">{t.nav.desk}</Link>
+                <Link href="/admin/sources" className="hover:text-paper transition-colors">{t.nav.sources}</Link>
                 <a href="/feed.xml" className="hover:text-paper transition-colors">RSS</a>
                 <a href={`/api/lang?l=${other}`}
                    className="rounded-sm border border-line px-1.5 py-0.5 text-paper/70 hover:border-signal/40 hover:text-signal transition-colors">

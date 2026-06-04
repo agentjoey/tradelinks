@@ -44,6 +44,13 @@ async function slackSend(payload: object): Promise<"sent" | "skipped" | "failed"
   }
 }
 
+/** Operational alert (plain HTML text, Telegram only) — e.g. source-health regressions. */
+export async function sendOpsAlert(text: string): Promise<"sent" | "skipped" | "failed"> {
+  const r = await telegramSend(text);
+  logger.info({ telegram: r }, "ops alert sent");
+  return r;
+}
+
 /** Plain dispatch (no buttons) — e.g. published-alert broadcast. */
 export async function dispatchPush(a: PushAlert): Promise<PushResult> {
   const [telegram, slack] = await Promise.all([

@@ -211,3 +211,20 @@ model KeywordWatch {
   @@index([userId])
   @@map("keyword_watches")
 }
+
+// Daily per-source health snapshot — powers the /admin/sources dashboard's
+// trend lines + regression alerts. One row per source per day (small).
+model SourceHealthSnapshot {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  sourceId  String
+  score     Int
+  tier      String
+  items24h  Int
+  fails     Int
+  createdAt DateTime @default(now())
+
+  @@unique([date, sourceId])
+  @@index([sourceId, date])
+  @@map("source_health_snapshots")
+}

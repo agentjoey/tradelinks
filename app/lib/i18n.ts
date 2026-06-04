@@ -4,7 +4,7 @@ export type Lang = "en" | "zh";
 export const LANGS: Lang[] = ["en", "zh"];
 
 export interface Dict {
-  nav: { wire: string; radar: string; desk: string };
+  nav: { wire: string; radar: string; desk: string; sources: string };
   eyebrow: string;
   live: string;
   dispatches: string;
@@ -41,7 +41,7 @@ export interface Dict {
 }
 
 const en: Dict = {
-  nav: { wire: "Wire", radar: "Radar", desk: "Desk" },
+  nav: { wire: "Wire", radar: "Radar", desk: "Desk", sources: "Sources" },
   eyebrow: "◆ Intelligence Wire",
   live: "live",
   dispatches: "dispatches",
@@ -76,7 +76,7 @@ const en: Dict = {
 };
 
 const zh: Dict = {
-  nav: { wire: "情报流", radar: "趋势雷达", desk: "审核台" },
+  nav: { wire: "情报流", radar: "趋势雷达", desk: "审核台", sources: "信息源" },
   eyebrow: "◆ 跨境情报电台",
   live: "实时",
   dispatches: "条情报",
