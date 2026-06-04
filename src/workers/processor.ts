@@ -1,7 +1,7 @@
 import type PgBoss from "pg-boss";
 import { QUEUES, sendOpts } from "../queue/queues.js";
 import { prisma } from "../db/client.js";
-import { SOURCES_BY_ID } from "../config/sources.js";
+import { SOURCES_BY_ID, BESTSELLER_SOURCE_IDS } from "../config/sources.js";
 import { pickClient } from "../ai/client.js";
 import { runStage1, type Stage1Input } from "../ai/stage1.js";
 import { REGIONS } from "../ai/prompts/categorize.js";
@@ -22,6 +22,23 @@ export async function registerProcessorWorker(boss: PgBoss) {
       const { itemId } = job.data as { itemId: string };
       const item = await prisma.item.findUnique({ where: { id: itemId } });
       if (!item || item.status !== "raw") continue;
+
+      // Bestseller-source items never go through AI/alerts — they feed the Radar
+      // board only (see ingest.ts). Ingest normally skips the process-queue for
+      // them, so this guard just catches stragglers enqueued by an older worker.
+      if (BESTSELLER_SOURCE_IDS.has(item.sourceId)) {
+        const src = SOURCES_BY_ID.get(item.sourceId);
+        await prisma.item.update({
+          where: { id: itemId },
+          data: {
+            status: "processed",
+            regions: (src?.regions ?? []) as never[],
+            platforms: src?.platforms ?? [],
+            category: (src?.categoryHint ?? "trend") as never,
+          },
+        });
+        continue;
+      }
 
       const source = SOURCES_BY_ID.get(item.sourceId);
       const fallbackRegions = (source?.regions ?? []) as Region[];
