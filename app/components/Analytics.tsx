@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
 // GA4 measurement IDs are public (embedded in client JS); env override optional.
@@ -27,6 +28,9 @@ const COPY = {
 export function Analytics() {
   const [consent, setConsent] = useState<"granted" | "denied" | null | undefined>(undefined);
   const [lang, setLang] = useState<"en" | "zh">("en");
+  const pathname = usePathname();
+  // Don't track internal/admin surfaces as traffic.
+  const tracked = !pathname?.startsWith("/admin") && !pathname?.startsWith("/auth");
 
   useEffect(() => {
     const v = localStorage.getItem(KEY);
@@ -42,7 +46,7 @@ export function Analytics() {
   const c = COPY[lang];
   return (
     <>
-      {consent === "granted" && GA_ID ? <GoogleAnalytics gaId={GA_ID} /> : null}
+      {consent === "granted" && GA_ID && tracked ? <GoogleAnalytics gaId={GA_ID} /> : null}
       {consent === null ? (
         <div className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-[44rem] flex-col gap-3 rounded-lg border border-line bg-surface/95 p-3.5 shadow-lg backdrop-blur sm:flex-row sm:items-center">
           <p className="flex-1 text-[12px] leading-relaxed text-muted">{c.msg}</p>
