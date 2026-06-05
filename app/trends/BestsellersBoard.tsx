@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { BestsellerRow } from "../../src/trends/db";
+import { track } from "../lib/track";
 
 const REGION_LABEL: Record<string, string> = {
   north_america: "NA", europe: "EU", southeast_asia: "SEA",
@@ -27,6 +28,7 @@ function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
       href={b.url}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => track("bestseller_open", { product_title: b.title, product_region: b.region, product_category: b.category, product_rank: b.rank ?? undefined })}
       className="group flex gap-4 rounded-lg border border-line bg-surface/70 p-3.5 transition-colors hover:border-signal/40"
     >
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md bg-paper/[0.05]">
@@ -74,6 +76,7 @@ export function BestsellersBoard({ items }: { items: BestsellerRow[] }) {
   }, [items]);
 
   const [region, setRegion] = useState<string>("all");
+  const pickRegion = (r: string) => { setRegion(r); track("region_filter", { filter_region: r }); };
   const filtered = region === "all" ? items : items.filter((i) => i.region === region);
 
   const byCat = useMemo(() => {
@@ -86,9 +89,9 @@ export function BestsellersBoard({ items }: { items: BestsellerRow[] }) {
   return (
     <div>
       <div className="mb-5 flex flex-wrap gap-2">
-        <Chip active={region === "all"} onClick={() => setRegion("all")} label="All regions" count={items.length} />
+        <Chip active={region === "all"} onClick={() => pickRegion("all")} label="All regions" count={items.length} />
         {regions.map(({ region: r, count }) => (
-          <Chip key={r} active={region === r} onClick={() => setRegion(r)} label={REGION_FULL[r] ?? r} count={count} />
+          <Chip key={r} active={region === r} onClick={() => pickRegion(r)} label={REGION_FULL[r] ?? r} count={count} />
         ))}
       </div>
 

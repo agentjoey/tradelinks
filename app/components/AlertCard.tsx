@@ -1,5 +1,11 @@
 import type { AlertRow } from "../lib/alerts";
 import type { Dict } from "../lib/i18n";
+import { TrackedLink } from "./TrackedLink";
+
+function domainOf(url?: string): string | undefined {
+  if (!url) return undefined;
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return undefined; }
+}
 
 const CAT_LABEL: Record<string, string> = {
   regulatory: "REGULATORY", platform_policy: "PLATFORM", logistics: "LOGISTICS",
@@ -25,6 +31,12 @@ export function AlertCard({ a, index = 0, t }: { a: AlertRow; index?: number; t:
   const href = a.sourceUrls[0];
   const more = a.sourceUrls.length - 1;
   const img = a.imageUrl ? `/api/img-proxy?u=${encodeURIComponent(a.imageUrl)}` : null;
+  const ev = {
+    alert_title: a.title,
+    alert_category: a.category,
+    alert_region: a.regions[0],
+    source: domainOf(href),
+  };
 
   return (
     <article
@@ -53,25 +65,24 @@ export function AlertCard({ a, index = 0, t }: { a: AlertRow; index?: number; t:
         <div className={img ? "flex gap-4" : ""}>
           <div className="min-w-0 flex-1">
             {href ? (
-              <a href={href} target="_blank" rel="noopener noreferrer"
+              <TrackedLink href={href} event="alert_open" params={ev}
                  className="group/title block font-display text-[19px] font-medium leading-snug text-paper transition-colors hover:text-signal">
                 {a.title}
                 <span className="ml-1 text-[13px] text-faint transition-colors group-hover/title:text-signal">↗</span>
-              </a>
+              </TrackedLink>
             ) : (
               <h2 className="font-display text-[19px] font-medium leading-snug text-paper">{a.title}</h2>
             )}
             {a.summary && <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{a.summary}</p>}
           </div>
 
-          {img && (
-            <a href={href} target="_blank" rel="noopener noreferrer"
-               className="hidden shrink-0 sm:block">
+          {img && href && (
+            <TrackedLink href={href} event="alert_open" params={ev} className="hidden shrink-0 sm:block">
               <span className="flex h-[88px] w-[132px] items-center justify-center overflow-hidden rounded border border-line bg-ink">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img} alt="" loading="lazy" className="h-full w-full object-cover" />
               </span>
-            </a>
+            </TrackedLink>
           )}
         </div>
 
