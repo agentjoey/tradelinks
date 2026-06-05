@@ -648,9 +648,27 @@ export const SOURCES: SourceConfig[] = [
     enabled: false,
     note: "unreachable from current env (conn 000 — geo/anti-bot). ME hot products currently covered by Amazon.ae (D05). Revisit with regional proxy.",
   },
+
+  // ---- X (Twitter) social signal ----
+  {
+    id: "X01",
+    name: "Social — X viral",
+    url: "https://api.x.com/2/tweets/search/recent",
+    adapter: "fetch", // placeholder; the dedicated x-tick worker calls the X API
+    frequencyCron: "0 3 * * *",
+    language: "en",
+    regions: [],
+    platforms: ["x"],
+    categoryHint: "trend",
+    enabled: false,
+    note: "X signal handled by the dedicated x-tick worker — two Radar-only tracks (viral products + cross-border e-commerce hot topics), discriminated by rawContent.kind. Writes X01 items directly; disabled in the crawl scheduler to avoid double-handling + Wire noise. Gated at runtime by X_ENABLED + X_BEARER_TOKEN; engagement floor = X_MIN_LIKES.",
+  },
 ];
 
 export const SOURCES_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
+
+/** The single X (Twitter) viral-products source id (Radar-only, see workers/x.ts). */
+export const X_SOURCE_ID = "X01";
 
 /**
  * Amazon best-seller sources. These produce hot-PRODUCT rows (dozens per crawl),

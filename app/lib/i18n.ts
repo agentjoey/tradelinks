@@ -45,6 +45,12 @@ export interface Dict {
   kpiRegions: string;
   kpiFeeds: string;
   kpiSignals: string;
+  viralX: string;
+  viralXSub: string;
+  viralXEmpty: string;
+  hotX: string;
+  hotXSub: string;
+  hotXEmpty: string;
 }
 
 const en: Dict = {
@@ -87,6 +93,12 @@ const en: Dict = {
   kpiRegions: "Regions",
   kpiFeeds: "Category feeds",
   kpiSignals: "Diffusion signals",
+  viralX: "viral on X",
+  viralXSub: "Consumer products going viral on X right now — an early social signal, often ahead of the Amazon best-seller charts.",
+  viralXEmpty: "No X viral signal yet — enable the X source (X_ENABLED) to start.",
+  hotX: "cross-border hot on X",
+  hotXSub: "What cross-border e-commerce sellers are talking about on X — platform rule changes, customs/tariffs, logistics and marketplace moves.",
+  hotXEmpty: "No cross-border topics yet — enable the X source (X_ENABLED) to start.",
 };
 
 const zh: Dict = {
@@ -129,6 +141,12 @@ const zh: Dict = {
   kpiRegions: "覆盖区域",
   kpiFeeds: "品类信息源",
   kpiSignals: "扩散信号",
+  viralX: "X 爆品信号",
+  viralXSub: "正在 X（推特）上走红的消费品 —— 早期社交信号，常先于亚马逊爆品榜出现。",
+  viralXEmpty: "暂无 X 爆品信号 —— 开启 X 信息源（X_ENABLED）后开始采集。",
+  hotX: "X 跨境热点",
+  hotXSub: "跨境电商卖家正在 X 上热议的话题 —— 平台规则变动、关税清关、物流与平台动向。",
+  hotXEmpty: "暂无跨境热点 —— 开启 X 信息源（X_ENABLED）后开始采集。",
 };
 
 const DICTS: Record<Lang, Dict> = { en, zh };

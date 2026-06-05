@@ -14,6 +14,20 @@ const EnvSchema = z.object({
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
   // cap items processed per crawl (newest-first) — bounds AI cost on big feeds
   MAX_ITEMS_PER_CRAWL: z.coerce.number().int().positive().default(12),
+  // --- X (Twitter) viral-products signal (Radar only) ---
+  // app-only Bearer token for GET /2/tweets/search/recent. X is pay-per-read
+  // (~$0.005/post), so X_MAX_READS_PER_DAY is a HARD cost cap (≤100 → ≤$0.50/day).
+  // X_ENABLED gates the daily worker off until a token is set (zero cost when off).
+  X_BEARER_TOKEN: z.string().optional(),
+  X_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  X_MAX_READS_PER_DAY: z.coerce.number().int().positive().default(100),
+  // engagement pre-filter floor (likes). Spec default 50, but search/recent's
+  // 7-day index surfaces low-engagement tweets even under relevancy sort, so
+  // this is env-tunable to dial signal vs. coverage without a redeploy.
+  X_MIN_LIKES: z.coerce.number().int().nonnegative().default(50),
   RESEND_API_KEY: z.string().optional(), // daily digest email (Sprint 003 T3)
   FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
   TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)

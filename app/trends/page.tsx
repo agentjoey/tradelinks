@@ -1,4 +1,5 @@
 import { getTrendsView, getBestsellers, getRadarKpis } from "../../src/trends/db.js";
+import { getViralX, getHotTopicsX } from "../../src/social/db.js";
 import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
 import { getDict } from "../lib/i18n";
 import { BestsellersBoard } from "./BestsellersBoard";
@@ -30,7 +31,13 @@ function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }
 
 export default async function TrendsPage() {
   const { t } = await getDict();
-  const [{ signals }, bestsellers, kpis] = await Promise.all([getTrendsView(), getBestsellers(), getRadarKpis()]);
+  const [{ signals }, bestsellers, kpis, viralX, hotX] = await Promise.all([
+    getTrendsView(),
+    getBestsellers(),
+    getRadarKpis(),
+    getViralX(),
+    getHotTopicsX(),
+  ]);
 
   // KPI derivations from the bestseller rows
   const regionCounts = new Map<string, number>();
@@ -65,6 +72,73 @@ export default async function TrendsPage() {
           <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
         ) : (
           <BestsellersBoard items={bestsellers} />
+        )}
+      </div>
+
+      {/* viral on X — social product signal (Radar-only) */}
+      <div className="mb-12">
+        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.viralX}</h2>
+        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.viralXSub}</p>
+        {viralX.length === 0 ? (
+          <p className="text-sm text-muted">{t.viralXEmpty}</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {viralX.map((x, i) => (
+              <a
+                key={x.link + i}
+                href={x.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="animate-rise group flex gap-3 rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4 transition-colors hover:border-l-signal hover:bg-surface"
+                style={{ animationDelay: `${i * 45}ms` }}
+              >
+                {x.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={x.imageUrl} alt="" className="h-14 w-14 flex-none rounded-md object-cover" loading="lazy" />
+                )}
+                <div className="min-w-0">
+                  <div className="font-display text-[15px] leading-tight text-paper group-hover:text-signal">{x.product}</div>
+                  {x.whyViral && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyViral}</p>}
+                  <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
+                    <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
+                    <span>🔁 {x.retweets.toLocaleString()}</span>
+                    <span className="text-faint/70">X</span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* cross-border e-commerce hot topics on X — separate track */}
+      <div className="mb-12">
+        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.hotX}</h2>
+        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.hotXSub}</p>
+        {hotX.length === 0 ? (
+          <p className="text-sm text-muted">{t.hotXEmpty}</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {hotX.map((x, i) => (
+              <a
+                key={x.link + i}
+                href={x.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="animate-rise group rounded-lg border border-line border-l-2 border-l-calm bg-surface/70 p-4 transition-colors hover:bg-surface"
+                style={{ animationDelay: `${i * 45}ms` }}
+              >
+                <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.1em] text-calm">{x.category}</div>
+                <div className="font-display text-[15px] leading-tight text-paper group-hover:text-calm">{x.headline}</div>
+                {x.whyHot && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyHot}</p>}
+                <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
+                  <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
+                  <span>🔁 {x.retweets.toLocaleString()}</span>
+                  <span className="text-faint/70">X</span>
+                </div>
+              </a>
+            ))}
+          </div>
         )}
       </div>
 
