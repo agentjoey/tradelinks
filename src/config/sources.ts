@@ -275,6 +275,33 @@ export const SOURCES: SourceConfig[] = [
     categoryHint: "trend" as Category,
     scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
   })),
+  // Regional best-seller categories — broaden non-US coverage so the Radar isn't
+  // NA-only. Slugs verified per-domain 2026-06-05 (only the ones that return 30
+  // items; some slugs differ by locale). 12h, minutes staggered vs D02–D34.
+  ...(
+    [
+      ["D40", "europe", "amazon.co.uk", "UK", "home-garden", "Home & Garden", 14],
+      ["D41", "europe", "amazon.co.uk", "UK", "kitchen", "Kitchen", 20],
+      ["D42", "europe", "amazon.co.uk", "UK", "beauty", "Beauty", 28],
+      ["D50", "middle_east", "amazon.ae", "UAE", "kitchen", "Kitchen", 36],
+      ["D51", "middle_east", "amazon.ae", "UAE", "beauty", "Beauty", 44],
+      ["D60", "australia_nz", "amazon.com.au", "AU", "kitchen", "Kitchen", 52],
+      ["D61", "australia_nz", "amazon.com.au", "AU", "beauty", "Beauty", 6],
+      ["D62", "australia_nz", "amazon.com.au", "AU", "sporting-goods", "Sports & Outdoors", 10],
+    ] as const
+  ).map(([id, region, domain, loc, slug, label, min]) => ({
+    id,
+    name: `Amazon Best Sellers ${loc} (${label})`,
+    url: `https://www.${domain}/gp/bestsellers/${slug}/`,
+    adapter: "scrapling" as const,
+    scrapeMode: "stealth" as const,
+    frequencyCron: `${min} */12 * * *`,
+    language: "en",
+    regions: [region] as Region[],
+    platforms: ["amazon"],
+    categoryHint: "trend" as Category,
+    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
+  })),
   {
     id: "D07",
     name: "TikTok Creative Center",
@@ -595,4 +622,5 @@ export const SOURCES_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
  */
 export const BESTSELLER_SOURCE_IDS = new Set<string>([
   "D02", "D03", "D04", "D05", "D06", "D30", "D31", "D32", "D33", "D34",
+  "D40", "D41", "D42", "D50", "D51", "D60", "D61", "D62",
 ]);
