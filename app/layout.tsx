@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Fraunces, Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { getDict } from "./lib/i18n";
+import { Analytics } from "./components/Analytics";
 import "./globals.css";
 
 const display = Fraunces({
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <p className="ticker text-[10px] uppercase tracking-[0.2em] text-faint">{t.footer}</p>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   );

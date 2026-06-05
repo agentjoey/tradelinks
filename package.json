@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@neondatabase/auth": "0.4.1-beta",
+    "@next/third-parties": "^16.2.7",
     "@prisma/client": "^6.2.1",
     "cheerio": "^1.0.0",
     "cron-parser": "^4.9.0",
