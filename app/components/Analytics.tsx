@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 
 // GA4 measurement IDs are public; `||` so an empty env still falls back.
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-4E8B257NHH";
@@ -40,7 +39,6 @@ function loadGtag() {
 export function Analytics() {
   const [decided, setDecided] = useState<boolean | null>(null);
   const [lang, setLang] = useState<"en" | "zh">("en");
-  const pathname = usePathname();
 
   useEffect(() => {
     setLang(document.cookie.includes("tl_lang=zh") ? "zh" : "en");
@@ -49,12 +47,9 @@ export function Analytics() {
     setDecided(v === "granted" || v === "denied");
   }, []);
 
-  // Subsequent client-route pageviews (admin/auth excluded; first view sent by config).
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.gtag !== "function") return;
-    if (pathname?.startsWith("/admin") || pathname?.startsWith("/auth")) return;
-    window.gtag("event", "page_view", { page_path: pathname, page_location: window.location.href });
-  }, [pathname]);
+  // Note: SPA route-change pageviews are handled by GA4 Enhanced Measurement
+  // ("page changes based on browser history"). We do NOT send a manual page_view
+  // per route here, or in-app navigations would be double-counted.
 
   const accept = () => { localStorage.setItem(KEY, "granted"); loadGtag(); setDecided(true); };
   const decline = () => { localStorage.setItem(KEY, "denied"); setDecided(true); };
