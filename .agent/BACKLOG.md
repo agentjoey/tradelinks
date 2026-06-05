@@ -33,6 +33,13 @@
 - [ ] [EP-009] [LOW] 关键词监控扩展（Team：20 个关键词）
 - [ ] [EP-007] [LOW] WhatsApp Business 推送
 
+## 🔭 外部趋势信号（2026-06-05 评估后）
+
+- [~] [EP-004] X 爆品社媒信号 — **spec 已写、待实现**（$0.5/天上限，Radar「Viral on X」）→ `docs/superpowers/specs/2026-06-05-x-viral-products-design.md`
+- [ ] [EP-004] [MED] **TikTok 病毒商品信号** — on-hold：需付费第三方 API（EnsembleData / TikAPI，~$50–300/mo），Phase 2，待选供应商+预算（爆品真正引擎，门槛最高）
+- [ ] [EP-004] [MED] **Exploding Topics 趋势话题** — on-hold：免费页仅"橱窗"（实测样本太小），价值在 **$99/mo Investor API**；待付费决策
+- [x] ImportGenius / TradeKey — 已评估：ImportGenius 高价值但是独立付费"贸易流情报"模块(新数据模型，Phase2+)；TradeKey 数据质量差，**跳过**
+
 ## 📋 研究向（未决策）
 
 - [ ] 是否接入 PACER 侵权预警（Phase 2 高门槛功能，需付费账号+解析）
