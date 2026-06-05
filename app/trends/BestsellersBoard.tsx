@@ -27,19 +27,19 @@ function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
       href={b.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex gap-3 rounded-md border border-line bg-surface/70 p-2.5 transition-colors hover:border-signal/40"
+      className="group flex gap-4 rounded-lg border border-line bg-surface/70 p-3.5 transition-colors hover:border-signal/40"
     >
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-paper/[0.05]">
+      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md bg-paper/[0.05]">
         <Img src={b.imageUrl} alt={b.title} />
         {b.rank != null && (
-          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-2 py-1 text-[11px] font-semibold text-ink">
             #{b.rank}
           </span>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[13px] leading-snug text-paper group-hover:text-signal">{b.title}</p>
-        <div className="ticker mt-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.1em]">
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+        <p className="line-clamp-3 text-[14px] leading-snug text-paper group-hover:text-signal">{b.title}</p>
+        <div className="ticker mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.1em]">
           {b.rank != null && <span className="text-signal">BSR&nbsp;#{b.rank}</span>}
           {showRegion && (
             <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">{REGION_LABEL[b.region] ?? b.region}</span>
@@ -99,10 +99,10 @@ export function BestsellersBoard({ items }: { items: BestsellerRow[] }) {
           {byCat.map(([category, rows]) => (
             <div key={category}>
               <h3 className="font-display mb-3 text-[17px] text-paper">
-                {category} <span className="ticker text-[11px] text-faint">{rows.length}</span>
+                {category} <span className="ticker text-[11px] text-faint">top {Math.min(12, rows.length)}</span>
               </h3>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {rows.map((b, i) => (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {rows.slice(0, 12).map((b, i) => (
                   <Card key={b.url + i} b={b} showRegion={region === "all"} />
                 ))}
               </div>
