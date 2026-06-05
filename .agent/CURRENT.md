@@ -37,8 +37,9 @@ Sprint File:    .agent/sprints/sprint-005.md
 - 工具脚本：`scripts/{health,db-size,db-cleanup,dedup-amazon}.ts`
 
 ## Next TODOs（优先级）
-1. **F01/A01 恢复验证**（00:00/06:00 UTC 抓取后翻 🟢；已排期自动核查）+ scraper 唤醒确认
-2. **/admin/* 加鉴权**（基于 **Neon Auth / Stack Auth** + admin 邮箱白名单 + middleware；方案见下/ADR-006 待写）
+1. ✅ **F01/A01 恢复验证**：scraper 00:00 UTC 唤醒正常,F01 已恢复(选择器修复生效);A01 06:00 UTC cron(低频)
+2. ✅ **/admin/* 鉴权已上线**（ADR-006，Neon Auth=Better Auth + Google OAuth + `ADMIN_EMAILS` 白名单 + 邀请制）
+   - 踩坑沉淀（**关键**）：① 自定义域名必须加进 Neon Auth **trusted_origins**（否则 CSRF 403）② 会话 cookie 必须 **`sameSite:"lax"`**（默认 strict 会在 OAuth 跨站跳回时丢 cookie→死循环）③ **必须挂 `auth.middleware()`**(scoped `/admin`)来校验/刷新会话并喂给 server component,否则 session 建了但页面读不到→循环 ④ Vercel 偶发漏触发 webhook→空提交重推或手动 Redeploy
 2b. **UI 深度优化**：
    - ✅ Wire 时间线改为「最近1h/4h/8h/今天/昨天/日期」递进分桶（2026-06-05）
    - 待办：移动端布局与卡片密度、urgency 视觉层级、Radar 爆品卡（缩略图/榜位/区域 chip）、骨架屏/加载态、空态与错误态、字体与间距打磨、暗色对比度可达性
