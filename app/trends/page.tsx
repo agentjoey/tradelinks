@@ -1,4 +1,5 @@
-import { getTrendsView, getBestsellers } from "../../src/trends/db.js";
+import { getTrendsView, getBestsellers, getRadarKpis } from "../../src/trends/db.js";
+import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
 import { getDict } from "../lib/i18n";
 import { BestsellersBoard } from "./BestsellersBoard";
 
@@ -9,18 +10,34 @@ const REGION_LABEL: Record<string, string> = {
   north_america: "NA", europe: "EU", southeast_asia: "SEA",
   middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
 };
+const REGION_ORDER = ["north_america", "europe", "middle_east", "australia_nz", "southeast_asia", "latin_america"];
 
-function Bar({ v }: { v: number }) {
+function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }) {
   return (
-    <div className="h-1 w-full overflow-hidden rounded-full bg-paper/[0.07]">
-      <div className="h-full bg-signal" style={{ width: `${Math.round(v * 100)}%` }} />
+    <div className="rounded-lg border border-line bg-surface/70 p-4">
+      <div className="font-display text-3xl leading-none text-paper">{n}</div>
+      <div className="ticker mt-1.5 text-[10px] uppercase tracking-[0.12em] text-faint">{label}</div>
+      {spark && spark.length > 0 && (
+        <div className="mt-2 flex h-4 items-end gap-1">
+          {spark.map((v, i) => (
+            <div key={i} className="flex-1 rounded-sm bg-signal/50" style={{ height: `${Math.max(15, v * 100)}%` }} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export default async function TrendsPage() {
   const { t } = await getDict();
-  const [{ signals, rising }, bestsellers] = await Promise.all([getTrendsView(), getBestsellers()]);
+  const [{ signals }, bestsellers, kpis] = await Promise.all([getTrendsView(), getBestsellers(), getRadarKpis()]);
+
+  // KPI derivations from the bestseller rows
+  const regionCounts = new Map<string, number>();
+  for (const b of bestsellers) regionCounts.set(b.region, (regionCounts.get(b.region) ?? 0) + 1);
+  const maxR = Math.max(1, ...regionCounts.values());
+  const regionMix = REGION_ORDER.filter((r) => regionCounts.has(r)).map((r) => regionCounts.get(r)! / maxR);
+  const feeds = SOURCES.filter((s) => BESTSELLER_SOURCE_IDS.has(s.id) && s.enabled !== false).length;
 
   return (
     <div>
@@ -32,17 +49,18 @@ export default async function TrendsPage() {
         <p className="mt-3 max-w-xl text-[15px] text-muted">{t.radarSub}</p>
       </div>
 
-      {/* bestsellers board — richest data, surfaced first */}
+      {/* KPI strip */}
+      <div className="mb-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Kpi n={kpis.products} label={t.kpiProducts} />
+        <Kpi n={regionCounts.size} label={t.kpiRegions} spark={regionMix} />
+        <Kpi n={feeds} label={t.kpiFeeds} />
+        <Kpi n={kpis.signals} label={t.kpiSignals} />
+      </div>
+
+      {/* bestsellers board (region chips + category cards live inside) */}
       <div className="mb-12">
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <div>
-            <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
-            <p className="max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
-          </div>
-          {bestsellers.length > 0 && (
-            <span className="ticker shrink-0 text-[11px] text-faint">{bestsellers.length} tracked</span>
-          )}
-        </div>
+        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
+        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
         {bestsellers.length === 0 ? (
           <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
         ) : (
@@ -50,25 +68,23 @@ export default async function TrendsPage() {
         )}
       </div>
 
-      {/* diffusion signals */}
+      {/* cross-region diffusion — analytics cards */}
       <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.diffusionSignals}</h2>
       {signals.length === 0 ? (
-        <p className="mb-8 text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
+        <p className="text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
       ) : (
-        <div className="mb-10 space-y-2.5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {signals.map((s, i) => (
             <article
               key={s.keyword + i}
-              className="animate-rise rounded-md border border-line bg-surface/70 p-4"
+              className="animate-rise rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4"
               style={{ animationDelay: `${i * 45}ms` }}
             >
-              <div className="flex items-center justify-between gap-4">
-                <div className="font-display text-[19px] text-paper">{s.keyword}</div>
-                <span className="ticker text-[11px] text-signal">
-                  {Math.round(s.confidence * 100)}% conf
-                </span>
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="font-display text-[18px] text-paper">{s.keyword}</div>
+                <span className="ticker text-[11px] text-signal">{Math.round(s.confidence * 100)}%</span>
               </div>
-              <div className="ticker mt-2 flex items-center gap-2 text-[12px] uppercase tracking-[0.1em]">
+              <div className="ticker mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.1em]">
                 <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">
                   {REGION_LABEL[s.originRegion] ?? s.originRegion}
                 </span>
@@ -79,27 +95,8 @@ export default async function TrendsPage() {
                   </span>
                 ))}
               </div>
-              <p className="mt-2 text-[13px] leading-relaxed text-muted">{s.signalBasis}</p>
+              <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-muted">{s.signalBasis}</p>
             </article>
-          ))}
-        </div>
-      )}
-
-      {/* rising board */}
-      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.risingNow}</h2>
-      {rising.length === 0 ? (
-        <p className="text-sm text-muted">No rising keywords captured yet.</p>
-      ) : (
-        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-          {rising.map((r, i) => (
-            <div key={r.keyword + r.region + i} className="flex items-center gap-3">
-              <span className="ticker w-10 text-right text-[11px] text-muted">
-                {REGION_LABEL[r.region] ?? r.region}
-              </span>
-              <span className="w-36 truncate text-[14px] text-paper">{r.keyword}</span>
-              <div className="flex-1"><Bar v={r.signalStrength} /></div>
-              <span className="ticker w-8 text-right text-[11px] text-signal">{r.level}</span>
-            </div>
           ))}
         </div>
       )}

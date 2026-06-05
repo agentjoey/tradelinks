@@ -45,6 +45,17 @@ export async function replaceSignals(signals: DiffusionSignal[]): Promise<void> 
   }
 }
 
+/** Headline counts for the Radar KPI strip (region mix is derived client-side
+ * from getBestsellers rows). */
+export async function getRadarKpis(): Promise<{ products: number; signals: number }> {
+  const ids = [...BESTSELLER_SOURCE_IDS];
+  const [products, signals] = await Promise.all([
+    prisma.item.count({ where: { sourceId: { in: ids }, crawledAt: { gte: new Date(Date.now() - 7 * 864e5) } } }),
+    prisma.trendSignal.count(),
+  ]);
+  return { products, signals };
+}
+
 export interface TrendsView {
   signals: {
     keyword: string;

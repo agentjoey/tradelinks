@@ -41,6 +41,10 @@ export interface Dict {
   bestsellersSub: string;
   bestsellersEmpty: string;
   bestsellersTeaser: string;
+  kpiProducts: string;
+  kpiRegions: string;
+  kpiFeeds: string;
+  kpiSignals: string;
 }
 
 const en: Dict = {
@@ -79,6 +83,10 @@ const en: Dict = {
   bestsellersSub: "Top products surfacing in Amazon best-seller grids across regions — raw hot-product signal, by category.",
   bestsellersEmpty: "No bestseller data yet — run the Amazon scraper.",
   bestsellersTeaser: "Hot products across 6 regions — open the Bestsellers Radar",
+  kpiProducts: "Products tracked",
+  kpiRegions: "Regions",
+  kpiFeeds: "Category feeds",
+  kpiSignals: "Diffusion signals",
 };
 
 const zh: Dict = {
@@ -117,6 +125,10 @@ const zh: Dict = {
   bestsellersSub: "各区域亚马逊畅销榜中正在涌现的热门产品 —— 按品类划分的原始爆品信号。",
   bestsellersEmpty: "暂无热销数据 —— 请运行亚马逊采集。",
   bestsellersTeaser: "六大区域爆品榜 —— 打开趋势雷达",
+  kpiProducts: "在追踪商品",
+  kpiRegions: "覆盖区域",
+  kpiFeeds: "品类信息源",
+  kpiSignals: "扩散信号",
 };
 
 const DICTS: Record<Lang, Dict> = { en, zh };
