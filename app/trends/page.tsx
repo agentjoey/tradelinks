@@ -1,5 +1,6 @@
-import { getTrendsView, getBestsellers, type BestsellerRow } from "../../src/trends/db.js";
+import { getTrendsView, getBestsellers } from "../../src/trends/db.js";
 import { getDict } from "../lib/i18n";
+import { BestsellersBoard } from "./BestsellersBoard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,42 +18,9 @@ function Bar({ v }: { v: number }) {
   );
 }
 
-function BestsellerItem({ b }: { b: BestsellerRow }) {
-  return (
-    <a
-      href={b.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-3 rounded-md border border-line bg-surface/70 p-2.5 transition-colors hover:border-signal/40"
-    >
-      <span className="ticker w-7 shrink-0 text-right text-[12px] text-signal">
-        {b.rank != null ? `#${b.rank}` : "•"}
-      </span>
-      {b.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={b.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded bg-paper/[0.04] object-contain" />
-      ) : (
-        <span className="h-11 w-11 shrink-0 rounded bg-paper/[0.04]" />
-      )}
-      <span className="line-clamp-2 flex-1 text-[13px] leading-snug text-paper group-hover:text-signal">{b.title}</span>
-      <span className="ticker shrink-0 rounded-sm bg-calm/15 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.1em] text-calm">
-        {REGION_LABEL[b.region] ?? b.region}
-      </span>
-    </a>
-  );
-}
-
 export default async function TrendsPage() {
   const { t } = await getDict();
   const [{ signals, rising }, bestsellers] = await Promise.all([getTrendsView(), getBestsellers()]);
-
-  // group bestsellers by category label for the board
-  const byCategory = new Map<string, BestsellerRow[]>();
-  for (const b of bestsellers) {
-    const arr = byCategory.get(b.category) ?? [];
-    arr.push(b);
-    byCategory.set(b.category, arr);
-  }
 
   return (
     <div>
@@ -78,18 +46,7 @@ export default async function TrendsPage() {
         {bestsellers.length === 0 ? (
           <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
         ) : (
-          <div className="space-y-8">
-            {[...byCategory.entries()].map(([category, rows]) => (
-              <div key={category}>
-                <h3 className="font-display mb-3 text-[17px] text-paper">{category}</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {rows.map((b, i) => (
-                    <BestsellerItem key={b.url + i} b={b} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <BestsellersBoard items={bestsellers} />
         )}
       </div>
 

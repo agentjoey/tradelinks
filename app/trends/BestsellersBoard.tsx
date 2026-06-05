@@ -1,0 +1,115 @@
+"use client";
+import { useMemo, useState } from "react";
+import type { BestsellerRow } from "../../src/trends/db";
+
+const REGION_LABEL: Record<string, string> = {
+  north_america: "NA", europe: "EU", southeast_asia: "SEA",
+  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
+};
+const REGION_FULL: Record<string, string> = {
+  north_america: "North America", europe: "Europe", southeast_asia: "SE Asia",
+  middle_east: "Middle East", latin_america: "Latin America", australia_nz: "Australia / NZ",
+};
+const REGION_ORDER = ["north_america", "europe", "middle_east", "australia_nz", "southeast_asia", "latin_america"];
+
+function Img({ src, alt }: { src: string | null; alt: string }) {
+  const [err, setErr] = useState(false);
+  if (!src || err) {
+    return <span className="flex h-full w-full items-center justify-center text-[9px] uppercase tracking-wider text-faint">no image</span>;
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} loading="lazy" referrerPolicy="no-referrer" onError={() => setErr(true)} className="h-full w-full object-contain" />;
+}
+
+function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
+  return (
+    <a
+      href={b.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex gap-3 rounded-md border border-line bg-surface/70 p-2.5 transition-colors hover:border-signal/40"
+    >
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-paper/[0.05]">
+        <Img src={b.imageUrl} alt={b.title} />
+        {b.rank != null && (
+          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-ink">
+            #{b.rank}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-2 text-[13px] leading-snug text-paper group-hover:text-signal">{b.title}</p>
+        <div className="ticker mt-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.1em]">
+          {b.rank != null && <span className="text-signal">BSR&nbsp;#{b.rank}</span>}
+          {showRegion && (
+            <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">{REGION_LABEL[b.region] ?? b.region}</span>
+          )}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function Chip({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`ticker inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] transition-colors ${
+        active
+          ? "border-signal/60 bg-signal/15 text-signal"
+          : "border-line bg-surface/60 text-muted hover:border-signal/40 hover:text-paper"
+      }`}
+    >
+      <span>{label}</span>
+      <span className="text-[10px] opacity-70">{count}</span>
+    </button>
+  );
+}
+
+export function BestsellersBoard({ items }: { items: BestsellerRow[] }) {
+  const regions = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const it of items) c.set(it.region, (c.get(it.region) ?? 0) + 1);
+    return REGION_ORDER.filter((r) => c.has(r)).map((r) => ({ region: r, count: c.get(r)! }));
+  }, [items]);
+
+  const [region, setRegion] = useState<string>("all");
+  const filtered = region === "all" ? items : items.filter((i) => i.region === region);
+
+  const byCat = useMemo(() => {
+    const m = new Map<string, BestsellerRow[]>();
+    for (const it of filtered) (m.get(it.category) ?? m.set(it.category, []).get(it.category)!).push(it);
+    for (const arr of m.values()) arr.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length);
+  }, [filtered]);
+
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap gap-2">
+        <Chip active={region === "all"} onClick={() => setRegion("all")} label="All regions" count={items.length} />
+        {regions.map(({ region: r, count }) => (
+          <Chip key={r} active={region === r} onClick={() => setRegion(r)} label={REGION_FULL[r] ?? r} count={count} />
+        ))}
+      </div>
+
+      {byCat.length === 0 ? (
+        <p className="text-sm text-muted">No bestsellers for this region yet.</p>
+      ) : (
+        <div className="space-y-8">
+          {byCat.map(([category, rows]) => (
+            <div key={category}>
+              <h3 className="font-display mb-3 text-[17px] text-paper">
+                {category} <span className="ticker text-[11px] text-faint">{rows.length}</span>
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {rows.map((b, i) => (
+                  <Card key={b.url + i} b={b} showRegion={region === "all"} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

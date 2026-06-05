@@ -32,8 +32,24 @@ export async function registerIngestWorker(boss: PgBoss) {
       for (const raw of capped) {
         const url = normalizeUrl(raw.url); // canonical (e.g. amazon → /dp/<ASIN>)
         const hash = urlHash(raw.url); // == sha256(normalizeUrl(raw.url))
+        const bsImage = (raw.rawContent as { image?: string } | null)?.image ?? null;
         const existing = await prisma.item.findUnique({ where: { urlHash: hash } });
-        if (existing) continue;
+        if (existing) {
+          // Bestsellers are one-row-per-product (deduped); refresh image/rank/
+          // title on re-crawl so the board stays current without re-bloating.
+          if (isBestseller) {
+            await prisma.item.update({
+              where: { urlHash: hash },
+              data: {
+                title: raw.title,
+                rawContent: (raw.rawContent ?? undefined) as object | undefined,
+                ...(bsImage ? { imageUrl: bsImage } : {}),
+                crawledAt: new Date(),
+              },
+            });
+          }
+          continue;
+        }
 
         const item = await prisma.item.create({
           data: {
@@ -50,6 +66,7 @@ export async function registerIngestWorker(boss: PgBoss) {
                   regions: (src?.regions ?? []) as never[],
                   platforms: src?.platforms ?? [],
                   category: (src?.categoryHint ?? "trend") as never,
+                  imageUrl: bsImage,
                 }
               : {}),
           },

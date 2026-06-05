@@ -22,6 +22,7 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
     title_sel = selectors.get("title", "h2, h3")
     link_sel = selectors.get("link", "a")
     rank_sel = selectors.get("rank")  # optional (e.g. Amazon BSR badge)
+    image_sel = selectors.get("image", "img")  # product thumbnail
 
     StealthyFetcher.adaptive = True  # Smart Element Tracking / auto-heal
     # solve_cloudflare off: our scrapable sources (Amazon BSR) don't use
@@ -53,6 +54,11 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
             rank = _first_text(node, rank_sel)
             if rank:
                 raw["rank"] = rank.strip()
+        # product thumbnail — the <img> src is in the DOM even with
+        # disable_resources (only the image bytes are blocked, not the tag).
+        img = _first_attr(node, image_sel, "src") or _first_attr(node, image_sel, "data-src")
+        if img:
+            raw["image"] = img
         items.append(
             {
                 "url": urljoin(url, href),

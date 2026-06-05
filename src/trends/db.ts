@@ -102,46 +102,36 @@ function parseRank(raw: unknown): number | null {
 }
 
 /**
- * Amazon best-seller board for the Trend Radar. Pulls recently-crawled
- * bestseller items, tags each with its source category label, and returns them
- * ranked. Note: rank is first-seen (items are url-deduped), so it approximates
- * "appeared in the bestseller grid" rather than a live position.
+ * Amazon best-seller rows for the Trend Radar board — one row per product
+ * (items are url-deduped to /dp/<ASIN>), tagged with region + category label +
+ * rank + thumbnail. Returns the full current set (the client filters by region
+ * and groups by category). Note: rank is first-seen (no live delta yet).
  */
-export async function getBestsellers(perCategory = 8): Promise<BestsellerRow[]> {
+export async function getBestsellers(maxPerRegionCategory = 30): Promise<BestsellerRow[]> {
   const items = await prisma.item.findMany({
     where: {
       sourceId: { in: [...BESTSELLER_SOURCE_IDS] },
       crawledAt: { gte: new Date(Date.now() - 7 * 864e5) },
     },
     orderBy: { crawledAt: "desc" },
-    take: 500,
+    take: 800,
     select: { title: true, url: true, imageUrl: true, rawContent: true, sourceId: true, regions: true },
   });
 
-  // category label derived from the source name's "(…)" suffix, e.g.
-  // "Amazon Best Sellers US (Kitchen)" → "Kitchen"; fall back to the source name.
-  const byCat = new Map<string, BestsellerRow[]>();
+  const buckets = new Map<string, BestsellerRow[]>(); // region|category → rows
   for (const it of items) {
     const src = SOURCES_BY_ID.get(it.sourceId);
-    const label = src?.name.match(/\(([^)]+)\)\s*$/)?.[1] ?? src?.name ?? it.sourceId;
-    const row: BestsellerRow = {
-      title: it.title,
-      url: it.url,
-      imageUrl: it.imageUrl,
-      rank: parseRank(it.rawContent),
-      region: (it.regions[0] as string) ?? (src?.regions[0] as string) ?? "north_america",
-      category: label,
-    };
-    const arr = byCat.get(label) ?? [];
-    arr.push(row);
-    byCat.set(label, arr);
+    const category = src?.name.match(/\(([^)]+)\)\s*$/)?.[1] ?? src?.name ?? it.sourceId;
+    const region = (it.regions[0] as string) ?? (src?.regions[0] as string) ?? "north_america";
+    const key = `${region}|${category}`;
+    const arr = buckets.get(key) ?? buckets.set(key, []).get(key)!;
+    arr.push({ title: it.title, url: it.url, imageUrl: it.imageUrl, rank: parseRank(it.rawContent), region, category });
   }
 
-  // top-N per category by rank, then flatten (categories ordered by size)
   const out: BestsellerRow[] = [];
-  for (const arr of byCat.values()) {
+  for (const arr of buckets.values()) {
     arr.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
-    out.push(...arr.slice(0, perCategory));
+    out.push(...arr.slice(0, maxPerRegionCategory));
   }
   return out;
 }
