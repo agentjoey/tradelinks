@@ -462,6 +462,44 @@ export const SOURCES: SourceConfig[] = [
     categoryHint: "industry",
     note: "verified 2026-06-05: valid RSS, ecommerce strategy/tools/cross-border analysis.",
   },
+  // Regional coverage via Google News RSS — reachable + aggregates many
+  // publishers (the native SEA/ME/LatAm media feeds are bot-blocked/defunct).
+  {
+    id: "F13",
+    name: "SE Asia marketplaces (news)",
+    url: "https://news.google.com/rss/search?q=(Shopee+OR+Lazada+OR+%22TikTok+Shop%22)+(seller+OR+policy+OR+fees+OR+tax)&hl=en-SG&gl=SG&ceid=SG:en",
+    adapter: "rss",
+    frequencyCron: "10 */8 * * *",
+    language: "en",
+    regions: ["southeast_asia"],
+    platforms: ["shopee", "lazada", "tiktok-shop"],
+    categoryHint: "platform_policy",
+    note: "verified 2026-06-05: Google News RSS — Shopee/Lazada/TikTok Shop seller-fee & policy news (VN/MY/SG). Fills empty SEA coverage (Tech in Asia/e27 are bot-blocked).",
+  },
+  {
+    id: "F14",
+    name: "Latin America trade (news)",
+    url: "https://news.google.com/rss/search?q=(%22Mercado+Libre%22+OR+ecommerce+OR+cross-border)+(Brazil+OR+Mexico+OR+%22Latin+America%22)+(seller+OR+tax+OR+import)&hl=en-US&gl=US&ceid=US:en",
+    adapter: "rss",
+    frequencyCron: "20 */8 * * *",
+    language: "en",
+    regions: ["latin_america"],
+    platforms: ["mercado-libre"],
+    categoryHint: "regulatory",
+    note: "verified 2026-06-05: Google News RSS — Brazil/Mexico import-tax & cross-border ecommerce regulation. Fills empty LatAm coverage (LABS feed defunct).",
+  },
+  {
+    id: "F15",
+    name: "Middle East commerce (news)",
+    url: "https://news.google.com/rss/search?q=(noon+OR+%22Amazon.ae%22+OR+ecommerce)+(UAE+OR+Saudi+OR+%22Middle+East%22)+(seller+OR+VAT+OR+regulation+OR+marketplace)&hl=en-US&gl=US&ceid=US:en",
+    adapter: "rss",
+    frequencyCron: "30 */8 * * *",
+    language: "en",
+    regions: ["middle_east"],
+    platforms: ["noon", "amazon"],
+    categoryHint: "industry",
+    note: "verified 2026-06-05: Google News RSS — Noon/Amazon.ae & MEA marketplace/VAT news. Broadens ME beyond Amazon.ae bestsellers.",
+  },
 
   // ---- E. Logistics (RSS) ----
   {
