@@ -1,4 +1,3 @@
-import "server-only";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 import { redirect } from "next/navigation";
 
