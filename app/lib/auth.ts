@@ -11,7 +11,15 @@ const baseUrl = process.env.NEON_AUTH_BASE_URL;
 const secret = process.env.NEON_AUTH_COOKIE_SECRET;
 
 export const auth =
-  baseUrl && secret ? createNeonAuth({ baseUrl, cookies: { secret } }) : null;
+  baseUrl && secret
+    ? createNeonAuth({
+        baseUrl,
+        // sameSite: "lax" is required for OAuth — the default "strict" drops the
+        // session cookie on the cross-site navigation back from Google/Neon, so
+        // /admin would never see the session → infinite sign-in redirect loop.
+        cookies: { secret, sameSite: "lax" },
+      })
+    : null;
 
 /** Admin allowlist (invite-only authorization) — comma-separated emails. */
 export function adminEmails(): string[] {
