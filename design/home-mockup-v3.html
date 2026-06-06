@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TradeLinks · Home v3 (今日速览 + 可扩展顶栏)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  fontFamily: { display:['Fraunces','Georgia','serif'], sans:['"Schibsted Grotesk"','system-ui','sans-serif'], mono:['"IBM Plex Mono"','ui-monospace','monospace'] },
+  colors: { ink:'#08090c', surface:'#0e1015', surface2:'#13161d', line:'rgba(233,228,217,0.10)', linestrong:'rgba(233,228,217,0.20)', paper:'#ECE7DB', muted:'#8b8f9a', faint:'#5a5f6b', signal:'#E8B44A', urgent:'#FF5A4D', calm:'#4FD1C5' },
+}}}
+</script>
+<style>
+  body{ background-color:#08090c;
+    background-image: radial-gradient(120% 60% at 50% -10%, rgba(232,180,74,0.06), transparent 60%), linear-gradient(rgba(233,228,217,0.025) 1px, transparent 1px);
+    background-size:auto,100% 34px; background-attachment:fixed; -webkit-font-smoothing:antialiased; }
+  .ticker{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.04em;}
+</style>
+</head>
+<body class="font-sans text-paper min-h-screen">
+
+<div class="fixed top-0 inset-x-0 h-px z-40" style="background:linear-gradient(90deg,transparent,rgba(232,180,74,0.7),transparent)"></div>
+
+<!-- ===== TOP NAV (scalable: content nav + account cluster) ===== -->
+<header class="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
+  <div class="mx-auto max-w-6xl px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-8">
+      <a href="#" class="leading-none">
+        <div class="ticker text-[9px] uppercase tracking-[0.3em] text-signal/80 mb-1">Cross-Border Intelligence</div>
+        <div class="font-display text-[22px] leading-none tracking-tight">Trade<span class="italic text-signal">Links</span></div>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-[14px]">
+        <a href="#" class="font-semibold text-paper">首页</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Wire</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Radar</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Daily</a>
+        <a href="#" class="text-faint hover:text-paper transition-colors">更多 ▾</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <a href="#" class="hidden sm:inline-flex ticker items-center gap-1.5 rounded-md border border-linestrong px-2.5 py-1.5 text-[12px] text-muted hover:text-paper hover:border-signal/50 transition-colors" title="订阅推送">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        订阅
+      </a>
+      <a href="#" class="inline-flex items-center rounded-md bg-signal px-3 py-1.5 text-[13px] font-semibold text-ink hover:bg-signal/90 transition-colors">升级 Pro</a>
+      <a href="#" class="ticker hidden sm:inline-flex rounded-md border border-linestrong px-2 py-1.5 text-[12px] text-paper hover:border-signal/50 transition-colors">EN/中</a>
+      <button class="flex h-9 w-9 items-center justify-center rounded-full border border-linestrong bg-surface2 ticker text-[12px] font-semibold text-signal" title="Agent Joey · Profile / 账单 / 设置">AJ</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== BREAKING strip (urgency≥4, breaking-first) ===== -->
+<a href="#" class="group block border-b border-urgent/30 bg-urgent/[0.08] hover:bg-urgent/[0.12] transition-colors">
+  <div class="mx-auto max-w-6xl px-5 sm:px-8 py-2.5 flex items-center gap-3 text-[13px]">
+    <span class="ticker inline-flex items-center gap-1.5 rounded bg-urgent/20 px-2 py-0.5 text-[10px] uppercase tracking-wider text-urgent shrink-0"><span class="h-1.5 w-1.5 rounded-full bg-urgent animate-pulse"></span>突发</span>
+    <span class="truncate text-paper/90">Red Sea reroute adds 12 days to Asia–EU lanes as carriers suspend Suez transits</span>
+    <span class="ml-auto shrink-0 text-urgent group-hover:translate-x-0.5 transition-transform">→</span>
+  </div>
+</a>
+
+<!-- ===== MASTHEAD ===== -->
+<section class="mx-auto max-w-6xl px-5 sm:px-8 pt-9 pb-2">
+  <h1 class="font-display text-[26px] sm:text-[30px] leading-tight tracking-tight text-paper">
+    全球跨境电商<span class="italic text-signal">情报</span>。
+  </h1>
+  <p class="mt-1.5 text-[14.5px] text-muted">预警政策与物流中断，预测爆品的跨区扩散，每天一篇原创解读 —— 我们追踪三类情报：</p>
+</section>
+
+<!-- ===== 今日速览 · 三流概览 (data-driven; N streams) ===== -->
+<main class="mx-auto max-w-6xl px-5 sm:px-8 pb-12">
+  <div class="grid gap-4 lg:grid-cols-3">
+
+    <!-- 预警 Wire -->
+    <section class="rounded-2xl border border-line bg-surface/60 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2.5">
+          <span class="h-4 w-1 rounded-full bg-urgent"></span>
+          <h2 class="font-display text-[20px] font-medium text-paper">预警</h2>
+          <span class="ticker text-[11px] text-faint">Wire · 24</span>
+        </div>
+        <a href="#" class="ticker text-[12px] text-muted hover:text-signal transition-colors">全部 →</a>
+      </div>
+      <p class="text-[12.5px] leading-relaxed text-muted mb-4">政策 / 平台 / 物流的实时变动，按紧急度分级。</p>
+      <div class="space-y-2.5">
+        <a href="#" class="group block rounded-lg border border-line bg-surface/70 px-3.5 py-3 hover:bg-surface2 transition-colors" style="border-left:3px solid #FF5A4D">
+          <div class="ticker mb-1 flex items-center gap-2 text-[10px] uppercase tracking-wider"><span class="text-urgent">Act</span><span class="text-signal">Platform</span><span class="text-muted">NA</span></div>
+          <div class="font-display text-[15px] leading-snug text-paper group-hover:text-signal transition-colors">TikTok Shop US lifts seller commission to 9%, effective Jul 1</div>
+        </a>
+        <a href="#" class="group block rounded-lg border border-line bg-surface/70 px-3.5 py-3 hover:bg-surface2 transition-colors" style="border-left:3px solid #E8B44A">
+          <div class="ticker mb-1 flex items-center gap-2 text-[10px] uppercase tracking-wider"><span class="text-signal">Watch</span><span class="text-signal">Regulatory</span><span class="text-muted">EU</span></div>
+          <div class="font-display text-[15px] leading-snug text-paper group-hover:text-signal transition-colors">EU GPSR enforcement begins — listings need an EU Responsible Person</div>
+        </a>
+        <a href="#" class="group block rounded-lg border border-line bg-surface/70 px-3.5 py-3 hover:bg-surface2 transition-colors" style="border-left:3px solid #5a5f6b">
+          <div class="ticker mb-1 flex items-center gap-2 text-[10px] uppercase tracking-wider"><span class="text-muted">FYI</span><span class="text-signal">Industry</span><span class="text-muted">SEA</span></div>
+          <div class="font-display text-[15px] leading-snug text-paper group-hover:text-signal transition-colors">Temu tests a semi-managed model with seller-held inventory</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 爆品 Radar -->
+    <section class="rounded-2xl border border-line bg-surface/60 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2.5">
+          <span class="h-4 w-1 rounded-full bg-signal"></span>
+          <h2 class="font-display text-[20px] font-medium text-paper">爆品</h2>
+          <span class="ticker text-[11px] text-faint">Radar · 8</span>
+        </div>
+        <a href="#" class="ticker text-[12px] text-muted hover:text-signal transition-colors">全部 →</a>
+      </div>
+      <p class="text-[12.5px] leading-relaxed text-muted mb-4">跨区畅销榜 + 社媒信号，捕捉爆品的跨区扩散。</p>
+      <div class="space-y-2.5">
+        <a href="#" class="group flex items-center gap-3 rounded-lg border border-line bg-surface/70 p-2.5 hover:border-signal/40 transition-colors">
+          <div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface2"><img src="https://picsum.photos/seed/neckfan/200/200" class="h-full w-full object-cover" alt=""/><span class="ticker absolute left-0 top-0 rounded-br bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-ink">#1</span></div>
+          <div class="min-w-0"><div class="font-display text-[14px] leading-snug text-paper group-hover:text-signal transition-colors truncate">Portable neck fan, bladeless</div><div class="ticker mt-1 text-[11px] text-signal">BSR #1 · NA</div></div>
+        </a>
+        <a href="#" class="group flex items-center gap-3 rounded-lg border border-line bg-surface/70 p-2.5 hover:border-signal/40 transition-colors">
+          <div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface2"><img src="https://picsum.photos/seed/sunsetlamp/200/200" class="h-full w-full object-cover" alt=""/><span class="ticker absolute left-0 top-0 rounded-br bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-ink">#3</span></div>
+          <div class="min-w-0"><div class="font-display text-[14px] leading-snug text-paper group-hover:text-signal transition-colors truncate">RGB sunset projector lamp</div><div class="ticker mt-1 text-[11px] text-signal">♥ 18.2k · Viral X</div></div>
+        </a>
+        <a href="#" class="group flex items-center gap-3 rounded-lg border border-line bg-surface/70 p-2.5 hover:border-signal/40 transition-colors">
+          <div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface2"><img src="https://picsum.photos/seed/gimbal/200/200" class="h-full w-full object-cover" alt=""/><span class="ticker absolute left-0 top-0 rounded-br bg-signal px-1.5 py-0.5 text-[10px] font-semibold text-ink">#2</span></div>
+          <div class="min-w-0"><div class="font-display text-[14px] leading-snug text-paper group-hover:text-signal transition-colors truncate">Mini handheld phone gimbal</div><div class="ticker mt-1 text-[11px] text-signal">BSR #2 · EU</div></div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 原创 Daily -->
+    <section class="rounded-2xl border border-line bg-surface/60 p-5">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2.5">
+          <span class="h-4 w-1 rounded-full bg-calm"></span>
+          <h2 class="font-display text-[20px] font-medium text-paper">原创</h2>
+          <span class="ticker text-[11px] text-faint">Daily · 2</span>
+        </div>
+        <a href="#" class="ticker text-[12px] text-muted hover:text-signal transition-colors">全部 →</a>
+      </div>
+      <p class="text-[12.5px] leading-relaxed text-muted mb-4">每天一篇原创解读，把当天最该懂的讲清楚。</p>
+      <div class="space-y-3">
+        <a href="#" class="group block overflow-hidden rounded-lg border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="h-24 w-full bg-surface2"><img src="https://picsum.photos/seed/customs/600/240" class="h-full w-full object-cover" alt=""/></div>
+          <div class="p-3.5">
+            <span class="ticker text-[10px] uppercase tracking-wider text-signal">Brief</span>
+            <div class="font-display text-[15px] leading-snug text-paper group-hover:text-signal transition-colors mt-1">De minimis is ending: what the $800 repeal means for US landed cost</div>
+            <div class="ticker mt-1.5 text-[11px] text-faint">Jun 6 · Agent Joey</div>
+          </div>
+        </a>
+        <a href="#" class="group flex items-center gap-3 rounded-lg border border-line bg-surface/70 p-2.5 hover:border-signal/40 transition-colors">
+          <div class="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface2"><img src="https://picsum.photos/seed/tiktokshop/200/200" class="h-full w-full object-cover" alt=""/></div>
+          <div class="min-w-0"><span class="ticker text-[10px] uppercase tracking-wider text-calm">Roundup</span><div class="font-display text-[14px] leading-snug text-paper group-hover:text-signal transition-colors mt-0.5">Five products breaking out on TikTok Shop this week</div></div>
+        </a>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===== 扩展位示例:订阅推送(可换成任意新板块/促销/功能) ===== -->
+  <a href="#" class="group mt-4 flex items-center gap-4 rounded-2xl border border-signal/30 bg-signal/[0.06] p-5 hover:bg-signal/[0.1] transition-colors">
+    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-signal/15 text-signal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="font-display text-[16px] text-paper">开启 Agent 订阅推送</div>
+      <p class="text-[12.5px] text-muted">把高紧急预警与你盯防的品类/区域，实时推到 Telegram / Slack / 邮件。</p>
+    </div>
+    <span class="ticker shrink-0 rounded-md border border-signal/50 px-3 py-2 text-[12px] font-semibold text-signal group-hover:bg-signal group-hover:text-ink transition-colors">设置推送 →</span>
+  </a>
+
+  <footer class="pt-8 mt-8 border-t border-line">
+    <p class="ticker text-[10px] uppercase tracking-[0.2em] text-faint">TradeLinks · BL-026 Home v3 · 今日速览三流概览 + 可扩展顶栏(账户/订阅/升级)+ breaking 条</p>
+  </footer>
+</main>
+
+</body>
+</html>

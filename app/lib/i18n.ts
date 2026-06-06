@@ -4,7 +4,10 @@ export type Lang = "en" | "zh";
 export const LANGS: Lang[] = ["en", "zh"];
 
 export interface Dict {
-  nav: { wire: string; radar: string; daily: string; desk: string; sources: string };
+  nav: { home: string; wire: string; radar: string; daily: string; more: string; desk: string; sources: string };
+  navUpgrade: string;
+  navAlerts: string;
+  account: { profile: string; billing: string; settings: string; signout: string };
   eyebrow: string;
   live: string;
   dispatches: string;
@@ -63,10 +66,35 @@ export interface Dict {
   dailyTakeaways: string;
   dailySources: string;
   dailyBackToAll: string;
+  // home (editorial front door)
+  homeMastheadPre: string;
+  homeMastheadEm: string;
+  homeMastheadPost: string;
+  homeMastheadSub: string;
+  glance: string;
+  seeAll: string;
+  breaking: string;
+  earlier: string;
+  streamWire: string;
+  streamWireSub: string;
+  streamRadar: string;
+  streamRadarSub: string;
+  streamDaily: string;
+  streamDailySub: string;
+  cntToday: string;
+  cntMoving: string;
+  cntNew: string;
+  earlierOtherHint: string;
+  subscribeTitle: string;
+  subscribeSub: string;
+  subscribeCta: string;
 }
 
 const en: Dict = {
-  nav: { wire: "Wire", radar: "Radar", daily: "Daily", desk: "Desk", sources: "Sources" },
+  nav: { home: "Home", wire: "Wire", radar: "Radar", daily: "Daily", more: "More", desk: "Desk", sources: "Sources" },
+  navUpgrade: "Upgrade",
+  navAlerts: "Alerts",
+  account: { profile: "Profile", billing: "Billing", settings: "Settings", signout: "Sign out" },
   eyebrow: "◆ Intelligence Wire",
   live: "live",
   dispatches: "dispatches",
@@ -122,10 +150,34 @@ const en: Dict = {
   dailyTakeaways: "Key takeaways",
   dailySources: "Sources",
   dailyBackToAll: "← all daily notes",
+  homeMastheadPre: "Global cross-border e-commerce ",
+  homeMastheadEm: "intelligence",
+  homeMastheadPost: ".",
+  homeMastheadSub: "Policy & logistics disruptions, viral-product diffusion across regions, and one original brief a day — the three streams we track:",
+  glance: "Today at a glance",
+  seeAll: "See all",
+  breaking: "Breaking",
+  earlier: "Earlier",
+  streamWire: "Wire",
+  streamWireSub: "Real-time alerts",
+  streamRadar: "Radar",
+  streamRadarSub: "Bestsellers & social signals",
+  streamDaily: "The Daily",
+  streamDailySub: "One original brief a day",
+  cntToday: "today",
+  cntMoving: "moving",
+  cntNew: "new",
+  earlierOtherHint: "Open that section for its full feed.",
+  subscribeTitle: "Never miss a high-urgency alert",
+  subscribeSub: "Push the alerts and categories you watch to Telegram, Slack or email.",
+  subscribeCta: "Set up push",
 };
 
 const zh: Dict = {
-  nav: { wire: "情报流", radar: "趋势雷达", daily: "每日", desk: "审核台", sources: "信息源" },
+  nav: { home: "首页", wire: "情报流", radar: "趋势雷达", daily: "每日", more: "更多", desk: "审核台", sources: "信息源" },
+  navUpgrade: "升级",
+  navAlerts: "订阅",
+  account: { profile: "个人", billing: "账单", settings: "设置", signout: "退出" },
   eyebrow: "◆ 跨境情报电台",
   live: "实时",
   dispatches: "条情报",
@@ -181,6 +233,27 @@ const zh: Dict = {
   dailyTakeaways: "要点速览",
   dailySources: "来源",
   dailyBackToAll: "← 返回全部简报",
+  homeMastheadPre: "全球跨境电商",
+  homeMastheadEm: "情报",
+  homeMastheadPost: "。",
+  homeMastheadSub: "预警政策与物流中断、预测爆品的跨区扩散、每天一篇原创解读 —— 我们追踪三类情报：",
+  glance: "今日速览",
+  seeAll: "全部",
+  breaking: "突发",
+  earlier: "更早",
+  streamWire: "预警",
+  streamWireSub: "实时预警",
+  streamRadar: "爆品",
+  streamRadarSub: "畅销榜 + 社媒信号",
+  streamDaily: "原创",
+  streamDailySub: "每天一篇原创解读",
+  cntToday: "今日",
+  cntMoving: "异动",
+  cntNew: "新",
+  earlierOtherHint: "切到该板块查看完整内容流。",
+  subscribeTitle: "高紧急预警不漏接",
+  subscribeSub: "把你关注的预警与品类推到 Telegram、Slack 或邮件。",
+  subscribeCta: "设置推送",
 };
 
 const DICTS: Record<Lang, Dict> = { en, zh };

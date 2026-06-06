@@ -19,7 +19,7 @@ export function Filters({ region, category, t }: { region?: string; category?: s
     const merged = { region, category, ...params };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
     const qs = sp.toString();
-    return qs ? `/?${qs}` : "/";
+    return qs ? `/wire?${qs}` : "/wire";
   };
 
   return (

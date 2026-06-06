@@ -31,7 +31,7 @@ function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
       onClick={() => track("bestseller_open", { product_title: b.title, product_region: b.region, product_category: b.category, product_rank: b.rank ?? undefined })}
       className="group flex gap-4 rounded-lg border border-line bg-surface/70 p-3.5 transition-colors hover:border-signal/40"
     >
-      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md bg-paper/[0.05]">
+      <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-paper/[0.05]">
         <Img src={b.imageUrl} alt={b.title} />
         {b.rank != null && (
           <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-2 py-1 text-[11px] font-semibold text-ink">
