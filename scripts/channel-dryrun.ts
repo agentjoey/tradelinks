@@ -26,8 +26,10 @@ async function main() {
   console.log(`channelId=${channelId} → batch of ${batch.length}\n`);
 
   for (const it of batch) {
+    const img = it.type === "alert" ? it.alert.imageUrl : it.product.imageUrl;
     console.log("─".repeat(56));
     console.log(it.type === "alert" ? renderChannelAlert(it.alert) : renderChannelProduct(it.product));
+    console.log(`🖼  image: ${img ?? "(none → text-only)"}`);
     console.log();
   }
   process.exit(0);

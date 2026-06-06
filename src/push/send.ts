@@ -81,34 +81,51 @@ export async function pushAlertForReview(a: PushAlert & { id: string }): Promise
   return result;
 }
 
-/**
- * Send an HTML message to the public Telegram channel (BL-039).
- * Gated: no token or channel id → dry-run "skipped" (logs the rendered text).
- * Returns messageId on success for storable cross-reference.
- */
-export async function sendToChannel(text: string): Promise<ChannelSendResult> {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) return { status: "skipped" };
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
+
+async function tgChannelCall(method: string, body: object): Promise<{ ok: boolean; messageId?: number }> {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: env.TELEGRAM_CHANNEL_ID,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: false,
-      }),
-      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      logger.warn({ status: res.status, body: body.slice(0, 200) }, "channel send failed");
-      return { status: "failed" };
+      const t = await res.text().catch(() => "");
+      logger.warn({ method, status: res.status, body: t.slice(0, 200) }, "channel send non-ok");
+      return { ok: false };
     }
     const data = (await res.json()) as { ok: boolean; result?: { message_id: number } };
-    return { status: "sent", messageId: data.result?.message_id };
+    return { ok: data.ok, messageId: data.result?.message_id };
   } catch (e) {
-    logger.error({ err: String(e) }, "channel send error");
-    return { status: "failed" };
+    logger.error({ method, err: String(e) }, "channel send error");
+    return { ok: false };
   }
+}
+
+/**
+ * Post to the public channel as a news card. With an image → `sendPhoto` (big
+ * image, caption below); the raw image URL is tried first, then our img-proxy
+ * (bypasses hotlink blocks), then a text-only fallback. Telegram fetches the
+ * photo URL, so an ok response confirms the image attached. Gated: no
+ * token/channel → "skipped".
+ */
+export async function sendToChannel(text: string, imageUrl?: string | null): Promise<ChannelSendResult> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) return { status: "skipped" };
+  const chat_id = env.TELEGRAM_CHANNEL_ID;
+
+  if (imageUrl) {
+    const proxied = `${SITE}/api/img-proxy?u=${encodeURIComponent(imageUrl)}`;
+    for (const photo of [imageUrl, proxied]) {
+      const r = await tgChannelCall("sendPhoto", { chat_id, photo, caption: text, parse_mode: "HTML" });
+      if (r.ok) return { status: "sent", messageId: r.messageId };
+    }
+    // both photo attempts failed → fall through to text-only
+  }
+
+  const r = await tgChannelCall("sendMessage", {
+    chat_id, text, parse_mode: "HTML", link_preview_options: { is_disabled: true },
+  });
+  return r.ok ? { status: "sent", messageId: r.messageId } : { status: "failed" };
 }

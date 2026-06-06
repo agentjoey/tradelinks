@@ -63,7 +63,7 @@ export async function gatherChannelCandidates(): Promise<ChannelCandidates> {
       take: 30,
       select: {
         id: true, title: true, summary: true, urgencyScore: true,
-        category: true, regions: true, actionRequired: true, sourceUrls: true,
+        category: true, regions: true, actionRequired: true, sourceUrls: true, imageUrl: true,
       },
     }),
     getBestsellers(30),
@@ -79,6 +79,7 @@ export async function gatherChannelCandidates(): Promise<ChannelCandidates> {
     regions: a.regions as string[],
     actionRequired: a.actionRequired,
     sourceUrls: a.sourceUrls as string[],
+    imageUrl: a.imageUrl,
   }));
 
   const products: CandidateProduct[] = [

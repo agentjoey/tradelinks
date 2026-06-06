@@ -47,7 +47,7 @@ const VIRAL: ChannelProduct = {
   url: "https://x.com/i/web/status/123",
 };
 
-describe("renderChannelAlert (public channel format)", () => {
+describe("renderChannelAlert (news-card format)", () => {
   it("uses 🚨 for urgency ≥4 with bold title", () => {
     const t = renderChannelAlert(ALERT);
     expect(t).toContain("🚨");
@@ -68,127 +68,94 @@ describe("renderChannelAlert (public channel format)", () => {
   });
 
   it("renders category + region meta line in italics", () => {
-    const t = renderChannelAlert(ALERT);
-    expect(t).toContain("<i>Regulation · NA</i>");
+    expect(renderChannelAlert(ALERT)).toContain("<i>Regulation · NA</i>");
   });
 
   it("renders category label for platform_policy", () => {
-    const t = renderChannelAlert(ALERT_MEDIUM);
-    expect(t).toContain("<i>Platform · EU</i>");
+    expect(renderChannelAlert(ALERT_MEDIUM)).toContain("<i>Platform · EU</i>");
   });
 
-  it("renders multiple regions comma-joined", () => {
-    const t = renderChannelAlert(ALERT_LOW);
-    expect(t).toContain("<i>Tip · SEA/NA</i>");
+  it("renders multiple regions slash-joined", () => {
+    expect(renderChannelAlert(ALERT_LOW)).toContain("<i>Tip · SEA/NA</i>");
   });
 
   it("includes summary (trimmed if needed)", () => {
-    const t = renderChannelAlert(ALERT);
-    expect(t).toContain("Duties now apply");
+    expect(renderChannelAlert(ALERT)).toContain("Duties now apply");
   });
 
   it("includes actionRequired as bold ➤ line when present", () => {
-    const t = renderChannelAlert(ALERT);
-    expect(t).toContain("➤ <b>Recalculate landed cost now.</b>");
+    expect(renderChannelAlert(ALERT)).toContain("➤ <b>Recalculate landed cost now.</b>");
   });
 
   it("omits actionRequired line when null", () => {
-    const t = renderChannelAlert(ALERT_MEDIUM);
-    expect(t).not.toContain("➤");
+    expect(renderChannelAlert(ALERT_MEDIUM)).not.toContain("➤");
   });
 
-  it("includes source hostname as link when sources exist", () => {
+  it("leads with the source host as a bold clickable link", () => {
     const t = renderChannelAlert(ALERT);
-    expect(t).toContain("🔗 www.cbp.gov");
+    expect(t).toContain('<a href="https://www.cbp.gov/newsroom"><b>cbp.gov</b></a>');
   });
 
-  it("omits source link when no sources", () => {
-    const t = renderChannelAlert(ALERT_LOW);
-    expect(t).not.toContain("🔗");
+  it("omits the source link when there are no sources", () => {
+    expect(renderChannelAlert(ALERT_LOW)).not.toContain("<a href");
   });
 
-  it("includes branded footer with site URL", () => {
-    const t = renderChannelAlert(ALERT);
-    expect(t).toContain("— via TradeLinks ·");
-    expect(t).toContain("tradelinks-mvp.vercel.app");
-  });
-
-  it("escapes HTML special characters in title", () => {
-    const a = { ...ALERT, title: "EU <bans> & recalls <specific> items" };
-    const t = renderChannelAlert(a);
-    expect(t).toContain("&lt;bans&gt;");
-    expect(t).toContain("&amp;");
-  });
-
-  it("does NOT expose internal urgencyScore or raw sourceUrls", () => {
+  it("does NOT expose internal urgencyScore", () => {
     const t = renderChannelAlert(ALERT);
     expect(t).not.toContain("urgencyScore");
     expect(t).not.toContain("5.0");
-    expect(t).not.toContain("https://www.cbp.gov/newsroom");
+  });
+
+  it("escapes HTML special characters in title", () => {
+    const t = renderChannelAlert({ ...ALERT, title: "EU <bans> & recalls <specific> items" });
+    expect(t).toContain("&lt;bans&gt;");
+    expect(t).toContain("&amp;");
   });
 });
 
-describe("renderChannelProduct (public channel format)", () => {
-  it("renders bestseller with BSR rank and region", () => {
-    const t = renderChannelProduct(BESTSELLER);
-    expect(t).toContain("📈");
-    expect(t).toContain("<i>Amazon · BSR #1 · NA</i>");
+describe("renderChannelProduct (news-card format)", () => {
+  it("leads with platform as a bold clickable link", () => {
+    expect(renderChannelProduct(BESTSELLER)).toContain('<a href="https://amazon.com/dp/B0XXXXXXX"><b>Amazon</b></a>');
   });
 
-  it("renders viral with likes and trending label", () => {
+  it("renders bestseller BSR rank + region in the italic meta", () => {
+    const t = renderChannelProduct(BESTSELLER);
+    expect(t).toContain("📈");
+    expect(t).toContain("<i>BSR #1 · NA</i>");
+  });
+
+  it("renders viral likes + trending in the italic meta", () => {
     const t = renderChannelProduct(VIRAL);
-    expect(t).toContain("📈");
-    expect(t).toContain("<i>X · ♥ 18.2k · trending</i>");
-  });
-
-  it("includes product URL as link", () => {
-    const t = renderChannelProduct(BESTSELLER);
-    expect(t).toContain("🔗 https://amazon.com/dp/B0XXXXXXX");
-  });
-
-  it("includes Radar-branded footer", () => {
-    const t = renderChannelProduct(BESTSELLER);
-    expect(t).toContain("— via TradeLinks Radar ·");
-    expect(t).toContain("/trends");
+    expect(t).toContain('<a href="https://x.com/i/web/status/123"><b>X</b></a>');
+    expect(t).toContain("<i>♥ 18.2k · trending</i>");
   });
 
   it("escapes HTML in title", () => {
-    const p = { ...BESTSELLER, title: "Fan <portable> & lightweight" };
-    const t = renderChannelProduct(p);
+    const t = renderChannelProduct({ ...BESTSELLER, title: "Fan <portable> & lightweight" });
     expect(t).toContain("&lt;portable&gt;");
     expect(t).toContain("&amp;");
   });
 
-  it("omits rank when null for bestseller", () => {
-    const p = { ...BESTSELLER, rank: null };
-    const t = renderChannelProduct(p);
-    expect(t).not.toContain("BSR");
+  it("omits BSR when rank is null for bestseller", () => {
+    expect(renderChannelProduct({ ...BESTSELLER, rank: null })).not.toContain("BSR");
   });
 
-  it("omits likes section when null for viral", () => {
-    const p = { ...VIRAL, likes: null };
-    const t = renderChannelProduct(p);
+  it("omits likes when null for viral (still 'trending')", () => {
+    const t = renderChannelProduct({ ...VIRAL, likes: null });
     expect(t).not.toContain("♥");
+    expect(t).toContain("trending");
   });
 });
 
 describe("formatLikes helper (via render)", () => {
   it("formats 18.2k correctly", () => {
-    const p = { ...VIRAL, likes: 18200 };
-    const t = renderChannelProduct(p);
-    expect(t).toContain("18.2k");
+    expect(renderChannelProduct({ ...VIRAL, likes: 18200 })).toContain("18.2k");
   });
-
   it("formats millions correctly", () => {
-    const p = { ...VIRAL, likes: 2_300_000 };
-    const t = renderChannelProduct(p);
-    expect(t).toContain("2.3M");
+    expect(renderChannelProduct({ ...VIRAL, likes: 2_300_000 })).toContain("2.3M");
   });
-
   it("formats small numbers raw", () => {
-    const p = { ...VIRAL, likes: 320 };
-    const t = renderChannelProduct(p);
-    expect(t).toContain("♥ 320");
+    expect(renderChannelProduct({ ...VIRAL, likes: 320 })).toContain("♥ 320");
   });
 });
 
@@ -197,8 +164,8 @@ describe("title clamping (long Amazon titles)", () => {
     const longTitle = "PartyWoo White Balloons 140 pcs Different Sizes of 18 12 10 5 Inch White Balloons Arch Kit Garland for Wedding Baby Shower Birthday Decorations White-Y13";
     const t = renderChannelProduct({ ...BESTSELLER, title: longTitle });
     expect(t).toContain("…");
-    expect(longTitle.length).toBeGreaterThan(100);
-    expect(t).not.toContain(longTitle); // full title is not emitted verbatim
+    expect(longTitle.length).toBeGreaterThan(110);
+    expect(t).not.toContain(longTitle);
   });
 
   it("leaves a short product title intact", () => {

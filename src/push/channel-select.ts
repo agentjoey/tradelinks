@@ -13,6 +13,7 @@ export interface CandidateAlert {
   regions: string[];
   actionRequired: string | null;
   sourceUrls: string[];
+  imageUrl?: string | null;
 }
 
 export interface CandidateProduct {
