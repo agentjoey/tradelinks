@@ -6,6 +6,16 @@ import { z } from "zod";
 import type { LlmClient } from "../ai/client.js";
 import { extractJson } from "../ai/json.js";
 import type { ViralTweet } from "./x.js";
+import { logger } from "../lib/logger.js";
+
+// Cap tweets per LLM call so the JSON response can't overflow maxTokens and
+// truncate into invalid JSON (the curated-accounts track can surface ~200/run).
+const EXTRACT_BATCH = 25;
+function chunk<T>(arr: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
 
 export interface ExtractedProduct {
   product: string; // product or brand name
@@ -40,31 +50,33 @@ const ResultSchema = z.object({
 export async function extractProducts(tweets: ViralTweet[], client: LlmClient): Promise<ExtractedProduct[]> {
   if (tweets.length === 0) return [];
 
-  const list = tweets.map((t) => `- id=${t.id} | ${t.text.replace(/\s+/g, " ").slice(0, 240)}`).join("\n");
-  const res = await client.complete({
-    system: SYSTEM,
-    user: `Tweets:\n${list}`,
-    json: true,
-    maxTokens: 1500,
-  });
-
-  const parsed = ResultSchema.parse(extractJson(res.text)).results;
   const byId = new Map(tweets.map((t) => [t.id, t]));
-
   const out: ExtractedProduct[] = [];
-  for (const r of parsed) {
-    if (!r.is_product || !r.product.trim()) continue;
-    const t = byId.get(r.id);
-    if (!t) continue;
-    out.push({
-      product: r.product.trim(),
-      category: r.category.trim() || "trend",
-      whyViral: r.why_viral.trim(),
-      link: t.link,
-      mediaUrl: t.mediaUrl,
-      engagement: { likes: t.likes, retweets: t.retweets },
-      tweet: t,
-    });
+
+  for (const batch of chunk(tweets, EXTRACT_BATCH)) {
+    const list = batch.map((t) => `- id=${t.id} | ${t.text.replace(/\s+/g, " ").slice(0, 240)}`).join("\n");
+    let parsed;
+    try {
+      const res = await client.complete({ system: SYSTEM, user: `Tweets:\n${list}`, json: true, maxTokens: 1500 });
+      parsed = ResultSchema.parse(extractJson(res.text)).results;
+    } catch (e) {
+      logger.error({ err: String(e), batch: batch.length }, "extractProducts batch failed; skipping");
+      continue;
+    }
+    for (const r of parsed) {
+      if (!r.is_product || !r.product.trim()) continue;
+      const t = byId.get(r.id);
+      if (!t) continue;
+      out.push({
+        product: r.product.trim(),
+        category: r.category.trim() || "trend",
+        whyViral: r.why_viral.trim(),
+        link: t.link,
+        mediaUrl: t.mediaUrl,
+        engagement: { likes: t.likes, retweets: t.retweets },
+        tweet: t,
+      });
+    }
   }
   return out;
 }
@@ -107,31 +119,33 @@ const TopicResultSchema = z.object({
 export async function extractTopics(tweets: ViralTweet[], client: LlmClient): Promise<HotTopic[]> {
   if (tweets.length === 0) return [];
 
-  const list = tweets.map((t) => `- id=${t.id} | ${t.text.replace(/\s+/g, " ").slice(0, 240)}`).join("\n");
-  const res = await client.complete({
-    system: TOPIC_SYSTEM,
-    user: `Tweets:\n${list}`,
-    json: true,
-    maxTokens: 1500,
-  });
-
-  const parsed = TopicResultSchema.parse(extractJson(res.text)).results;
   const byId = new Map(tweets.map((t) => [t.id, t]));
-
   const out: HotTopic[] = [];
-  for (const r of parsed) {
-    if (!r.is_relevant || !r.headline.trim()) continue;
-    const t = byId.get(r.id);
-    if (!t) continue;
-    out.push({
-      headline: r.headline.trim(),
-      category: r.category.trim() || "industry",
-      whyHot: r.why_hot.trim(),
-      link: t.link,
-      mediaUrl: t.mediaUrl,
-      engagement: { likes: t.likes, retweets: t.retweets },
-      tweet: t,
-    });
+
+  for (const batch of chunk(tweets, EXTRACT_BATCH)) {
+    const list = batch.map((t) => `- id=${t.id} | ${t.text.replace(/\s+/g, " ").slice(0, 240)}`).join("\n");
+    let parsed;
+    try {
+      const res = await client.complete({ system: TOPIC_SYSTEM, user: `Tweets:\n${list}`, json: true, maxTokens: 1500 });
+      parsed = TopicResultSchema.parse(extractJson(res.text)).results;
+    } catch (e) {
+      logger.error({ err: String(e), batch: batch.length }, "extractTopics batch failed; skipping");
+      continue;
+    }
+    for (const r of parsed) {
+      if (!r.is_relevant || !r.headline.trim()) continue;
+      const t = byId.get(r.id);
+      if (!t) continue;
+      out.push({
+        headline: r.headline.trim(),
+        category: r.category.trim() || "industry",
+        whyHot: r.why_hot.trim(),
+        link: t.link,
+        mediaUrl: t.mediaUrl,
+        engagement: { likes: t.likes, retweets: t.retweets },
+        tweet: t,
+      });
+    }
   }
   return out;
 }
