@@ -4,6 +4,11 @@ All notable changes to TradeLinks. Format loosely follows [Keep a Changelog];
 versioning is [SemVer]. `package.json` is the canonical version; each release is
 git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 
+## [0.10.0] — 2026-06-07
+
+### Added
+- [请补充]
+
 ## [0.9.0] — 2026-06-07
 
 ### Added
