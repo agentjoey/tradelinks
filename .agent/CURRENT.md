@@ -3,8 +3,17 @@
 Version:        v0.8.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-06 by claude-opus-4-8
+Last Updated:   2026-06-07 by opencode (BL-039 slice 1)
 Sprint File:    .agent/sprints/sprint-005.md
+
+## 🆕 本轮新增（2026-06-07）：Telegram 频道精选推送 (BL-039 slice 1)
+
+- **BL-039 Curated Telegram Channel Push（已完成开发，待部署）** — 每日精选 6–8 条 Wire 预警 + Radar 爆品推送到公开 Telegram 频道。
+  - **纯函数**：`channel-render.ts`(HTML 渲染) + `channel-select.ts`(排序+混合+预算控制)，42 单测全覆盖。
+  - **DB**：`ChannelPush` 模型(migration 0006) + `channel-db.ts`(候选收集/已推跟踪/记录)。
+  - **Worker**：`channel-push-tick`(3×/天，02:00/10:00/16:00 UTC)，与 admin review 完全分离。
+  - **配置**：`TELEGRAM_CHANNEL_ID`、`CHANNEL_PUSH_ENABLED`、`CHANNEL_PUSH_DAILY_MAX`(8)、`CHANNEL_PUSH_RUN_MAX`(3)、`CHANNEL_PUSH_MIN_URGENCY`(2)。
+  - **待上线**：设置 `TELEGRAM_CHANNEL_ID` + `CHANNEL_PUSH_ENABLED=true` 后运行 migration 即可。
 
 ## 🆕 本轮新增（2026-06-06）：Daily Note 原创日报 + X 信源扩展
 
@@ -108,9 +117,11 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 - [ ] [EP-005] [LOW] UI 增强：urgency 排序/已读置灰/中英切换
 
 
-## Version History（最近 5 版）
+## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.8.1 | 2026-06-07 | BL-039 slice 1: Telegram 频道精选推送(Wire+Radar 混合,6-8条/天,3×/天 cron,纯函数+42单测) |
+| v0.8.0 | 2026-06-06 | Daily Note 原创日报 + X 信源扩展(18 核验账号) + 管道加固 + /admin/sources 源监控 |
 | v0.6.0 | 2026-06-04 | 上线 Vercel + Web v2(时间线分段/紧急度档位/标题跳转/og:image)+ JsonAdapter + Amazon多区品类 + cap |
 | v0.5.3 | 2026-06-04 | 平台爆品源扩展：Amazon BSR UK/UAE/AU 验证上线(各30条)+ Temu/MELI/Noon backlog |
 | v0.5.2 | 2026-06-04 | JsonAdapter(Federal Register 20条上线)+ 死源清理(EU OJ/LUCID/Momentum/Ebrun/Reddit 停用) |

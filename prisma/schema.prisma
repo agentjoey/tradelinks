@@ -229,6 +229,21 @@ model SourceHealthSnapshot {
   @@map("source_health_snapshots")
 }
 
+// Channel Push (BL-039): tracks items pushed to the public Telegram channel.
+// Unique constraint prevents double-push; pushedAt drives the daily budget.
+model ChannelPush {
+  id        String   @id @default(cuid())
+  itemType  String   // "alert" | "product"
+  itemId    String   // alert.id | "bestseller:<key>" | "viral:<key>"
+  channelId String   // TELEGRAM_CHANNEL_ID at push time
+  messageId String?  // telegram message_id, for future edit/delete
+  pushedAt  DateTime @default(now())
+
+  @@unique([itemType, itemId, channelId])
+  @@index([pushedAt])
+  @@map("channel_pushes")
+}
+
 // Daily Note (BL-027): one original editorial article per day, per language, per
 // kind (brief = policy interpretation, roundup = viral-product roundup). Written
 // by the editor model, fact-checked + de-AI'd by the reviewer, human-approved

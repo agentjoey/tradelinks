@@ -50,6 +50,15 @@ const EnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)
   TELEGRAM_CHAT_ID: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(), // verifies Telegram callback webhook
+  // --- Curated Telegram channel push (BL-039 slice 1) ---
+  TELEGRAM_CHANNEL_ID: z.string().optional(), // public channel @username or -100… id
+  CHANNEL_PUSH_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  CHANNEL_PUSH_DAILY_MAX: z.coerce.number().int().positive().default(8),
+  CHANNEL_PUSH_RUN_MAX: z.coerce.number().int().positive().default(3),
+  CHANNEL_PUSH_MIN_URGENCY: z.coerce.number().min(0).default(2),
   SLACK_WEBHOOK_URL: z.string().optional(),
   // auto-push alerts at/above this urgency to Telegram (with in-chat Approve/Reject)
   PUSH_THRESHOLD: z.coerce.number().default(4.5),

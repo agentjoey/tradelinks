@@ -16,6 +16,7 @@ export const QUEUES = {
   health: "source-health-tick",
   x: "x-tick",
   dailyNote: "daily-note-tick",
+  channelPush: "channel-push-tick",
 } as const;
 
 /** Per-queue defaults: 3 retries, 2s base delay, exponential backoff. */

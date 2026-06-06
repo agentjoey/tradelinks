@@ -8,6 +8,11 @@ export interface PushResult {
   slack: "sent" | "skipped" | "failed";
 }
 
+export interface ChannelSendResult {
+  status: "sent" | "skipped" | "failed";
+  messageId?: number;
+}
+
 async function telegramSend(text: string, replyMarkup?: object): Promise<"sent" | "skipped" | "failed"> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return "skipped";
   try {
@@ -74,4 +79,36 @@ export async function pushAlertForReview(a: PushAlert & { id: string }): Promise
   const result = { telegram, slack };
   logger.info({ ...result, id: a.id, urgency: a.urgencyScore }, "alert pushed for review");
   return result;
+}
+
+/**
+ * Send an HTML message to the public Telegram channel (BL-039).
+ * Gated: no token or channel id → dry-run "skipped" (logs the rendered text).
+ * Returns messageId on success for storable cross-reference.
+ */
+export async function sendToChannel(text: string): Promise<ChannelSendResult> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) return { status: "skipped" };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: env.TELEGRAM_CHANNEL_ID,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: false,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      logger.warn({ status: res.status, body: body.slice(0, 200) }, "channel send failed");
+      return { status: "failed" };
+    }
+    const data = (await res.json()) as { ok: boolean; result?: { message_id: number } };
+    return { status: "sent", messageId: data.result?.message_id };
+  } catch (e) {
+    logger.error({ err: String(e) }, "channel send error");
+    return { status: "failed" };
+  }
 }
