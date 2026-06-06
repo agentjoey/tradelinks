@@ -14,6 +14,7 @@ const config: Config = {
         surface: "#0e1015",
         surface2: "#13161d",
         line: "rgba(233,228,217,0.10)",
+        linestrong: "rgba(233,228,217,0.20)",
         paper: "#ECE7DB",
         muted: "#8b8f9a",
         faint: "#5a5f6b",
