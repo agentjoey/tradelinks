@@ -1,18 +1,22 @@
-// X (Twitter) daily worker (x-tick). Two Radar-only tracks share one hard daily
-// read budget (X_MAX_READS_PER_DAY, ~$0.005/read → ≤$0.50/day):
-//   1. viral consumer products  (#TikTokMadeMeBuyIt … → extractProducts)
-//   2. cross-border e-commerce hot topics (跨境电商 / cross-border … → extractTopics)
-// Both upsert as X01 items (status=processed), tagged rawContent.kind, the same
-// fork as Amazon bestsellers — never the AI/Wire pipeline. The whole run no-ops
-// (zero cost) when X_ENABLED is off or no bearer is set.
+// X (Twitter) daily worker (x-tick). Three Radar-only acquisition tracks → AI
+// extraction → X01 items (status=processed, tagged rawContent.kind), the same
+// fork as Amazon bestsellers — never the AI/Wire pipeline:
+//   1. search: viral consumer products  (#TikTokMadeMeBuyIt … → extractProducts)
+//   2. search: cross-border hot topics  (跨境电商 / cross-border … → extractTopics)
+//   3. curated accounts (BL-034): poll high-signal timelines incrementally → both
+// Budgets: search = X_MAX_READS_PER_DAY (~$0.5/day), accounts = X_ACCOUNTS_MAX_READS
+// (~$1/day). Stored rawContent now keeps the tweet text (BL-035 substrate). The
+// whole run no-ops (zero cost) when X_ENABLED is off or no bearer is set.
 import type PgBoss from "pg-boss";
 import { QUEUES } from "../queue/queues.js";
 import { env } from "../config/env.js";
 import { prisma } from "../db/client.js";
 import { urlHash, normalizeUrl } from "../lib/hash.js";
-import { pickClient } from "../ai/client.js";
-import { fetchViralTweets } from "../social/x.js";
-import { extractProducts, extractTopics } from "../social/extract.js";
+import { pickClient, type LlmClient } from "../ai/client.js";
+import { fetchViralTweets, fetchAccountsTweets, resolveUserIds } from "../social/x.js";
+import { extractProducts, extractTopics, type ExtractedProduct, type HotTopic } from "../social/extract.js";
+import { latestTweetTimeByAuthor } from "../social/db.js";
+import { X_ACCOUNTS } from "../config/x-accounts.js";
 import { X_SOURCE_ID, SOURCES_BY_ID } from "../config/sources.js";
 import { logger } from "../lib/logger.js";
 
@@ -85,10 +89,75 @@ async function upsertXItem(
   return true;
 }
 
+/** Persist extracted products as X01 items (stores the tweet text for BL-035). */
+async function persistProducts(products: ExtractedProduct[]): Promise<number> {
+  let created = 0;
+  for (const it of products) {
+    const isNew = await upsertXItem("product", it.product, it.link, it.mediaUrl, it.tweet.createdAt, {
+      tweetId: it.tweet.id,
+      author: it.tweet.author,
+      text: it.tweet.text,
+      likes: it.engagement.likes,
+      retweets: it.engagement.retweets,
+      why_viral: it.whyViral,
+      category: it.category,
+      query: it.tweet.query,
+    });
+    if (isNew) created++;
+  }
+  return created;
+}
+
+/** Persist extracted hot topics as X01 items (stores the tweet text for BL-035). */
+async function persistTopics(topics: HotTopic[]): Promise<number> {
+  let created = 0;
+  for (const it of topics) {
+    const isNew = await upsertXItem("topic", it.headline, it.link, it.mediaUrl, it.tweet.createdAt, {
+      tweetId: it.tweet.id,
+      author: it.tweet.author,
+      text: it.tweet.text,
+      likes: it.engagement.likes,
+      retweets: it.engagement.retweets,
+      why_hot: it.whyHot,
+      category: it.category,
+      query: it.tweet.query,
+    });
+    if (isNew) created++;
+  }
+  return created;
+}
+
 /**
- * One daily X run: budget-capped search → AI extraction (products + cross-border
- * topics) → upsert Radar-only X01 items. Reusable directly (scripts) and via the
- * scheduled worker. No-ops (zero cost) unless X_ENABLED and a bearer are set.
+ * Curated-accounts track (BL-034): resolve handles → ids, poll each timeline
+ * incrementally (start_time = last stored tweet, so only NEW posts are read),
+ * budget-capped, then extract products + topics. A tweet is at most one item
+ * (products take precedence) since the X01 url is unique per tweet.
+ */
+async function runAccountsTrack(bearer: string, client: LlmClient): Promise<{ reads: number; products: ExtractedProduct[]; topics: HotTopic[] }> {
+  if (env.X_ACCOUNTS_MAX_READS <= 0 || X_ACCOUNTS.length === 0) return { reads: 0, products: [], topics: [] };
+  let resolved;
+  try {
+    resolved = await resolveUserIds(X_ACCOUNTS, { bearer });
+  } catch (e) {
+    logger.error({ err: String(e) }, "x resolveUserIds failed; skipping accounts track");
+    return { reads: 0, products: [], topics: [] };
+  }
+  const accounts = await Promise.all(resolved.map(async (a) => ({ ...a, startTime: await latestTweetTimeByAuthor(a.id) })));
+  const perAccount = Math.max(5, Math.min(20, Math.floor(env.X_ACCOUNTS_MAX_READS / Math.max(1, accounts.length))));
+  const r = await fetchAccountsTweets({ accounts, maxReads: env.X_ACCOUNTS_MAX_READS, maxResultsPerAccount: perAccount, bearer });
+
+  const [products, topicsAll] = await Promise.all([extractProducts(r.tweets, client), extractTopics(r.tweets, client)]);
+  const productIds = new Set(products.map((p) => p.tweet.id));
+  const topics = topicsAll.filter((t) => !productIds.has(t.tweet.id)); // one item per tweet
+  logger.info({ accounts: accounts.length, reads: r.reads, kept: r.tweets.length, products: products.length, topics: topics.length }, "x accounts track done");
+  return { reads: r.reads, products, topics };
+}
+
+/**
+ * One daily X run: budget-capped search + curated-account timelines → AI
+ * extraction (products + cross-border topics) → upsert Radar-only X01 items.
+ * Reusable directly (scripts) and via the scheduled worker. No-ops (zero cost)
+ * unless X_ENABLED and a bearer are set.
  */
 export async function runXIngest(): Promise<XIngestResult> {
   if (!env.X_ENABLED || !env.X_BEARER_TOKEN) {
@@ -124,40 +193,21 @@ export async function runXIngest(): Promise<XIngestResult> {
   });
   const topics = await extractTopics(tp.tweets, client);
 
-  const reads = p.reads + tp.reads;
+  // --- track 3: curated high-signal accounts (BL-034) ---
+  const acc = await runAccountsTrack(bearer, client);
+
+  const reads = p.reads + tp.reads + acc.reads;
+  const allProducts = [...products, ...acc.products];
+  const allTopics = [...topics, ...acc.topics];
   logger.info(
-    { reads, cap: env.X_MAX_READS_PER_DAY, productKept: p.tweets.length, topicKept: tp.tweets.length, products: products.length, topics: topics.length },
-    "x search + extract done",
+    { reads, searchCap: env.X_MAX_READS_PER_DAY, accountsCap: env.X_ACCOUNTS_MAX_READS, products: allProducts.length, topics: allTopics.length },
+    "x search + accounts + extract done",
   );
 
-  let created = 0;
-  for (const it of products) {
-    const isNew = await upsertXItem("product", it.product, it.link, it.mediaUrl, it.tweet.createdAt, {
-      tweetId: it.tweet.id,
-      author: it.tweet.author,
-      likes: it.engagement.likes,
-      retweets: it.engagement.retweets,
-      why_viral: it.whyViral,
-      category: it.category,
-      query: it.tweet.query,
-    });
-    if (isNew) created++;
-  }
-  for (const it of topics) {
-    const isNew = await upsertXItem("topic", it.headline, it.link, it.mediaUrl, it.tweet.createdAt, {
-      tweetId: it.tweet.id,
-      author: it.tweet.author,
-      likes: it.engagement.likes,
-      retweets: it.engagement.retweets,
-      why_hot: it.whyHot,
-      category: it.category,
-      query: it.tweet.query,
-    });
-    if (isNew) created++;
-  }
+  const created = (await persistProducts(allProducts)) + (await persistTopics(allTopics));
 
-  logger.info({ reads, products: products.length, topics: topics.length, created }, "x-tick ingested (Radar-only)");
-  return { reads, products: products.length, topics: topics.length, created };
+  logger.info({ reads, products: allProducts.length, topics: allTopics.length, created }, "x-tick ingested (Radar-only)");
+  return { reads, products: allProducts.length, topics: allTopics.length, created };
 }
 
 export function registerXWorker(boss: PgBoss) {

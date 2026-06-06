@@ -42,6 +42,9 @@ const EnvSchema = z.object({
   // 7-day index surfaces low-engagement tweets even under relevancy sort, so
   // this is env-tunable to dial signal vs. coverage without a redeploy.
   X_MIN_LIKES: z.coerce.number().int().nonnegative().default(50),
+  // curated-accounts track (BL-034): hard daily read cap for polling timelines.
+  // ~$0.005/read → 200 ≈ $1/day. Shares the X kill-switch (X_ENABLED + bearer).
+  X_ACCOUNTS_MAX_READS: z.coerce.number().int().nonnegative().default(200),
   RESEND_API_KEY: z.string().optional(), // daily digest email (Sprint 003 T3)
   FROM_EMAIL: z.string().default("alerts@tradelinks.io"),
   TELEGRAM_BOT_TOKEN: z.string().optional(), // instant push (Sprint 004 T3)

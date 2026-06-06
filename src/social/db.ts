@@ -19,6 +19,20 @@ interface XRawContent {
   query?: string;
 }
 
+/**
+ * Latest stored tweet time for an author (the account's user_id) — used as the
+ * `start_time` cursor so the curated-accounts track only reads NEW posts. Returns
+ * undefined when we've never stored a tweet from this account.
+ */
+export async function latestTweetTimeByAuthor(authorId: string): Promise<string | undefined> {
+  const it = await prisma.item.findFirst({
+    where: { sourceId: X_SOURCE_ID, rawContent: { path: ["author"], equals: authorId } },
+    orderBy: { publishedAt: "desc" },
+    select: { publishedAt: true },
+  });
+  return it?.publishedAt ? it.publishedAt.toISOString() : undefined;
+}
+
 async function recentXItems(kind: "product" | "topic") {
   return prisma.item.findMany({
     where: {
