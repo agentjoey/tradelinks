@@ -14,7 +14,8 @@ const byUrgencyThenRecency = (x: AlertRow, y: AlertRow) =>
 /** Top urgency≥4 alert within `windowMs` (default 24h), urgency desc then recency. Null if none. */
 export function pickBreaking(alerts: AlertRow[], now: number, windowMs = 24 * 3_600_000): AlertRow | null {
   const fresh = alerts.filter((a) => a.urgencyScore >= 4 && now - tsOf(a) <= windowMs);
-  return fresh.length ? [...fresh].sort(byUrgencyThenRecency)[0] : null;
+  const [top] = [...fresh].sort(byUrgencyThenRecency);
+  return top ?? null;
 }
 
 /** First `n` alerts by urgency desc then recency, excluding `excludeId`. */
