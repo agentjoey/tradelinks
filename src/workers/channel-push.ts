@@ -77,7 +77,8 @@ export async function runChannelPush(): Promise<ChannelPushResult> {
         ? renderChannelAlert(item.alert)
         : renderChannelProduct(item.product);
 
-    const imageUrl = item.type === "alert" ? item.alert.imageUrl : item.product.imageUrl;
+    // tap-the-image → source: the link preview points at the source/product URL
+    const previewUrl = item.type === "alert" ? item.alert.sourceUrls[0] : item.product.url;
     const itemType = item.type === "alert" ? "alert" : "product";
 
     // Dry-run log when token not configured (shouldn't reach here per gate above,
@@ -87,7 +88,7 @@ export async function runChannelPush(): Promise<ChannelPushResult> {
       continue;
     }
 
-    const res = await sendToChannel(text, imageUrl);
+    const res = await sendToChannel(text, previewUrl);
     if (res.status === "sent") {
       await recordChannelPush(itemType, item.itemId, channelId, res.messageId);
       posted++;

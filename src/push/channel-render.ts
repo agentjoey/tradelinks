@@ -1,7 +1,7 @@
 // Curated Telegram channel message rendering (BL-039 / BL-040).
-// Pure — no I/O. Produces the HTML caption/text for a channel post; the image
-// is attached separately by sendToChannel (sendPhoto). News-card style:
-// source (blue link) / bold headline / summary / action / meta.
+// Pure — no I/O. Produces the HTML caption/text for a channel post; the big
+// image is attached by sendToChannel via a tappable link preview (→ source).
+// News-card style: source (blue link) / bold headline / summary / action / meta.
 
 export interface ChannelAlert {
   title: string;
@@ -27,7 +27,6 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Clamp text to a channel-post length, breaking at a word boundary. */
 function clamp(s: string, maxLen: number): string {
   if (s.length <= maxLen) return s;
   const cut = s.lastIndexOf(" ", maxLen);
@@ -64,18 +63,79 @@ function hostOf(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
 }
 
+// Pretty publisher/brand names for known hosts; fallback title-cases the SLD.
+const SOURCE_NAMES: Record<string, string> = {
+  "news.google.com": "Google News",
+  "reuters.com": "Reuters",
+  "cbp.gov": "U.S. CBP",
+  "federalregister.gov": "Federal Register",
+  "ustr.gov": "USTR",
+  "freightwaves.com": "FreightWaves",
+  "theloadstar.com": "The Loadstar",
+  "joc.com": "JOC",
+  "supplychaindive.com": "Supply Chain Dive",
+  "modernretail.co": "Modern Retail",
+  "marketplacepulse.com": "Marketplace Pulse",
+  "ecommercebytes.com": "EcommerceBytes",
+  "retaildive.com": "Retail Dive",
+  "practicalecommerce.com": "Practical Ecommerce",
+  "tamebay.com": "Tamebay",
+  "digitalcommerce360.com": "Digital Commerce 360",
+  "accc.gov.au": "ACCC",
+  "gov.uk": "GOV.UK",
+  "europa.eu": "European Commission",
+  "shopify.com": "Shopify",
+  "sellercentral.amazon.com": "Amazon Seller Central",
+  "amazon.com": "Amazon",
+  "ebay.com": "eBay",
+  "phemex.com": "Phemex",
+};
+
+function sourceName(url: string): string {
+  const host = hostOf(url);
+  if (SOURCE_NAMES[host]) return SOURCE_NAMES[host];
+  const bare = host.replace(/^(m|amp|mobile)\./, "");
+  if (SOURCE_NAMES[bare]) return SOURCE_NAMES[bare];
+  const parts = bare.split(".");
+  const sld = parts.length >= 2 ? parts[parts.length - 2] : bare;
+  return sld ? sld.charAt(0).toUpperCase() + sld.slice(1) : host;
+}
+
+/** Google News titles are "Headline - Publisher"; split off the real publisher
+ * and clean the headline. Returns null if no usable suffix. */
+function splitGoogleNewsTitle(title: string): { title: string; publisher: string } | null {
+  for (const sep of [" - ", " – ", " — "]) {
+    const idx = title.lastIndexOf(sep);
+    if (idx > 0) {
+      const publisher = title.slice(idx + sep.length).trim();
+      const head = title.slice(0, idx).trim();
+      if (publisher.length >= 2 && publisher.length <= 40 && head.length >= 10) {
+        return { title: head, publisher };
+      }
+    }
+  }
+  return null;
+}
+
 /**
- * Render a published alert as a news card caption: source (blue link) / emoji +
- * bold headline / summary / action / italic meta. The image (if any) is attached
- * by the send layer.
+ * Render a published alert as a news-card caption: source (blue link) / emoji +
+ * bold headline / summary / action / italic meta. The big image is the tappable
+ * link preview of the source URL (attached by the send layer).
  */
 export function renderChannelAlert(a: ChannelAlert): string {
   const url = a.sourceUrls[0];
   const host = url ? hostOf(url) : "";
+  let title = a.title;
+  let source = url ? sourceName(url) : "";
+  if (url && host === "news.google.com") {
+    const sp = splitGoogleNewsTitle(a.title);
+    if (sp) { title = sp.title; source = sp.publisher; }
+  }
+
   const meta = [categoryLabel(a.category), a.regions.map(region).join("/")].filter(Boolean).join(" · ");
   const lines: string[] = [];
-  if (url && host) lines.push(`<a href="${esc(url)}"><b>${esc(host)}</b></a>`);
-  lines.push(`${tierEmoji(a.urgencyScore)} <b>${esc(clamp(a.title, 140))}</b>`);
+  if (url && source) lines.push(`<a href="${esc(url)}"><b>${esc(source)}</b></a>`);
+  lines.push(`${tierEmoji(a.urgencyScore)} <b>${esc(clamp(title, 140))}</b>`);
   if (a.summary) lines.push("", esc(clamp(a.summary, 240)));
   if (a.actionRequired) lines.push("", `➤ <b>${esc(clamp(a.actionRequired, 200))}</b>`);
   if (meta) lines.push("", `<i>${esc(meta)}</i>`);
@@ -83,8 +143,9 @@ export function renderChannelAlert(a: ChannelAlert): string {
 }
 
 /**
- * Render a product (bestseller or viral) as a card caption: platform (blue link)
- * / 📈 bold title / italic metric. The product image is attached by the send layer.
+ * Render a product (bestseller or viral) as a news-card caption: platform (blue
+ * link) / 📈 bold title / italic metric. The product image is the tappable link
+ * preview of the product URL.
  */
 export function renderChannelProduct(p: ChannelProduct): string {
   let meta: string;

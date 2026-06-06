@@ -81,8 +81,6 @@ export async function pushAlertForReview(a: PushAlert & { id: string }): Promise
   return result;
 }
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
-
 async function tgChannelCall(method: string, body: object): Promise<{ ok: boolean; messageId?: number }> {
   try {
     const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
@@ -105,27 +103,18 @@ async function tgChannelCall(method: string, body: object): Promise<{ ok: boolea
 }
 
 /**
- * Post to the public channel as a news card. With an image → `sendPhoto` (big
- * image, caption below); the raw image URL is tried first, then our img-proxy
- * (bypasses hotlink blocks), then a text-only fallback. Telegram fetches the
- * photo URL, so an ok response confirms the image attached. Gated: no
- * token/channel → "skipped".
+ * Post a news card to the public channel. When `previewUrl` is given, it's
+ * rendered as a large, tappable link preview below the text (tap image → source);
+ * the preview image is the URL's og:image. Without it, the preview is disabled.
+ * Gated: no token/channel → "skipped".
  */
-export async function sendToChannel(text: string, imageUrl?: string | null): Promise<ChannelSendResult> {
+export async function sendToChannel(text: string, previewUrl?: string | null): Promise<ChannelSendResult> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) return { status: "skipped" };
-  const chat_id = env.TELEGRAM_CHANNEL_ID;
-
-  if (imageUrl) {
-    const proxied = `${SITE}/api/img-proxy?u=${encodeURIComponent(imageUrl)}`;
-    for (const photo of [imageUrl, proxied]) {
-      const r = await tgChannelCall("sendPhoto", { chat_id, photo, caption: text, parse_mode: "HTML" });
-      if (r.ok) return { status: "sent", messageId: r.messageId };
-    }
-    // both photo attempts failed → fall through to text-only
-  }
-
+  const link_preview_options = previewUrl
+    ? { url: previewUrl, prefer_large_media: true, show_above_text: false }
+    : { is_disabled: true };
   const r = await tgChannelCall("sendMessage", {
-    chat_id, text, parse_mode: "HTML", link_preview_options: { is_disabled: true },
+    chat_id: env.TELEGRAM_CHANNEL_ID, text, parse_mode: "HTML", link_preview_options,
   });
   return r.ok ? { status: "sent", messageId: r.messageId } : { status: "failed" };
 }

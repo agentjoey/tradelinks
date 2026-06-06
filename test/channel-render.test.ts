@@ -91,9 +91,20 @@ describe("renderChannelAlert (news-card format)", () => {
     expect(renderChannelAlert(ALERT_MEDIUM)).not.toContain("➤");
   });
 
-  it("leads with the source host as a bold clickable link", () => {
+  it("leads with a beautified source name as a bold clickable link", () => {
     const t = renderChannelAlert(ALERT);
-    expect(t).toContain('<a href="https://www.cbp.gov/newsroom"><b>cbp.gov</b></a>');
+    expect(t).toContain('<a href="https://www.cbp.gov/newsroom"><b>U.S. CBP</b></a>');
+  });
+
+  it("uses the publisher from a Google News title and strips the suffix", () => {
+    const t = renderChannelAlert({
+      ...ALERT,
+      sourceUrls: ["https://news.google.com/rss/articles/XYZ"],
+      title: "Brazil bans crypto for cross-border payments - Phemex",
+    });
+    expect(t).toContain("<b>Phemex</b>");
+    expect(t).toContain("Brazil bans crypto for cross-border payments");
+    expect(t).not.toContain("- Phemex");
   });
 
   it("omits the source link when there are no sources", () => {
