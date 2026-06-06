@@ -7,6 +7,7 @@ import { registerScoringWorker } from "./scoring.js";
 import { registerTrendsWorker } from "./trends.js";
 import { registerHealthWorker } from "./health.js";
 import { registerXWorker } from "./x.js";
+import { registerDailyNoteWorker } from "./daily-note.js";
 import { registerScheduler } from "./scheduler.js";
 import { seedSources } from "./seed-sources.js";
 import { QUEUES } from "../queue/queues.js";
@@ -28,6 +29,7 @@ async function main() {
   await registerTrendsWorker(boss);
   await registerHealthWorker(boss);
   await registerXWorker(boss);
+  await registerDailyNoteWorker(boss);
   await registerScheduler(boss);
   // daily trends ingest + diffusion at 02:00 UTC
   await boss.schedule(QUEUES.trends, "0 2 * * *");
@@ -35,7 +37,9 @@ async function main() {
   await boss.schedule(QUEUES.health, "30 2 * * *");
   // daily X viral-products ingest at 03:00 UTC (no-op until X_ENABLED + token set)
   await boss.schedule(QUEUES.x, "0 3 * * *");
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x (pg-boss)");
+  // daily editorial note(s) at 03:30 UTC (after trends/health/x settle yesterday)
+  await boss.schedule(QUEUES.dailyNote, "30 3 * * *");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");

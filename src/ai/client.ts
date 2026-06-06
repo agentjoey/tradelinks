@@ -47,6 +47,8 @@ export interface OpenAiCompatConfig {
   model: string;
   /** extra top-level body params, e.g. { thinking: { type: "disabled" } } for DeepSeek V4 */
   extraBody?: Record<string, unknown>;
+  /** request timeout (ms). Default 60s; raise for slow reasoning models. */
+  timeoutMs?: number;
 }
 
 export class OpenAiCompatClient implements LlmClient {
@@ -79,7 +81,7 @@ export class OpenAiCompatClient implements LlmClient {
         Authorization: `Bearer ${this.cfg.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(this.cfg.timeoutMs ?? 60_000),
     });
     if (!res.ok) {
       throw new Error(`${this.name} HTTP ${res.status}: ${await res.text()}`);
@@ -106,6 +108,10 @@ export interface AnthropicCompatConfig {
   baseUrl: string; // e.g. https://api.minimax.io/anthropic
   apiKey: string | undefined;
   model: string;
+  /** extra top-level body params, e.g. { thinking: { type: "disabled" } } for MiniMax-M3 */
+  extraBody?: Record<string, unknown>;
+  /** request timeout (ms). Default 60s; raise for slow reasoning models. */
+  timeoutMs?: number;
 }
 
 /**
@@ -130,6 +136,7 @@ export class AnthropicCompatClient implements LlmClient {
       max_tokens: Math.max(opts.maxTokens ?? 1024, 2048),
       temperature: opts.temperature ?? 0.2,
       messages: [{ role: "user", content: opts.user }],
+      ...this.cfg.extraBody,
     };
     if (opts.system) body.system = opts.system;
 
@@ -141,7 +148,7 @@ export class AnthropicCompatClient implements LlmClient {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(this.cfg.timeoutMs ?? 60_000),
     });
     if (!res.ok) {
       throw new Error(`${this.name} HTTP ${res.status}: ${await res.text()}`);
@@ -196,6 +203,31 @@ export const qwenPlus = new OpenAiCompatClient({
   model: "qwen-plus",
 });
 
+// Google Gemini via its OpenAI-compatible surface (BL-027 daily-note candidate).
+// Same chat/completions shape + Bearer auth, so OpenAiCompatClient just works.
+// reasoning_effort:"none" turns thinking OFF — Gemini 2.5+ otherwise spends the
+// token budget on reasoning and truncates the answer (finish_reason=length). For
+// fact-synthesis (not problem-solving) thinking adds latency/cost with no gain —
+// same rationale as deepseek-v4-flash's thinking:disabled (ADR-005).
+export const gemini = new OpenAiCompatClient({
+  name: `gemini:${env.GEMINI_MODEL}`,
+  baseUrl: env.GEMINI_BASE_URL,
+  apiKey: env.GEMINI_API_KEY,
+  model: env.GEMINI_MODEL,
+  extraBody: { reasoning_effort: "none" },
+});
+
+// Gemini on the FLEX service tier (BL-027 daily-note editor default): ~50% cheaper,
+// best-effort latency (may queue) → long timeout. reasoning off (synthesis task).
+export const geminiFlex = new OpenAiCompatClient({
+  name: `gemini-flex:${env.GEMINI_MODEL}`,
+  baseUrl: env.GEMINI_BASE_URL,
+  apiKey: env.GEMINI_API_KEY,
+  model: env.GEMINI_MODEL,
+  extraBody: { reasoning_effort: "none", service_tier: "flex" },
+  timeoutMs: 600_000,
+});
+
 /**
  * Stage-1 provider routing (ADR-005). Primary = deepseek-v4-flash (thinking off):
  * fast, lean, precise region tags. Falls back to MiniMax, then deepseek-chat/Qwen.
@@ -213,4 +245,20 @@ export function pickClient(lang: string): LlmClient {
  */
 export function scoringClient(): LlmClient {
   return env.MINIMAX_API_KEY ? minimax : deepseekChat;
+}
+
+/**
+ * Daily-note EDITOR (BL-027) — writes the original brief. Default = gemini flash
+ * on the Flex tier (cheap, fast, best multilingual); deepseek-v4-flash fallback.
+ */
+export function editorClient(): LlmClient {
+  return env.GEMINI_API_KEY ? geminiFlex : deepseekFlash;
+}
+
+/**
+ * Daily-note REVIEWER (BL-027) — fact-checks the draft against the grounded
+ * source set and strips unsupported claims before publish. Model = deepseek.
+ */
+export function reviewerClient(): LlmClient {
+  return deepseekFlash;
 }

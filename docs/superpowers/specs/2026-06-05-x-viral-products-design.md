@@ -2,6 +2,7 @@
 
 > Date: 2026-06-05 · Status: approved (brainstorm) · Scope: new Radar input + ingestion
 > Budget: **≤ $0.50 / day** (hard cap).
+> Backlog: BL-013 (shipped) · BL-014 (production enable) — see Obsidian `P026-TradeLinks/Backlog-待办`.
 
 ## Goal & business value
 

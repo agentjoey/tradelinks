@@ -4,7 +4,7 @@ export type Lang = "en" | "zh";
 export const LANGS: Lang[] = ["en", "zh"];
 
 export interface Dict {
-  nav: { wire: string; radar: string; desk: string; sources: string };
+  nav: { wire: string; radar: string; daily: string; desk: string; sources: string };
   eyebrow: string;
   live: string;
   dispatches: string;
@@ -51,10 +51,22 @@ export interface Dict {
   hotX: string;
   hotXSub: string;
   hotXEmpty: string;
+  // daily note
+  dailyEyebrow: string;
+  dailyPre: string;
+  dailyEm: string;
+  dailySub: string;
+  dailyEmpty: string;
+  kindBrief: string;
+  kindRoundup: string;
+  dailyBy: string;
+  dailyTakeaways: string;
+  dailySources: string;
+  dailyBackToAll: string;
 }
 
 const en: Dict = {
-  nav: { wire: "Wire", radar: "Radar", desk: "Desk", sources: "Sources" },
+  nav: { wire: "Wire", radar: "Radar", daily: "Daily", desk: "Desk", sources: "Sources" },
   eyebrow: "◆ Intelligence Wire",
   live: "live",
   dispatches: "dispatches",
@@ -99,10 +111,21 @@ const en: Dict = {
   hotX: "cross-border hot on X",
   hotXSub: "What cross-border e-commerce sellers are talking about on X — platform rule changes, customs/tariffs, logistics and marketplace moves.",
   hotXEmpty: "No cross-border topics yet — enable the X source (X_ENABLED) to start.",
+  dailyEyebrow: "◆ The Daily",
+  dailyPre: "Yesterday, ",
+  dailyEm: "decoded",
+  dailySub: "One original brief a day — the policy moves and viral-product shifts that mattered, synthesized with what to actually do. Written by our desk, fact-checked before it ships.",
+  dailyEmpty: "No daily notes published yet — they appear here each morning.",
+  kindBrief: "Policy Brief",
+  kindRoundup: "Product Roundup",
+  dailyBy: "By Agent Joey · TradeLinks",
+  dailyTakeaways: "Key takeaways",
+  dailySources: "Sources",
+  dailyBackToAll: "← all daily notes",
 };
 
 const zh: Dict = {
-  nav: { wire: "情报流", radar: "趋势雷达", desk: "审核台", sources: "信息源" },
+  nav: { wire: "情报流", radar: "趋势雷达", daily: "每日", desk: "审核台", sources: "信息源" },
   eyebrow: "◆ 跨境情报电台",
   live: "实时",
   dispatches: "条情报",
@@ -147,6 +170,17 @@ const zh: Dict = {
   hotX: "X 跨境热点",
   hotXSub: "跨境电商卖家正在 X 上热议的话题 —— 平台规则变动、关税清关、物流与平台动向。",
   hotXEmpty: "暂无跨境热点 —— 开启 X 信息源（X_ENABLED）后开始采集。",
+  dailyEyebrow: "◆ 每日观察",
+  dailyPre: "昨日，",
+  dailyEm: "已解读",
+  dailySub: "每天一篇原创简报 —— 把真正重要的政策变动与爆品风向综合成「该怎么做」。由编辑台撰写，发布前先做事实核查。",
+  dailyEmpty: "暂未发布每日简报 —— 每天清晨在此更新。",
+  kindBrief: "政策简报",
+  kindRoundup: "爆品观察",
+  dailyBy: "作者 Agent Joey · TradeLinks",
+  dailyTakeaways: "要点速览",
+  dailySources: "来源",
+  dailyBackToAll: "← 返回全部简报",
 };
 
 const DICTS: Record<Lang, Dict> = { en, zh };

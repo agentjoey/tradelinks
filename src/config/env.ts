@@ -11,6 +11,20 @@ const EnvSchema = z.object({
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
+  // Google Gemini via its OpenAI-compatible endpoint (BL-027 daily-note candidate).
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_BASE_URL: z.string().default("https://generativelanguage.googleapis.com/v1beta/openai"),
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
+  // --- Daily Note (BL-027) ---
+  // skip a day's note unless this many substantive inputs exist (no thin articles).
+  DAILY_NOTE_MIN_ITEMS: z.coerce.number().int().positive().default(4),
+  // autopublish reviewed notes. Default ON: there's no admin approval UI yet, so
+  // drafts would otherwise never surface. Set DAILY_NOTE_AUTOPUBLISH=false to hold
+  // notes as drafts once an approval workflow exists.
+  DAILY_NOTE_AUTOPUBLISH: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? true : v === "true" || v === "1")),
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
   // cap items processed per crawl (newest-first) — bounds AI cost on big feeds
   MAX_ITEMS_PER_CRAWL: z.coerce.number().int().positive().default(12),

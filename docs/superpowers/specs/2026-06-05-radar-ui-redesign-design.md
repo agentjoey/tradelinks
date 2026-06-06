@@ -1,6 +1,7 @@
 # Radar UI redesign — design spec
 
 > Date: 2026-06-05 · Status: approved (brainstorm) · Scope: `/trends` (Radar) only
+> Backlog: BL-009 (shipped) — see Obsidian `P026-TradeLinks/Backlog-待办`.
 
 ## Goal
 

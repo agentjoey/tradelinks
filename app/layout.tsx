@@ -56,6 +56,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <nav className="ticker text-[11px] uppercase tracking-[0.2em] text-muted flex items-center gap-5">
                 <Link href="/" className="hover:text-paper transition-colors">{t.nav.wire}</Link>
                 <Link href="/trends" className="hover:text-paper transition-colors">{t.nav.radar}</Link>
+                <Link href="/daily" className="hover:text-paper transition-colors">{t.nav.daily}</Link>
                 <Link href="/admin/review" className="hover:text-paper transition-colors">{t.nav.desk}</Link>
                 <Link href="/admin/sources" className="hover:text-paper transition-colors">{t.nav.sources}</Link>
                 <a href="/feed.xml" className="hover:text-paper transition-colors">RSS</a>
