@@ -56,7 +56,7 @@ export default async function Wire({
         <div className="space-y-8">
           {buckets.map((b) => (
             <section key={b.key}>
-              <div className="sticky top-[57px] z-[5] -mx-1 mb-3 flex items-center gap-3 bg-ink/85 px-1 py-1 backdrop-blur">
+              <div className="sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-ink/85 px-1 py-1 backdrop-blur">
                 <h2 className="ticker text-[11px] font-semibold uppercase tracking-[0.22em] text-paper">{b.label}</h2>
                 <span className="ticker text-[10px] text-faint">{b.rows.length}</span>
                 <div className="h-px flex-1 bg-line" />
