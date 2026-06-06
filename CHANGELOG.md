@@ -7,7 +7,22 @@ git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 ## [0.10.0] — 2026-06-07
 
 ### Added
-- [请补充]
+- **Editorial Home redesign (BL-026)** — `/` is now an editorial front door: a breaking
+  strip (top urgency≥4 alert) → masthead positioning → **Today at a glance** three streams
+  (Wire / Radar / Daily, image-forward top cards with source/platform labels) → a
+  filterable, date-bucketed **Earlier** feed → a dismissible bottom subscribe bar.
+- Scalable top nav + **account cluster** (Upgrade · Alerts · avatar → Profile/Billing/
+  Settings) — entry points for future SaaS surfaces; admin links out of public nav.
+- Wire moved to `/wire`; secondary pages keep a **timeline** design (Daily now
+  date-bucketed). Dual-mode alert cards (image card / compact row — no fake images).
+  Pure `pickBreaking`/`topAlerts`/`cardMode` with tests. English surface is zero-Chinese.
+
+### Changed
+- **Channel posts are now news cards (BL-040)** — `sendPhoto` big image + source (bold
+  link) / headline / summary / action, replacing the plain-text format. Raw image →
+  img-proxy → text fallback; alert candidates now carry `imageUrl`.
+- Channel candidate recency uses `createdAt` so Wire alerts (publishedAt mostly null)
+  reach the channel; long titles clamped.
 
 ## [0.9.0] — 2026-06-07
 
