@@ -71,7 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 upgradeLabel={t.navUpgrade}
                 account={t.account}
                 langHref={`/api/lang?l=${other}`}
-                langLabel={other === "zh" ? "中" : "EN"}
+                langLabel={other === "zh" ? "ZH" : "EN"}
               />
             </div>
           </header>
