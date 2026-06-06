@@ -11,7 +11,7 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 **Location:** ~/Playground/claudecode/tradelinks-mvp  
 **GitHub:**   agentjoey/tradelinks-mvp  
 **Live:**     https://tradelinks-mvp.vercel.app (Vercel) · worker runs on Railway/local  
-**Version:**  v0.6.0
+**Version:**  v0.8.0
 
 **Technical docs:** [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Operations](docs/operations.md) · [Sources](docs/specs/sources.md)
 

@@ -1,6 +1,6 @@
 # Current Status — TradeLinks
 
-Version:        v0.7.0
+Version:        v0.8.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
 Last Updated:   2026-06-06 by claude-opus-4-8
