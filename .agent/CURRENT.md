@@ -3,16 +3,32 @@
 Version:        v0.7.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-05 by claude-opus-4-8
+Last Updated:   2026-06-06 by claude-opus-4-8
 Sprint File:    .agent/sprints/sprint-005.md
 
+## 🆕 本轮新增（2026-06-06）：Daily Note 原创日报 + X 信源扩展
+
+- **BL-027 Daily Note（原创日报，已上生产）** — 每日基于前一天信号生成原创编辑文章，主打 SEO 内容资产。
+  - **双角色**：editor=`gemini-3.5-flash` **Flex 档**（deepseek 兜底，写深度+反 AI 腔）→ reviewer=`deepseek-v4-flash`（核事实+去 AI 腔）。
+  - **两类**：`brief`(政策解读) + `roundup`(爆品选品)，各有 prompt+质量门；富信号日各出一篇。
+  - **页面**：`/daily` + `/daily/[slug]` 可爬页 + `NewsArticle` JSON-LD/canonical/OG + 新增 `app/sitemap.ts`/`app/robots.ts`。署名 Agent Joey。
+  - **worker**：`daily-note-tick` @ **03:30 UTC**；`DAILY_NOTE_AUTOPUBLISH` **默认 ON**(暂无审批 UI)。migration `0005_daily_notes` 已上生产。
+  - 脚本：`bench-daily-note`(4 模型对比)、`daily-note-pipeline`、`daily-note-seed`。
+- **X 信源扩展（已上生产 + 已 X_ENABLED）**
+  - BL-013 viral/topic 两 search 轨已启用；**BL-036 curated-accounts 第 3 轨**：18 个核验账号时间线(since-cursor 增量、`X_ACCOUNTS_MAX_READS=200≈$1/天`)，**存推文原文**(BL-035 料仓雏形)。
+  - 修：`extractProducts/Topics` 批量化(25/批)防 JSON 截断；`scripts/{x-accounts-probe,x-run-once,x-report}.ts`。
+  - 实测：**accounts 轨信号远强于 search**(真·关税/海关/平台动向)。
+- **加固**：`extractJson` 容错(尾部多余括号 + 字符串内裸控制符)；AI client 加 `editorClient()`/`reviewerClient()` + 可配超时 + Gemini OpenAI-compat(reasoning_effort:none / Flex)。
+- 总测试 135 绿 / lint 0。spec：`docs/superpowers/specs/2026-06-06-daily-note-design.md`。
+- **待办线**：BL-034(editor 按需检索)·BL-035(料仓+检索索引)·BL-037(账号评分→高分优先)·BL-038(products 去重 + search 降权)。明天拉 `x-report` 看首批跑批数据。
+
 ## 🚀 LIVE
-- **生产**: https://tradelinks-mvp.vercel.app （Wire `/` · Radar `/trends` · 审核台 `/admin/review` · 源监控 `/admin/sources`）
+- **生产**: https://tradelinks-mvp.vercel.app （Wire `/` · Radar `/trends` · **每日 `/daily`** · 审核台 `/admin/review` · 源监控 `/admin/sources`）
 - **GitHub**: agentjoey/tradelinks-mvp（main）
 - **DB**: Neon **production** branch `ep-mute-base-aotkza3n` / `neondb`
   - `DIRECT_URL` 也用 **pooled host**；pg-boss 连接已 pin `sslmode=verify-full`
   - **History retention 调低（~0–1h）** 控制计费存储；**勿在 Neon 上 VACUUM FULL**（会增 history/WAL）
-  - schema 已加 `source_health_snapshots`（migration 0004，已上生产）
+  - schema 已加 `source_health_snapshots`（migration 0004）+ `daily_notes`（migration 0005，BL-027），均已上生产
 - **部署分工**: Vercel=只读前端+API；worker + Python scraper → Railway
   - scraper 12h 才用一次，闲时 Serverless **休眠＝正常**（非崩溃）；Wire 内容不依赖 scraper
 
