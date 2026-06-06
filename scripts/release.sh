@@ -37,7 +37,8 @@ git add -A
 git commit -m "chore: release v${NEW_VERSION}
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-git tag "v${NEW_VERSION}"
+# annotated tag so `git push --follow-tags` actually pushes it (lightweight tags are skipped)
+git tag -a "v${NEW_VERSION}" -m "release v${NEW_VERSION}"
 git push origin HEAD --follow-tags
 
 echo "✅ Released v${NEW_VERSION} (committed, tagged, pushed)"
