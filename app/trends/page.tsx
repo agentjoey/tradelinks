@@ -94,7 +94,7 @@ export default async function TrendsPage() {
               >
                 {x.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={x.imageUrl} alt="" className="h-14 w-14 flex-none rounded-md object-cover" loading="lazy" />
+                  <img src={x.imageUrl} alt="" className="h-20 w-20 flex-none rounded-md object-cover" loading="lazy" />
                 )}
                 <div className="min-w-0">
                   <div className="font-display text-[15px] leading-tight text-paper group-hover:text-signal">{x.product}</div>
