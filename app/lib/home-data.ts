@@ -10,6 +10,7 @@ export interface ProductCard {
   title: string;
   platform: string;
   metric: string;
+  rank: number | null;
   region: string | null;
   url: string;
   imageUrl: string | null;
@@ -47,6 +48,7 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
       title: b.title,
       platform: "Amazon",
       metric: b.rank != null ? `BSR #${b.rank}` : "Bestseller",
+      rank: b.rank,
       region: b.region,
       url: b.url,
       imageUrl: b.imageUrl,
@@ -56,6 +58,7 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
       title: v.product,
       platform: "X",
       metric: `♥ ${v.likes.toLocaleString()}`,
+      rank: null,
       region: null,
       url: v.link,
       imageUrl: v.imageUrl,

@@ -1,11 +1,13 @@
 import type { AlertRow } from "./alerts";
-import type { Dict, Lang } from "./i18n";
+import type { Lang } from "./i18n";
 
 function dayKey(d: Date) {
   return new Date(d).toISOString().slice(0, 10);
 }
 
 export interface Bucket { key: string; label: string; rows: AlertRow[]; ts: number }
+/** Plain-string labels so this is usable from client components (no Dict/functions). */
+export interface BucketLabels { last1h: string; last4h: string; last8h: string; today: string; yesterday: string }
 
 /**
  * Recency-first timeline buckets: Last hour / 4h / 8h (pure recency), then the
@@ -13,7 +15,7 @@ export interface Bucket { key: string; label: string; rows: AlertRow[]; ts: numb
  * item (so 1h→4h→8h→today→yesterday→dates falls out naturally) and within a
  * bucket by urgency then time. Empty buckets are omitted.
  */
-export function bucketAlerts(items: AlertRow[], t: Dict, lang: Lang): Bucket[] {
+export function bucketAlerts(items: AlertRow[], t: BucketLabels, lang: Lang): Bucket[] {
   const now = Date.now();
   const H = 3_600_000;
   const tsOf = (a: AlertRow) => new Date(a.publishedAt ?? a.createdAt).getTime();

@@ -16,7 +16,11 @@ export default async function Wire({
   const { lang, t } = await getDict();
   const { items, nextCursor } = await getAlerts(sp);
   const live = items.filter((a) => a.urgencyScore >= 4).length;
-  const buckets = bucketAlerts(items, t, lang);
+  const buckets = bucketAlerts(
+    items,
+    { last1h: t.last1h, last4h: t.last4h, last8h: t.last8h, today: t.today, yesterday: t.yesterday },
+    lang,
+  );
 
   let idx = 0;
   return (
