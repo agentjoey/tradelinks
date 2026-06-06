@@ -7,7 +7,21 @@ git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 ## [0.9.0] — 2026-06-07
 
 ### Added
-- [请补充]
+- **Curated Telegram channel push (BL-039 slice 1)** — a `channel-push-tick` worker
+  (3×/day, 02/10/16 UTC) posts a blended, de-duped batch of published Wire alerts +
+  Radar bestseller/viral products to a public Telegram channel, **separate** from the
+  admin-review push (`sendToChannel` → `TELEGRAM_CHANNEL_ID`; review keeps
+  `TELEGRAM_CHAT_ID`). Daily cap 8 / run cap 3, never padded.
+- `ChannelPush` dedup table (migration `0006_channel_pushes`); pure `channel-select`
+  (rank/blend/budget) + `channel-render` (public HTML) with 44 unit tests.
+- Config: `TELEGRAM_CHANNEL_ID`, `CHANNEL_PUSH_ENABLED`, `CHANNEL_PUSH_DAILY_MAX`,
+  `CHANNEL_PUSH_RUN_MAX`, `CHANNEL_PUSH_MIN_URGENCY`. Gated: no token/channel → dry-run.
+- `scripts/channel-dryrun.ts` — read-only preview of the next batch (no send).
+
+### Fixed
+- Channel candidate window uses `createdAt` (most published alerts have a null
+  `publishedAt`) so Wire alerts actually reach the channel.
+- Clamp over-long product/alert titles in channel posts.
 
 ## [0.8.0] — 2026-06-06
 

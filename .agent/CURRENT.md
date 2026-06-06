@@ -3,7 +3,7 @@
 Version:        v0.9.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-07 by [agent-id]  ← 请更新
+Last Updated:   2026-06-07 by claude-opus-4-8 (BL-039 release v0.9.0)
 Sprint File:    .agent/sprints/sprint-005.md
 
 ## 🆕 本轮新增（2026-06-07）：Telegram 频道精选推送 (BL-039 slice 1)
