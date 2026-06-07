@@ -45,7 +45,7 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 - Neon needs TWO urls (ADR-003): `DATABASE_URL` (pooled, runtime) + `DIRECT_URL` (direct, migrations). Migrations can't run over the transaction pooler.
 - pg-boss (queue) also uses `DIRECT_URL`, not the pooled url (ADR-004). It creates a `pgboss` schema on first start.
 - Scheduling: pg-boss schedule is one-cron-per-queue, so a per-minute `scheduler-tick` fans out crawl jobs via cron-parser `isDue()` per source (not 25 separate schedules).
-- Local dev/test connects to a Neon dev branch (no local Postgres); unit tests stay DB-free
+- **Single environment (MVP):** "dev" = the local repo only; GitHub/Vercel/Railway/Neon are **production only**. The Neon project has a single `production` branch, and local `.env` `DATABASE_URL`/`DIRECT_URL` point **straight at production** — so local scripts that write (translations, backfills) write to prod. Unit tests stay DB-free. A multi-env split comes only if/when this graduates from MVP.
 - Sources with login walls (Amazon SC, Temu) captured via secondary media sources only — never scrape authenticated sessions
 
 ## Dev Commands
