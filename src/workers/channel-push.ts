@@ -7,7 +7,7 @@ import type PgBoss from "pg-boss";
 import { QUEUES } from "../queue/queues.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
-import { sendToChannel } from "../push/send.js";
+import { sendToChannel, resolveChannelId } from "../push/send.js";
 import { selectChannelBatch } from "../push/channel-select.js";
 import { renderChannelAlert, renderChannelProduct } from "../push/channel-render.js";
 import {
@@ -39,13 +39,18 @@ export async function runChannelPush(): Promise<ChannelPushResult> {
     return { posted: 0, skipped: 0, failed: 0, pushedToday: 0 };
   }
 
-  const channelId = env.TELEGRAM_CHANNEL_ID;
+  // Normalize @username → numeric chat id for stable dedup keys (BL-040 ②).
+  const rawChannelId = env.TELEGRAM_CHANNEL_ID;
+  const channelId = await resolveChannelId(rawChannelId);
+  // Union the normalized + legacy key so the one-time switch doesn't re-push
+  // items recorded under the old @username key.
+  const dedupIds = channelId === rawChannelId ? channelId : [channelId, rawChannelId];
 
   // 1. Gather candidates + tracking state
   const [candidates, alreadyPushed, pushedToday] = await Promise.all([
     gatherChannelCandidates(),
-    alreadyPushedKeys(channelId),
-    pushedTodayCount(channelId),
+    alreadyPushedKeys(dedupIds),
+    pushedTodayCount(dedupIds),
   ]);
 
   logger.info(

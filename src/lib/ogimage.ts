@@ -6,7 +6,9 @@ const UA =
 
 // Generic site banners / logos / social-share placeholders — NOT article images.
 // Skip these so a card shows a real photo or no image (cleaner than GOV.UK banners).
-const GENERIC_IMAGE = /banner|opengraph|og[-_]?image|og[-_]?default|meta[-_%0-9 ]{0,4}tag|placeholder|default[-_]?(image|share|og)|share[-_]?image|social[-_]?(share|card|image)|site[-_]?image|logo|seal|favicon|sprite|govuk-opengraph/i;
+// `J6_coFbog…` is the Google News generic share logo served as og:image on the
+// news.google.com redirect interstitial — never an article photo (BL-040).
+const GENERIC_IMAGE = /banner|opengraph|og[-_]?image|og[-_]?default|meta[-_%0-9 ]{0,4}tag|placeholder|default[-_]?(image|share|og)|share[-_]?image|social[-_]?(share|card|image)|site[-_]?image|logo|seal|favicon|sprite|govuk-opengraph|J6_coFbog/i;
 
 export function isGenericBanner(url: string): boolean {
   return GENERIC_IMAGE.test(url);
