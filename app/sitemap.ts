@@ -10,7 +10,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const notes = await getPublishedNotes(1000).catch(() => []);
   const noteEntries: MetadataRoute.Sitemap = notes.map((n) => ({
-    url: `${SITE}/daily/${n.slug}`,
+    url: `${SITE}${addLocale(`/daily/${n.slug}`, n.lang === "zh" ? "zh" : "en")}`,
     lastModified: n.publishedAt ?? n.date,
     changeFrequency: "monthly",
     priority: 0.7,
