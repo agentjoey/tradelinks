@@ -276,3 +276,19 @@ model DailyNote {
   @@index([status, publishedAt])
   @@map("daily_notes")
 }
+
+model Translation {
+  id         String   @id @default(cuid())
+  entityType String   // "alert" | "product" | "xtopic"
+  entityId   String   // stable key, e.g. "alert:<id>", "bestseller:<url>", "viral:<link>"
+  lang       String   // BCP-47 short code, e.g. "zh"
+  fields     Json     // { title?, summary?, actionRequired? } — translatable fields only
+  sourceHash String   // hash of the source fields at translation time
+  model      String?  // LLM used, for provenance
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId, lang])
+  @@index([entityType, lang])
+  @@map("translations")
+}
