@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPublishedNotes } from "../../src/daily/db.js";
 import { getDict } from "../lib/i18n";
+import { addLocale } from "../lib/locale";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,7 +52,7 @@ export default async function DailyIndex() {
                 {g.rows.map((n) => (
                   <Link
                     key={n.slug}
-                    href={`/daily/${n.slug}`}
+                    href={addLocale(`/daily/${n.slug}`, lang)}
                     className={`block rounded-lg border border-line bg-surface/60 p-5 transition-colors hover:border-signal/40 border-l-2 ${n.kind === "roundup" ? "border-l-calm" : "border-l-signal"}`}
                   >
                     <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.14em]">

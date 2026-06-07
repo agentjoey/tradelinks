@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getNoteBySlug } from "../../../src/daily/db.js";
 import { getDict } from "../../lib/i18n";
+import { addLocale } from "../../lib/locale";
 import { Markdown } from "../Markdown";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default async function DailyNotePage({ params }: { params: Promise<{ slug
     <article className="mx-auto max-w-[42rem]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <Link href="/daily" className="ticker text-[10px] uppercase tracking-[0.18em] text-faint hover:text-signal transition-colors">{t.dailyBackToAll}</Link>
+      <Link href={addLocale("/daily", lang)} className="ticker text-[10px] uppercase tracking-[0.18em] text-faint hover:text-signal transition-colors">{t.dailyBackToAll}</Link>
 
       <div className="mt-4 ticker flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-faint">
         <span>{fmtDate(n.date, lang)}</span>

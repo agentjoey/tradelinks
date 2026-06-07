@@ -3,6 +3,7 @@ import type { AlertRow } from "../lib/alerts";
 import type { ProductCard } from "../lib/home-data";
 import { TrackedLink } from "./TrackedLink";
 import { tierStyle, CAT_LABEL, REGION_LABEL, domainOf, type Tiers } from "./alert-style";
+import { addLocale } from "../lib/locale";
 
 const proxied = (u: string) => `/api/img-proxy?u=${encodeURIComponent(u)}`;
 
@@ -77,7 +78,7 @@ export function DailyCard({ note, briefLabel, roundupLabel, byLabel, lang }: {
   const roundup = note.kind === "roundup";
   const date = new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(note.date));
   return (
-    <Link href={`/daily/${note.slug}`}
+    <Link href={addLocale(`/daily/${note.slug}`, lang as "en" | "zh")}
       className="group block rounded-xl border border-line bg-surface/70 p-5 transition-colors hover:border-signal/40"
       style={{ borderLeft: `2px solid ${roundup ? "#4FD1C5" : "#E8B44A"}` }}
     >

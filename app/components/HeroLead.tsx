@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { HeroItem } from "../lib/home-data";
 import { TrackedLink } from "./TrackedLink";
 import { tierStyle, CAT_LABEL, REGION_LABEL, domainOf, hhmm, type Tiers } from "./alert-style";
+import { addLocale } from "../lib/locale";
 
 const proxied = (u: string) => `/api/img-proxy?u=${encodeURIComponent(u)}`;
 
@@ -29,7 +30,7 @@ export function HeroLead({
     const roundup = n.kind === "roundup";
     const date = new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(n.date));
     return (
-      <Link href={`/daily/${n.slug}`} className={shell} style={{ borderTop: "3px solid #4FD1C5" }}>
+      <Link href={addLocale(`/daily/${n.slug}`, lang as "en" | "zh")} className={shell} style={{ borderTop: "3px solid #4FD1C5" }}>
         <div className="flex flex-1 flex-col justify-center p-5">
           <div className="ticker mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] uppercase tracking-wider">
             <span className={`rounded px-1.5 py-0.5 ${roundup ? "bg-calm/15 text-calm" : "bg-signal/15 text-signal"}`}>{roundup ? roundupLabel : briefLabel}</span>
