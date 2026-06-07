@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 
 export type Lang = "en" | "zh";
 export const LANGS: Lang[] = ["en", "zh"];
@@ -271,8 +271,9 @@ const zh: Dict = {
 const DICTS: Record<Lang, Dict> = { en, zh };
 
 export async function getLang(): Promise<Lang> {
-  const c = (await cookies()).get("tl_lang")?.value;
-  return c === "zh" ? "zh" : "en";
+  // Locale is resolved from the URL by middleware.ts and passed via x-tl-lang.
+  const h = (await headers()).get("x-tl-lang");
+  return h === "zh" ? "zh" : "en";
 }
 
 export async function getDict(): Promise<{ lang: Lang; t: Dict }> {
