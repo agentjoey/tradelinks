@@ -140,3 +140,55 @@ export async function getNoteBySlug(slug: string): Promise<DailyNoteFull | null>
   if (!n) return null;
   return { ...n, citations: (n.citations as { title: string; url: string }[] | null) ?? [] };
 }
+
+/** Full published English note for (date, kind) — the source for translation. */
+export async function getEnNote(
+  date: string,
+  kind: string,
+): Promise<{
+  date: string;
+  kind: string;
+  title: string;
+  dek: string;
+  bodyMarkdown: string;
+  keyTakeaways: string[];
+  metaDescription: string;
+  tags: string[];
+  citations: { title: string; url: string }[];
+  sourceAlertIds: string[];
+} | null> {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  const n = await prisma.dailyNote.findUnique({
+    where: { date_lang_kind: { date: d, lang: "en", kind } },
+    select: {
+      title: true, dek: true, bodyMarkdown: true, keyTakeaways: true,
+      metaDescription: true, tags: true, citations: true, sourceAlertIds: true, status: true,
+    },
+  });
+  if (!n || n.status !== "published") return null;
+  return {
+    date,
+    kind,
+    title: n.title,
+    dek: n.dek ?? "",
+    bodyMarkdown: n.bodyMarkdown,
+    keyTakeaways: n.keyTakeaways,
+    metaDescription: n.metaDescription ?? "",
+    tags: n.tags,
+    citations: (n.citations as { title: string; url: string }[] | null) ?? [],
+    sourceAlertIds: n.sourceAlertIds,
+  };
+}
+
+/** The published slug of the same note in another language (for hreflang). */
+export async function getNoteSiblingSlug(
+  date: Date,
+  kind: string,
+  lang: string,
+): Promise<string | null> {
+  const n = await prisma.dailyNote.findUnique({
+    where: { date_lang_kind: { date, lang, kind } },
+    select: { slug: true, status: true },
+  });
+  return n && n.status === "published" ? n.slug : null;
+}

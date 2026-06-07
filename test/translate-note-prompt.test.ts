@@ -22,7 +22,7 @@ describe("buildNoteTranslatePrompt", () => {
   });
   it("instructs preserving markdown structure", () => {
     const opts = buildNoteTranslatePrompt(en, "zh", "");
-    expect(opts.system.toLowerCase()).toContain("markdown");
+    expect(opts.system?.toLowerCase() ?? "").toContain("markdown");
   });
 });
 
