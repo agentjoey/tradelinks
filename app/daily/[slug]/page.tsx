@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getNoteBySlug } from "../../../src/daily/db.js";
+import { getNoteBySlug, getNoteSiblingSlug } from "../../../src/daily/db.js";
 import { getDict } from "../../lib/i18n";
 import { addLocale } from "../../lib/locale";
 import { Markdown } from "../Markdown";
@@ -20,12 +20,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const n = await getNoteBySlug(slug);
   if (!n) return { title: "Not found — TradeLinks" };
-  const url = `${SITE}/daily/${n.slug}`;
+  const selfPath = addLocale(`/daily/${n.slug}`, n.lang as "en" | "zh");
+  const url = `${SITE}${selfPath}`;
+  const otherLang = n.lang === "zh" ? "en" : "zh";
+  const siblingSlug = await getNoteSiblingSlug(n.date, n.kind, otherLang);
+  const languages: Record<string, string> = {
+    [n.lang === "zh" ? "zh-Hans" : "en"]: url,
+  };
+  if (siblingSlug) {
+    const siblingPath = addLocale(`/daily/${siblingSlug}`, otherLang as "en" | "zh");
+    languages[otherLang === "zh" ? "zh-Hans" : "en"] = `${SITE}${siblingPath}`;
+    languages["x-default"] = otherLang === "en" ? `${SITE}${siblingPath}` : url;
+  }
   const desc = n.metaDescription ?? n.dek ?? n.title;
   return {
     title: `${n.title} — TradeLinks`,
     description: desc,
-    alternates: { canonical: url },
+    alternates: { canonical: url, languages },
     openGraph: { title: n.title, description: desc, type: "article", url, publishedTime: (n.publishedAt ?? n.date).toISOString(), authors: [AUTHOR], ...(n.heroImageUrl ? { images: [n.heroImageUrl] } : {}) },
     twitter: { card: "summary_large_image", title: n.title, description: desc },
   };
@@ -37,7 +48,7 @@ export default async function DailyNotePage({ params }: { params: Promise<{ slug
   const n = await getNoteBySlug(slug);
   if (!n) notFound();
 
-  const url = `${SITE}/daily/${n.slug}`;
+  const url = `${SITE}${addLocale(`/daily/${n.slug}`, n.lang as "en" | "zh")}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
