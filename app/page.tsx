@@ -1,4 +1,5 @@
 import { getDict } from "./lib/i18n";
+import { addLocale } from "./lib/locale";
 import { getHomeData } from "./lib/home-data";
 import { HeroLead } from "./components/HeroLead";
 import { SecondaryHighlights } from "./components/SecondaryHighlights";
@@ -46,28 +47,28 @@ export default async function Home() {
         />
         <SecondaryHighlights alerts={secondary} tiers={tiers} />
         <LatestRail
-          items={latest} latestLabel={t.latest} liveLabel="live" seeAllLabel={t.seeAll} href="/wire"
+          items={latest} latestLabel={t.latest} liveLabel="live" seeAllLabel={t.seeAll} href={addLocale("/wire", lang)}
           kindLabels={{ wire: t.streamWire, radar: t.streamRadar, x: "X" }}
         />
       </section>
 
       <WireSection
         featured={wireFeatured} list={wireList} tiers={tiers}
-        title={t.streamWire} sublabel={t.streamWireSub} seeAllLabel={t.seeAll} href="/wire"
+        title={t.streamWire} sublabel={t.streamWireSub} seeAllLabel={t.seeAll} href={addLocale("/wire", lang)}
       />
 
       <RadarSection
         leader={radarLeader} grid={radarGrid}
-        title={t.streamRadar} sublabel={t.streamRadarSub} seeAllLabel={t.seeAll} href="/trends"
+        title={t.streamRadar} sublabel={t.streamRadarSub} seeAllLabel={t.seeAll} href={addLocale("/trends", lang)}
       />
 
       <HotOnX
         topics={hotTopics}
-        title={t.streamX} sublabel={t.streamXSub} seeAllLabel={t.seeAll} href="/trends" emptyLabel={t.hotXEmpty}
+        title={t.streamX} sublabel={t.streamXSub} seeAllLabel={t.seeAll} href={addLocale("/trends", lang)} emptyLabel={t.hotXEmpty}
       />
 
       <section className="mb-12">
-        <SectionHeader accent="bg-calm" title={t.streamDaily} sublabel={t.streamDailySub} href="/daily" seeAllLabel={t.seeAll} />
+        <SectionHeader accent="bg-calm" title={t.streamDaily} sublabel={t.streamDailySub} href={addLocale("/daily", lang)} seeAllLabel={t.seeAll} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {notes.map((n) => (
             <DailyCard key={n.slug} note={n} briefLabel={t.kindBrief} roundupLabel={t.kindRoundup} byLabel={t.dailyBy} lang={lang} />

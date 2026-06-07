@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAlerts } from "../lib/alerts";
 import { getDict } from "../lib/i18n";
+import { addLocale } from "../lib/locale";
 import { localizeAlerts } from "../lib/i18n-content";
 import { bucketAlerts } from "../lib/buckets";
 import { AlertCard } from "../components/AlertCard";
@@ -41,7 +42,7 @@ export default async function Wire({
         </h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">{t.heroSub}</p>
         <Link
-          href="/trends"
+          href={addLocale("/trends", lang)}
           className="ticker mt-4 inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
         >
           🔥 {t.bestsellersTeaser} →
@@ -74,7 +75,7 @@ export default async function Wire({
       {nextCursor && (
         <div className="mt-8 text-center">
           <Link
-            href={`/wire?${new URLSearchParams({ ...sp, cursor: nextCursor }).toString()}`}
+            href={`${addLocale("/wire", lang)}?${new URLSearchParams({ ...sp, cursor: nextCursor }).toString()}`}
             className="ticker rounded-sm border border-line px-5 py-2.5 text-[10px] uppercase tracking-[0.2em] text-muted transition-colors hover:border-signal/40 hover:text-signal"
           >
             {t.loadEarlier}

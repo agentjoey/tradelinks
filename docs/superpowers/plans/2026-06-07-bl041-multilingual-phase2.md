@@ -432,6 +432,7 @@ export async function getEnNote(
 ): Promise<{
   date: string;
   kind: string;
+  slug: string;
   title: string;
   dek: string;
   bodyMarkdown: string;
@@ -445,7 +446,7 @@ export async function getEnNote(
   const n = await prisma.dailyNote.findUnique({
     where: { date_lang_kind: { date: d, lang: "en", kind } },
     select: {
-      title: true, dek: true, bodyMarkdown: true, keyTakeaways: true,
+      slug: true, title: true, dek: true, bodyMarkdown: true, keyTakeaways: true,
       metaDescription: true, tags: true, citations: true, sourceAlertIds: true, status: true,
     },
   });
@@ -453,6 +454,7 @@ export async function getEnNote(
   return {
     date,
     kind,
+    slug: n.slug,
     title: n.title,
     dek: n.dek ?? "",
     bodyMarkdown: n.bodyMarkdown,
@@ -509,7 +511,7 @@ No unit test (orchestration/LLM) — verified live in Task 6.
 import type { LlmClient } from "../ai/client.js";
 import { buildNoteTranslatePrompt, parseNoteTranslation } from "../ai/prompts/translate-note.js";
 import { glossaryBlock } from "../i18n/glossary.js";
-import { slugify, type ComposedNote } from "./compose.js";
+import { type ComposedNote } from "./compose.js";
 import { reviewNote } from "./review.js";
 import { gatherInputs, getEnNote, persistNote } from "./db.js";
 import { logger } from "../lib/logger.js";
@@ -546,7 +548,10 @@ export async function translateNote(
     date: enNote.date,
     lang,
     kind: enNote.kind as ComposedNote["kind"],
-    slug: slugify(enNote.date, tr.title, lang),
+    // Derive the zh slug from the English sibling slug (+lang). slugify() strips
+    // CJK, so a Chinese title yields junk/colliding slugs; the en slug keeps the
+    // URL descriptive (English keywords), unique, and stable across languages.
+    slug: `${enNote.slug}-${lang}`,
     title: tr.title,
     dek: tr.dek,
     bodyMarkdown: tr.bodyMarkdown,
@@ -584,6 +589,9 @@ export async function runDailyNoteTranslate(
     try {
       const composed = await translateNote(translateClient, lang, enNote);
       const reviewed = await reviewNote(composed, input, reviewClient);
+      // reviewNote re-derives the slug via slugify() from the reviewed title, which
+      // strips CJK → junk/colliding slugs. Restore the en-sibling-derived slug.
+      reviewed.slug = composed.slug;
       await persistNote(reviewed, status);
       translated.push({ kind, slug: reviewed.slug });
       logger.info({ date, lang, kind, slug: reviewed.slug }, "daily-note translated");
