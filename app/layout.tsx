@@ -6,6 +6,10 @@ import { Analytics } from "./components/Analytics";
 import { MainNav } from "./components/MainNav";
 import { AccountNav } from "./components/AccountNav";
 import "./globals.css";
+import { headers } from "next/headers";
+import { alternatesFor, stripLocale, addLocale } from "./lib/locale";
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -24,20 +28,33 @@ const mono = IBM_Plex_Mono({
   variable: "--font-mono",
 });
 
-export const metadata: Metadata = {
-  title: "TradeLinks — Cross-Border Intelligence Wire",
-  description:
-    "Real-time regulatory, platform-policy, logistics and trend alerts for cross-border sellers across 6 regions.",
-  openGraph: {
-    title: "TradeLinks",
-    description: "Global cross-border e-commerce alerts & trend signals.",
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const path = (await headers()).get("x-tl-path") ?? "/";
+  const lang = (await headers()).get("x-tl-lang") === "zh" ? "zh" : "en";
+  const alt = alternatesFor(path, SITE);
+  return {
+    metadataBase: new URL(SITE),
+    title: "TradeLinks — Cross-Border Intelligence Wire",
+    description:
+      "Real-time regulatory, platform-policy, logistics and trend alerts for cross-border sellers across 6 regions.",
+    alternates: {
+      canonical: alt.canonical,
+      languages: { en: alt.languages.en, "zh-Hans": alt.languages.zh, "x-default": alt.xDefault },
+    },
+    openGraph: {
+      title: "TradeLinks",
+      description: "Global cross-border e-commerce alerts & trend signals.",
+      type: "website",
+      locale: lang === "zh" ? "zh_CN" : "en_US",
+    },
+  };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { lang, t } = await getDict();
   const other: "en" | "zh" = lang === "zh" ? "en" : "zh";
+  const curPath = (await headers()).get("x-tl-path") ?? "/";
+  const toggleHref = addLocale(stripLocale(curPath), other);
   return (
     <html lang={lang} className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
@@ -70,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 alertsLabel={t.navAlerts}
                 upgradeLabel={t.navUpgrade}
                 account={t.account}
-                langHref={`/api/lang?l=${other}`}
+                langHref={toggleHref}
                 langLabel={other === "zh" ? "ZH" : "EN"}
               />
             </div>
