@@ -3,10 +3,22 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-08 by [agent-id]  ← 请更新
+Last Updated:   2026-06-08 by claude-opus-4-8 (review/release) + opencode (dev)
 Sprint File:    .agent/sprints/sprint-005.md
 
-## 🆕 本轮新增（2026-06-07）：编辑式首页 v2 (BL-026) + Google News/channelId (BL-040)
+## 🆕 本轮新增（2026-06-08）：多语言/中文化 (BL-041 P1+P2)，v0.12.0
+
+- **BL-041 多语言内容（P1+P2 已上线 main）** — 从"中文 UI + 英文内容"升级为可被搜索收录的中文站。
+  - **路由/SEO**：英文留根、中文走 `/zh`（as-needed prefix）。middleware 解析 locale + 重写 `/zh/*` + 注入 `x-tl-lang`/`x-tl-path`；`getLang()` 改读 header（cookie 降级）。每页 `hreflang`/`canonical`(en/zh-Hans/x-default) + `og:locale`；sitemap 列 `/zh`。
+  - **预警中文（P1）**：通用 `Translation` 表(migration `0007`，N 语言键 `alert:<id>` 等) + `translate-content-tick` worker（DeepSeek + 跨境术语表，`sourceHash` 幂等）；读取层中文覆盖 + 逐字段英文兜底（首页 + `/wire`）。
+  - **Daily 中文（P2）**：英文笔记翻译（保 markdown）→ 复用 reviewer 去 AI 腔 → 存 `(date,"zh",kind)`，slug 派生自**英文兄弟 slug**；`/zh/daily(/[slug])` 可爬；文章页 hreflang 按兄弟 slug 配对；首页 Daily 区 lang + 英文兜底。
+  - **全站 locale-aware 导航**：内链全部带 `/zh` 前缀，`MainNav` active 态 locale 无关（修 P1 内链缺口）。
+  - 开发 opencode、Claude review+验收（发现并修了中文 slug 用 slugify 产生垃圾/碰撞的缺陷）。测试 **220 绿**、tsc/build 干净；真实中文预警 + Daily 落地、hreflang 端到端验过。
+  - spec/plan：`docs/superpowers/specs/2026-06-07-multilingual-content-design.md` · `…/plans/2026-06-07-bl041-multilingual-phase{1,2}.md`。
+  - **⚠️ 生产开关**：Railway worker 已设 `TRANSLATE_ENABLED=true`（+ `DEEPSEEK_API_KEY`）→ 生产开始产出中文。`TRANSLATE_TARGET_LANGS`(默认 zh)/`TRANSLATE_LOOKBACK_DAYS`/`TRANSLATE_MAX_PER_RUN` 控成本。
+  - **P3 待续**：Radar 爵品 / X 热点惰性翻译（X 部分需先恢复 X API）。
+
+## 🆕 上一轮（2026-06-07）：编辑式首页 v2 (BL-026) + Google News/channelId (BL-040)
 
 - **BL-026 编辑式首页 v2（已上线）** — 借鉴 mining-technology 的版式重做首页。
   - 顶部簇：**lead hero**(高分要闻,图为主,无则回退最新日报) + **2 张次级 highlight** + 实时 **Latest 列**(Wire+Radar+X 按时间混排)。
@@ -133,6 +145,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.12.0 | 2026-06-08 | BL-041 多语言/中文化 P1+P2:`/zh` 子路径+hreflang/canonical、Translation 表(migration 0007)+预警/Daily 中文翻译(DeepSeek+术语表+reviewer)、locale-aware 导航(220 测试) |
 | v0.11.0 | 2026-06-07 | BL-026 编辑式首页 v2(hero+次级+Latest 簇 / 板块差异化 / Hot on X)+ BL-040 Google News 真 URL 解析 + channelId 归一化(189 测试) |
 | v0.10.0 | 2026-06-07 | BL-026 UI 改版 + BL-040 频道大图新闻卡(sendPhoto+按钮 / 来源美化 / cap 12) |
 | v0.9.0 | 2026-06-07 | BL-039 slice 1 上线 + 频道卡片首版 |

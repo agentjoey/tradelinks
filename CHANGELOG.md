@@ -7,7 +7,38 @@ git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 ## [0.12.0] — 2026-06-08
 
 ### Added
-- [请补充]
+- **Multilingual content — Chinese (`/zh`) site (BL-041, Phases 1+2)** — TradeLinks goes
+  from "Chinese UI + English content" to a genuinely multilingual, **crawlable** Chinese
+  surface. English stays unprefixed at the root; Chinese lives under `/zh` ("as-needed
+  prefix"): a Next.js **middleware** resolves the locale from the path, rewrites `/zh/*`
+  to the underlying route, and injects `x-tl-lang`/`x-tl-path` so `getLang()` reads the
+  locale from the request (cookie demoted). Every page emits `hreflang`/`canonical`
+  (`en`/`zh-Hans`/`x-default`) + `og:locale`; `sitemap.ts` lists the `/zh` routes.
+- **Translated Wire alerts (P1)** — a generic `Translation` table (migration `0007`,
+  keyed `alert:<id>`/`bestseller:<url>`/… for N languages) + a `translate-content-tick`
+  worker translates published alerts to `zh` via DeepSeek with a cross-border **glossary**,
+  idempotent through a `sourceHash`. The read layer overlays `zh` fields with per-field
+  English fallback on the home + `/wire`. Pure logic (`localeFromPath`/`stripLocale`/
+  `addLocale`/`alternatesFor`, `glossaryBlock`, `sourceHashOf`, `applyAlertTranslation`,
+  alert-translation parser) is unit-tested (TDD).
+- **Chinese Daily Notes (P2)** — each published English note is translated
+  (structure-preserving, glossary-bound) then run through the existing **reviewer** pass to
+  de-AI/localize, and persisted as its own `(date, "zh", kind)` row with an
+  **English-sibling-derived slug** (descriptive, unique, stable). `/zh/daily` +
+  `/zh/daily/<slug>` are crawlable; per-note `hreflang` pairs en↔zh by the **sibling slug**
+  (not a naive path swap); the home Daily section uses the active language with English
+  fallback; the sitemap lists `zh` slugs.
+
+### Changed
+- **Locale-aware navigation** — internal `<Link>`s (global nav, logo, "See all", teasers,
+  load-earlier, daily cards, back link) are locale-prefixed so navigating inside `/zh`
+  stays in Chinese chrome; `MainNav` active-state compares locale-independently.
+
+### Ops
+- Translation is gated by **`TRANSLATE_ENABLED`** (off = zero LLM cost); production Chinese
+  content requires `TRANSLATE_ENABLED=true` on the Railway worker (+ `DEEPSEEK_API_KEY`).
+  `TRANSLATE_TARGET_LANGS` (default `zh`), `TRANSLATE_LOOKBACK_DAYS`, `TRANSLATE_MAX_PER_RUN`
+  bound cost. **Phase 3** (Radar product / X-topic lazy translation) is not yet built.
 
 ## [0.11.0] — 2026-06-07
 
