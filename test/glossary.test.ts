@@ -8,7 +8,7 @@ describe("glossaryBlock", () => {
     expect(block).toContain("关税");
     expect(block).toContain("marketplace");
     // every glossary entry appears as a "term -> translation" line
-    for (const [term, tr] of Object.entries(GLOSSARY.zh)) {
+    for (const [term, tr] of Object.entries(GLOSSARY.zh ?? {})) {
       expect(block).toContain(`${term} → ${tr}`);
     }
   });
