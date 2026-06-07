@@ -4,6 +4,7 @@ import { getViralX, getHotTopicsX, type HotTopicXRow } from "../../src/social/db
 import { getPublishedNotes } from "../../src/daily/db.js";
 import { pickHero, topAlerts, buildLatest, type LatestItem } from "./home";
 import type { Lang } from "./i18n";
+import { localizeAlerts } from "./i18n-content";
 
 export interface ProductCard {
   key: string;
@@ -45,13 +46,15 @@ const hasImg = (a: AlertRow) => !!(a.imageUrl && a.imageUrl.trim() !== "");
  * slice. Pure derivations live in `home.ts`; this layer only orchestrates I/O.
  */
 export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeData> {
-  const [{ items: alerts }, bestsellers, viral, topics, notes] = await Promise.all([
+  const [{ items: rawAlerts }, bestsellers, viral, topics, notes] = await Promise.all([
     getAlerts({ take: 60 }),
     getBestsellers(),
     getViralX(),
     getHotTopicsX(),
-    getPublishedNotes(4, lang),
+    // Daily notes stay English in Phase 1 (localized in Phase 2 / BL-041).
+    getPublishedNotes(4, "en"),
   ]);
+  const alerts = await localizeAlerts(rawAlerts, lang);
 
   // ---- top cluster ----
   const heroAlert = pickHero(alerts, now);

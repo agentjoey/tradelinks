@@ -25,6 +25,18 @@ const EnvSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v === undefined || v === "" ? true : v === "true" || v === "1")),
+  // --- Multilingual content translation (BL-041) ---
+  // Gate the translation worker. Off → tick no-ops (zero LLM cost). Needs DEEPSEEK_API_KEY.
+  TRANSLATE_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
+  // CSV of target locales to materialize, e.g. "zh" (Phase 1) or "zh,pt".
+  TRANSLATE_TARGET_LANGS: z.string().default("zh"),
+  // only (re)translate published alerts created within this window.
+  TRANSLATE_LOOKBACK_DAYS: z.coerce.number().int().positive().default(7),
+  // hard cap of alerts translated per run per lang — bounds LLM cost.
+  TRANSLATE_MAX_PER_RUN: z.coerce.number().int().positive().default(40),
   SCRAPER_SERVICE_URL: z.string().default("http://localhost:8000"),
   // cap items processed per crawl (newest-first) — bounds AI cost on big feeds
   MAX_ITEMS_PER_CRAWL: z.coerce.number().int().positive().default(12),

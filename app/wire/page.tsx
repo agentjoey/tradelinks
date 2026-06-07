@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAlerts } from "../lib/alerts";
 import { getDict } from "../lib/i18n";
+import { localizeAlerts } from "../lib/i18n-content";
 import { bucketAlerts } from "../lib/buckets";
 import { AlertCard } from "../components/AlertCard";
 import { Filters } from "../components/Filters";
@@ -14,7 +15,8 @@ export default async function Wire({
 }) {
   const sp = await searchParams;
   const { lang, t } = await getDict();
-  const { items, nextCursor } = await getAlerts(sp);
+  const { items: rawItems, nextCursor } = await getAlerts(sp);
+  const items = await localizeAlerts(rawItems, lang);
   const live = items.filter((a) => a.urgencyScore >= 4).length;
   const buckets = bucketAlerts(
     items,
