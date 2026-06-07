@@ -9,6 +9,7 @@ import { registerHealthWorker } from "./health.js";
 import { registerXWorker } from "./x.js";
 import { registerDailyNoteWorker } from "./daily-note.js";
 import { registerChannelPushWorker } from "./channel-push.js";
+import { registerTranslateWorker } from "./translate.js";
 import { registerScheduler } from "./scheduler.js";
 import { seedSources } from "./seed-sources.js";
 import { QUEUES } from "../queue/queues.js";
@@ -32,6 +33,7 @@ async function main() {
   await registerXWorker(boss);
   await registerDailyNoteWorker(boss);
   await registerChannelPushWorker(boss);
+  await registerTranslateWorker(boss);
   await registerScheduler(boss);
   // daily trends ingest + diffusion at 02:00 UTC
   await boss.schedule(QUEUES.trends, "0 2 * * *");
@@ -43,7 +45,8 @@ async function main() {
   await boss.schedule(QUEUES.dailyNote, "30 3 * * *");
   // curated Telegram channel push: 3×/day (02:00/10:00/16:00 UTC) to spread across timezones
   await boss.schedule(QUEUES.channelPush, "0 2,10,16 * * *");
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push (pg-boss)");
+  await boss.schedule(QUEUES.translate, "*/15 * * * *");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push + translate (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");
