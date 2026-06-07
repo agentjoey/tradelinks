@@ -6,8 +6,30 @@ git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 
 ## [0.11.0] — 2026-06-07
 
+### Changed
+- **Editorial Home v2 — mining-technology layout (BL-026)** — `/` reworked into a wider
+  editorial front: a top cluster of **lead hero** (top-scored story, image-forward; falls
+  back to the latest Daily note) + **2 secondary highlights** + a live **Latest** rail
+  (Wire + Radar + X, chronological), then **visually distinct** sections — Wire
+  *featured + list*, Radar *#1 leader + grid*, **Hot on X** discussion cards, and Daily
+  Insight — with the standalone Earlier feed folded into each. Container widened
+  `max-w-[64rem]→[88rem]`; "The Daily" → "Daily Insight". New pure selectors
+  `pickHero`/`buildLatest` (TDD); `createdAt` exposed on X rows; removed `BreakingStrip`,
+  `EarlierFeed`, `StreamBand`.
+
 ### Added
-- [请补充]
+- **Hot on X on the home page** — the X hot-topics track (`getHotTopicsX`) now has a
+  front-page home (was `/trends`-only).
+
+### Fixed
+- **Google News source resolution (BL-040 ③)** — `news.google.com/rss/articles/CBMi…`
+  redirect links are resolved to the real publisher URL via Google's `batchexecute`
+  endpoint at ingest, so `url`/`urlHash`, the tap target, and og:image all come from the
+  article instead of the generic Google News "G" logo (also filtered in `ogimage` as a
+  fallback). `scripts/backfill-gnews.ts` repaired 54/54 existing published alerts.
+- **channelId normalization (BL-040 ②)** — `resolveChannelId` maps `@username` → numeric
+  chat id (getChat) for stable dedup keys; `alreadyPushedKeys`/`pushedTodayCount` accept a
+  union so the one-time switch doesn't re-push items recorded under the old key.
 
 ## [0.10.0] — 2026-06-07
 
