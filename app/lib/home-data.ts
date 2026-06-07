@@ -1,8 +1,8 @@
 import { getAlerts, type AlertRow } from "./alerts";
 import { getBestsellers } from "../../src/trends/db.js";
-import { getViralX } from "../../src/social/db.js";
+import { getViralX, getHotTopicsX, type HotTopicXRow } from "../../src/social/db.js";
 import { getPublishedNotes } from "../../src/daily/db.js";
-import { pickBreaking, topAlerts } from "./home";
+import { pickHero, topAlerts, buildLatest, type LatestItem } from "./home";
 import type { Lang } from "./i18n";
 
 export interface ProductCard {
@@ -18,32 +18,62 @@ export interface ProductCard {
 
 export type DailyNoteCard = Awaited<ReturnType<typeof getPublishedNotes>>[number];
 
+/** The lead-hero is usually the top alert; if there are no alerts we fall back to
+ * the latest Daily note so the hero is never empty. */
+export type HeroItem =
+  | { kind: "alert"; alert: AlertRow }
+  | { kind: "note"; note: DailyNoteCard }
+  | null;
+
 export interface HomeData {
-  breaking: AlertRow | null;
-  wireTop: AlertRow[];
-  radarTop: ProductCard[];
+  hero: HeroItem;
+  secondary: AlertRow[];
+  latest: LatestItem[];
+  wireFeatured: AlertRow | null;
+  wireList: AlertRow[];
+  radarLeader: ProductCard | null;
+  radarGrid: ProductCard[];
+  hotTopics: HotTopicXRow[];
   notes: DailyNoteCard[];
-  earlierAlerts: AlertRow[];
 }
 
+const hasImg = (a: AlertRow) => !!(a.imageUrl && a.imageUrl.trim() !== "");
+
 /**
- * Assemble everything the editorial Home needs in one parallel fetch, then
- * derive the breaking item, each stream's top, and the leftover "earlier" pool.
- * Pure derivations live in `home.ts`; this layer only orchestrates I/O.
+ * Assemble everything the editorial Home needs in one parallel fetch, then derive
+ * the hero, the two secondary highlights, the live Latest rail, and each section's
+ * slice. Pure derivations live in `home.ts`; this layer only orchestrates I/O.
  */
 export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeData> {
-  const [{ items: alerts }, bestsellers, viral, notes] = await Promise.all([
+  const [{ items: alerts }, bestsellers, viral, topics, notes] = await Promise.all([
     getAlerts({ take: 60 }),
     getBestsellers(),
     getViralX(),
+    getHotTopicsX(),
     getPublishedNotes(4, lang),
   ]);
 
-  const breaking = pickBreaking(alerts, now);
-  const wireTop = topAlerts(alerts, 3, breaking?.id);
+  // ---- top cluster ----
+  const heroAlert = pickHero(alerts, now);
+  const secondary = topAlerts(alerts, 2, heroAlert?.id);
+  const usedTop = new Set([heroAlert?.id, ...secondary.map((a) => a.id)].filter(Boolean) as string[]);
+  const hero: HeroItem = heroAlert
+    ? { kind: "alert", alert: heroAlert }
+    : notes[0]
+      ? { kind: "note", note: notes[0] }
+      : null;
 
+  const latest = buildLatest(alerts, viral, topics, 8);
+
+  // ---- Wire section: featured + list (earlier folded in) ----
+  const remaining = alerts.filter((a) => !usedTop.has(a.id));
+  const wireFeatured =
+    remaining.find(hasImg) ?? remaining[0] ?? null;
+  const wireList = topAlerts(remaining, 5, wireFeatured?.id);
+
+  // ---- Radar section: #1 leader + grid (bestsellers + viral, image-preferred) ----
   const products: ProductCard[] = [
-    ...bestsellers.slice(0, 6).map((b) => ({
+    ...bestsellers.slice(0, 8).map((b) => ({
       key: `bestseller:${b.url}`,
       title: b.title,
       platform: "Amazon",
@@ -53,7 +83,7 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
       url: b.url,
       imageUrl: b.imageUrl,
     })),
-    ...viral.slice(0, 6).map((v) => ({
+    ...viral.slice(0, 8).map((v) => ({
       key: `viral:${v.link}`,
       title: v.product,
       platform: "X",
@@ -65,12 +95,19 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
     })),
   ];
   const withImg = products.filter((p) => p.imageUrl);
-  const radarTop = (withImg.length >= 3 ? withImg : products).slice(0, 3);
+  const ranked = withImg.length >= 7 ? withImg : products;
+  const radarLeader = ranked[0] ?? null;
+  const radarGrid = ranked.slice(1, 7);
 
-  const usedIds = new Set(
-    [breaking?.id, ...wireTop.map((a) => a.id)].filter(Boolean) as string[],
-  );
-  const earlierAlerts = alerts.filter((a) => !usedIds.has(a.id));
-
-  return { breaking, wireTop, radarTop, notes, earlierAlerts };
+  return {
+    hero,
+    secondary,
+    latest,
+    wireFeatured,
+    wireList,
+    radarLeader,
+    radarGrid,
+    hotTopics: topics.slice(0, 6),
+    notes: notes.slice(0, 3),
+  };
 }

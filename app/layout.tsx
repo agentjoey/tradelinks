@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <div className="relative z-10">
           <header className="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
-            <div className="mx-auto max-w-[64rem] px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+            <div className="mx-auto max-w-[88rem] px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
               <div className="flex items-center gap-8">
                 <Link href="/" className="leading-none">
                   <div className="ticker text-[9px] uppercase tracking-[0.3em] text-signal/80 mb-1">
@@ -76,9 +76,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
 
-          <main className="mx-auto max-w-[64rem] px-5 sm:px-8 py-8">{children}</main>
+          <main className="mx-auto max-w-[88rem] px-5 sm:px-8 py-8">{children}</main>
 
-          <footer className="mx-auto max-w-[64rem] px-5 sm:px-8 py-10 mt-6 border-t border-line flex flex-wrap items-center justify-between gap-3">
+          <footer className="mx-auto max-w-[88rem] px-5 sm:px-8 py-10 mt-6 border-t border-line flex flex-wrap items-center justify-between gap-3">
             <p className="ticker text-[10px] uppercase tracking-[0.2em] text-faint">{t.footer}</p>
             <a href="/feed.xml" className="ticker text-[10px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-signal">RSS</a>
           </footer>
