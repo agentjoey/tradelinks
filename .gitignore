@@ -17,3 +17,6 @@ next-env.d.ts
 
 # model benchmark scratch output
 bench-out/
+
+# design mockup renders (screenshots) — keep the .html mockups, not the PNGs
+design/*.png
