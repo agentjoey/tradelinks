@@ -51,10 +51,11 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
     getBestsellers(),
     getViralX(),
     getHotTopicsX(),
-    // Daily notes stay English in Phase 1 (localized in Phase 2 / BL-041).
-    getPublishedNotes(4, "en"),
+    // Daily notes - prefer current language, fall back to English.
+    getPublishedNotes(4, lang),
   ]);
   const alerts = await localizeAlerts(rawAlerts, lang);
+  const notesLocalized = notes.length > 0 ? notes : lang === "en" ? notes : await getPublishedNotes(4, "en");
 
   // ---- top cluster ----
   const heroAlert = pickHero(alerts, now);
@@ -62,8 +63,8 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
   const usedTop = new Set([heroAlert?.id, ...secondary.map((a) => a.id)].filter(Boolean) as string[]);
   const hero: HeroItem = heroAlert
     ? { kind: "alert", alert: heroAlert }
-    : notes[0]
-      ? { kind: "note", note: notes[0] }
+    : notesLocalized[0]
+      ? { kind: "note", note: notesLocalized[0] }
       : null;
 
   const latest = buildLatest(alerts, viral, topics, 8);
@@ -111,6 +112,6 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
     radarLeader,
     radarGrid,
     hotTopics: topics.slice(0, 6),
-    notes: notes.slice(0, 3),
+    notes: notesLocalized.slice(0, 3),
   };
 }
