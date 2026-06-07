@@ -148,6 +148,7 @@ export async function getEnNote(
 ): Promise<{
   date: string;
   kind: string;
+  slug: string;
   title: string;
   dek: string;
   bodyMarkdown: string;
@@ -161,7 +162,7 @@ export async function getEnNote(
   const n = await prisma.dailyNote.findUnique({
     where: { date_lang_kind: { date: d, lang: "en", kind } },
     select: {
-      title: true, dek: true, bodyMarkdown: true, keyTakeaways: true,
+      slug: true, title: true, dek: true, bodyMarkdown: true, keyTakeaways: true,
       metaDescription: true, tags: true, citations: true, sourceAlertIds: true, status: true,
     },
   });
@@ -169,6 +170,7 @@ export async function getEnNote(
   return {
     date,
     kind,
+    slug: n.slug,
     title: n.title,
     dek: n.dek ?? "",
     bodyMarkdown: n.bodyMarkdown,
