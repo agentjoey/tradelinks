@@ -6,10 +6,11 @@
 import type PgBoss from "pg-boss";
 import { QUEUES } from "../queue/queues.js";
 import { env } from "../config/env.js";
-import { editorClient, reviewerClient } from "../ai/client.js";
+import { editorClient, reviewerClient, deepseekChat } from "../ai/client.js";
 import { composeDailyNote, passesQualityGate, type DailyNoteKind } from "../daily/compose.js";
 import { reviewNote } from "../daily/review.js";
 import { gatherInputs, persistNote } from "../daily/db.js";
+import { runDailyNoteTranslate } from "../daily/translate.js";
 import { logger } from "../lib/logger.js";
 
 const KINDS: DailyNoteKind[] = ["brief", "roundup"];
@@ -51,6 +52,16 @@ export async function runDailyNote(date = yesterday(), lang = "en"): Promise<Dai
       );
     } catch (e) {
       logger.error({ date, lang, kind, err: String(e) }, "daily-note generation failed");
+    }
+  }
+
+  // Localize the freshly-written English notes into each target language (BL-041 P2).
+  // Gated by the same TRANSLATE_ENABLED switch; needs DEEPSEEK_API_KEY.
+  if (lang === "en" && env.TRANSLATE_ENABLED && env.DEEPSEEK_API_KEY) {
+    const targets = env.TRANSLATE_TARGET_LANGS.split(",").map((s) => s.trim()).filter((l) => l && l !== "en");
+    for (const target of targets) {
+      const r = await runDailyNoteTranslate(date, target, deepseekChat, reviewerClient(), status);
+      logger.info({ date, target, translated: r.translated.length, skipped: r.skipped }, "daily-note translate pass done");
     }
   }
 
