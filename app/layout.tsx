@@ -65,7 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <header className="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
             <div className="mx-auto max-w-[88rem] px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
               <div className="flex items-center gap-8">
-                <Link href="/" className="leading-none">
+                <Link href={addLocale("/", lang)} className="leading-none">
                   <div className="ticker text-[9px] uppercase tracking-[0.3em] text-signal/80 mb-1">
                     {t.eyebrow}
                   </div>
@@ -75,10 +75,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </Link>
                 <MainNav
                   items={[
-                    { href: "/", label: t.nav.home },
-                    { href: "/wire", label: t.nav.wire },
-                    { href: "/trends", label: t.nav.radar },
-                    { href: "/daily", label: t.nav.daily },
+                    { href: addLocale("/", lang), label: t.nav.home },
+                    { href: addLocale("/wire", lang), label: t.nav.wire },
+                    { href: addLocale("/trends", lang), label: t.nav.radar },
+                    { href: addLocale("/daily", lang), label: t.nav.daily },
                   ]}
                   moreLabel={t.nav.more}
                 />
