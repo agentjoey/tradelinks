@@ -81,6 +81,27 @@ export async function pushAlertForReview(a: PushAlert & { id: string }): Promise
   return result;
 }
 
+/**
+ * Resolve a channel reference to its numeric chat id (`-100…`) so dedup keys are
+ * stable (BL-040 ②): `@username` and the numeric id refer to the same channel but
+ * would otherwise be tracked as two channels, causing re-pushes. `@username` →
+ * getChat → numeric; already-numeric or any failure → returned unchanged.
+ */
+export async function resolveChannelId(raw: string): Promise<string> {
+  if (!raw.startsWith("@") || !env.TELEGRAM_BOT_TOKEN) return raw;
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getChat?chat_id=${encodeURIComponent(raw)}`,
+      { signal: AbortSignal.timeout(15_000) },
+    );
+    if (!res.ok) return raw;
+    const data = (await res.json()) as { ok: boolean; result?: { id?: number } };
+    return data.ok && data.result?.id != null ? String(data.result.id) : raw;
+  } catch {
+    return raw;
+  }
+}
+
 async function tgChannelCall(method: string, body: object): Promise<{ ok: boolean; messageId?: number }> {
   try {
     const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {

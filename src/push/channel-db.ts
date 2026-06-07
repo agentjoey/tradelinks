@@ -92,20 +92,24 @@ export async function gatherChannelCandidates(): Promise<ChannelCandidates> {
 
 // ──── Tracking ────
 
-/** All itemIds already pushed to this channel (any time — unique constraint prevents re-push). */
-export async function alreadyPushedKeys(channelId: string): Promise<Set<string>> {
+const asList = (c: string | string[]) => (Array.isArray(c) ? c : [c]);
+
+/** All itemIds already pushed to this channel (any time — unique constraint prevents re-push).
+ * Accepts multiple ids so a normalized + legacy (@username) key can be unioned during
+ * the BL-040 ② transition, avoiding re-pushes of items recorded under the old key. */
+export async function alreadyPushedKeys(channelId: string | string[]): Promise<Set<string>> {
   const rows = await prisma.channelPush.findMany({
-    where: { channelId },
+    where: { channelId: { in: asList(channelId) } },
     select: { itemType: true, itemId: true },
   });
   return new Set(rows.map((r) => r.itemId));
 }
 
 /** Number of items pushed to this channel today (UTC date boundary). */
-export async function pushedTodayCount(channelId: string): Promise<number> {
+export async function pushedTodayCount(channelId: string | string[]): Promise<number> {
   const today = new Date(new Date().toISOString().slice(0, 10)); // UTC midnight
   return prisma.channelPush.count({
-    where: { channelId, pushedAt: { gte: today } },
+    where: { channelId: { in: asList(channelId) }, pushedAt: { gte: today } },
   });
 }
 

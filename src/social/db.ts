@@ -42,7 +42,7 @@ async function recentXItems(kind: "product" | "topic") {
     },
     orderBy: { crawledAt: "desc" },
     take: 200,
-    select: { title: true, url: true, imageUrl: true, rawContent: true },
+    select: { title: true, url: true, imageUrl: true, rawContent: true, crawledAt: true },
   });
 }
 
@@ -55,6 +55,7 @@ export interface ViralXRow {
   whyViral: string;
   author: string | null;
   query: string | null;
+  createdAt: Date;
 }
 
 /** Recent viral-product rows for the Radar's "Viral on X" section, hottest first. */
@@ -71,6 +72,7 @@ export async function getViralX(limit = 24): Promise<ViralXRow[]> {
       whyViral: rc.why_viral ?? "",
       author: rc.author ?? null,
       query: rc.query ?? null,
+      createdAt: it.crawledAt,
     };
   });
   rows.sort((a, b) => b.likes - a.likes);
@@ -86,6 +88,7 @@ export interface HotTopicXRow {
   whyHot: string;
   category: string;
   author: string | null;
+  createdAt: Date;
 }
 
 /** Recent cross-border e-commerce hot topics for the Radar's "Hot on X" section. */
@@ -102,6 +105,7 @@ export async function getHotTopicsX(limit = 18): Promise<HotTopicXRow[]> {
       whyHot: rc.why_hot ?? "",
       category: rc.category ?? "industry",
       author: rc.author ?? null,
+      createdAt: it.crawledAt,
     };
   });
   rows.sort((a, b) => b.likes - a.likes);

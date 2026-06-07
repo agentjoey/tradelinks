@@ -74,11 +74,15 @@ export interface Dict {
   glance: string;
   seeAll: string;
   breaking: string;
+  topStory: string;
+  latest: string;
   earlier: string;
   streamWire: string;
   streamWireSub: string;
   streamRadar: string;
   streamRadarSub: string;
+  streamX: string;
+  streamXSub: string;
   streamDaily: string;
   streamDailySub: string;
   cntToday: string;
@@ -91,7 +95,7 @@ export interface Dict {
 }
 
 const en: Dict = {
-  nav: { home: "Home", wire: "Wire", radar: "Radar", daily: "Daily", more: "More", desk: "Desk", sources: "Sources" },
+  nav: { home: "Home", wire: "Wire", radar: "Radar", daily: "Daily Insight", more: "More", desk: "Desk", sources: "Sources" },
   navUpgrade: "Upgrade",
   navAlerts: "Alerts",
   account: { profile: "Profile", billing: "Billing", settings: "Settings", signout: "Sign out" },
@@ -157,12 +161,16 @@ const en: Dict = {
   glance: "Today at a glance",
   seeAll: "See all",
   breaking: "Breaking",
+  topStory: "Top story",
+  latest: "Latest",
   earlier: "Earlier",
   streamWire: "Wire",
-  streamWireSub: "Real-time alerts",
+  streamWireSub: "Real-time regulatory & logistics alerts",
   streamRadar: "Radar",
   streamRadarSub: "Bestsellers & social signals",
-  streamDaily: "The Daily",
+  streamX: "Hot on X",
+  streamXSub: "What sellers & operators are discussing",
+  streamDaily: "Daily Insight",
   streamDailySub: "One original brief a day",
   cntToday: "today",
   cntMoving: "moving",
@@ -174,7 +182,7 @@ const en: Dict = {
 };
 
 const zh: Dict = {
-  nav: { home: "首页", wire: "情报流", radar: "趋势雷达", daily: "每日", more: "更多", desk: "审核台", sources: "信息源" },
+  nav: { home: "首页", wire: "情报流", radar: "趋势雷达", daily: "每日洞察", more: "更多", desk: "审核台", sources: "信息源" },
   navUpgrade: "升级",
   navAlerts: "订阅",
   account: { profile: "个人", billing: "账单", settings: "设置", signout: "退出" },
@@ -240,12 +248,16 @@ const zh: Dict = {
   glance: "今日速览",
   seeAll: "全部",
   breaking: "突发",
+  topStory: "头条",
+  latest: "最新",
   earlier: "更早",
   streamWire: "预警",
-  streamWireSub: "实时预警",
+  streamWireSub: "实时法规与物流预警",
   streamRadar: "爆品",
   streamRadarSub: "畅销榜 + 社媒信号",
-  streamDaily: "原创",
+  streamX: "X 热议",
+  streamXSub: "卖家与从业者正在讨论什么",
+  streamDaily: "每日洞察",
   streamDailySub: "每天一篇原创解读",
   cntToday: "今日",
   cntMoving: "异动",

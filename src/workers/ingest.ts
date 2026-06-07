@@ -3,6 +3,7 @@ import { QUEUES, sendOpts } from "../queue/queues.js";
 import { IngestJobSchema } from "../queue/schemas.js";
 import { prisma } from "../db/client.js";
 import { urlHash, normalizeUrl } from "../lib/hash.js";
+import { isGoogleNewsUrl, resolveGoogleNewsUrl } from "../lib/gnews.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { BESTSELLER_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
@@ -30,8 +31,17 @@ export async function registerIngestWorker(boss: PgBoss) {
       // Bestseller crawls are storage-only (no AI), so keep the full grid.
       const capped = isBestseller ? items : items.slice(0, env.MAX_ITEMS_PER_CRAWL);
       for (const raw of capped) {
-        const url = normalizeUrl(raw.url); // canonical (e.g. amazon → /dp/<ASIN>)
-        const hash = urlHash(raw.url); // == sha256(normalizeUrl(raw.url))
+        // Google News items link to a redirect page — resolve to the real
+        // publisher first so url/urlHash (dedup) and the stored URL are canonical
+        // (tap target + og:image come from the article, not Google). Graceful:
+        // a failed resolve keeps the GN link.
+        let rawUrl = raw.url;
+        if (!isBestseller && isGoogleNewsUrl(rawUrl)) {
+          const real = await resolveGoogleNewsUrl(rawUrl);
+          if (real) rawUrl = real;
+        }
+        const url = normalizeUrl(rawUrl); // canonical (e.g. amazon → /dp/<ASIN>)
+        const hash = urlHash(rawUrl); // == sha256(normalizeUrl(rawUrl))
         const bsImage = (raw.rawContent as { image?: string } | null)?.image ?? null;
         const existing = await prisma.item.findUnique({ where: { urlHash: hash } });
         if (existing) {

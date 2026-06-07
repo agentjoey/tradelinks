@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TradeLinks · Home v7 (EN) — wider + balanced hero cluster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,500&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  maxWidth: { '8xl': '88rem' },
+  fontFamily: { display:['Fraunces','Georgia','serif'], sans:['"Schibsted Grotesk"','system-ui','sans-serif'], mono:['"IBM Plex Mono"','ui-monospace','monospace'] },
+  colors: { ink:'#08090c', surface:'#0e1015', surface2:'#13161d', line:'rgba(233,228,217,0.10)', linestrong:'rgba(233,228,217,0.20)', paper:'#ECE7DB', muted:'#8b8f9a', faint:'#5a5f6b', signal:'#E8B44A', urgent:'#FF5A4D', calm:'#4FD1C5' },
+}}}
+</script>
+<style>
+  body{ background-color:#08090c;
+    background-image: radial-gradient(120% 60% at 50% -10%, rgba(232,180,74,0.06), transparent 60%), linear-gradient(rgba(233,228,217,0.025) 1px, transparent 1px);
+    background-size:auto,100% 34px; background-attachment:fixed; -webkit-font-smoothing:antialiased; }
+  .ticker{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:0.04em;}
+</style>
+</head>
+<body class="font-sans text-paper min-h-screen pb-24">
+
+<div class="fixed top-0 inset-x-0 h-px z-40" style="background:linear-gradient(90deg,transparent,rgba(232,180,74,0.7),transparent)"></div>
+
+<!-- ===== TOP NAV (wider container) ===== -->
+<header class="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
+  <div class="mx-auto max-w-8xl px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-8">
+      <a href="#" class="leading-none">
+        <div class="ticker text-[9px] uppercase tracking-[0.3em] text-signal/80 mb-1">Cross-Border Intelligence</div>
+        <div class="font-display text-[22px] leading-none tracking-tight">Trade<span class="italic text-signal">Links</span></div>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-[14px]">
+        <a href="#" class="font-semibold text-paper">Home</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Wire</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Radar</a>
+        <a href="#" class="text-muted hover:text-paper transition-colors">Daily Insight</a>
+        <a href="#" class="text-faint hover:text-paper transition-colors">More ▾</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <a href="#" class="hidden sm:inline-flex ticker items-center gap-1.5 rounded-md border border-linestrong px-2.5 py-1.5 text-[12px] text-muted hover:text-paper hover:border-signal/50 transition-colors">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        Alerts
+      </a>
+      <a href="#" class="inline-flex items-center rounded-md bg-signal px-3 py-1.5 text-[13px] font-semibold text-ink hover:bg-signal/90 transition-colors">Upgrade</a>
+      <a href="#" class="ticker hidden sm:inline-flex rounded-md border border-linestrong px-2 py-1.5 text-[12px] text-paper hover:border-signal/50 transition-colors">EN/中</a>
+      <button class="flex h-9 w-9 items-center justify-center rounded-full border border-linestrong bg-surface2 ticker text-[12px] font-semibold text-signal" title="Account">AJ</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== MASTHEAD ===== -->
+<section class="mx-auto max-w-8xl px-5 sm:px-8 pt-8 pb-5">
+  <h1 class="font-display text-[26px] sm:text-[31px] leading-tight tracking-tight text-paper">Global cross-border e-commerce <span class="italic text-signal">intelligence</span>.</h1>
+  <p class="mt-2 text-[14.5px] text-muted max-w-2xl">Policy &amp; logistics disruptions, viral-product diffusion across regions, and one original brief a day.</p>
+</section>
+
+<main class="mx-auto max-w-8xl px-5 sm:px-8">
+
+  <!-- ===== TOP CLUSTER: lead hero + 2 secondary highlights + Latest list ===== -->
+  <div class="ticker mb-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-faint">
+    <span class="h-1.5 w-1.5 rounded-full bg-signal"></span> Today at a glance
+  </div>
+
+  <section class="mb-12 grid grid-cols-1 gap-5 lg:grid-cols-12">
+
+    <!-- LEAD HERO (top-scored story; not just breaking) -->
+    <a href="#" class="group lg:col-span-6 flex flex-col overflow-hidden rounded-2xl border border-line bg-surface/70 hover:border-signal/40 transition-colors" style="border-top:3px solid #FF5A4D">
+      <div class="relative aspect-[16/9] bg-surface2">
+        <img src="https://picsum.photos/seed/redsea/1024/576" class="h-full w-full object-cover" alt=""/>
+        <span class="ticker absolute left-3 top-3 inline-flex items-center gap-1.5 rounded bg-ink/80 px-2 py-1 text-[10px] uppercase tracking-wider text-signal backdrop-blur">★ Top story</span>
+      </div>
+      <div class="flex flex-1 flex-col justify-center p-5">
+        <div class="ticker mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] uppercase tracking-wider">
+          <span class="inline-flex items-center gap-1 rounded bg-urgent/15 px-1.5 py-0.5 text-urgent"><span class="h-1.5 w-1.5 rounded-full bg-urgent"></span>Act</span>
+          <span class="text-signal">Logistics</span><span class="text-muted">Asia · EU</span>
+          <span class="text-faint">· The Loadstar · 10:42Z</span>
+        </div>
+        <h2 class="font-display text-[23px] sm:text-[27px] font-medium leading-[1.13] tracking-tight text-paper group-hover:text-signal transition-colors">Red Sea reroute adds 12 days to Asia–EU lanes as carriers suspend Suez transits</h2>
+        <p class="mt-2.5 max-w-2xl text-[14.5px] leading-relaxed text-muted line-clamp-2">Maersk and Hapag-Lloyd confirm full Cape of Good Hope routing through Q3, pushing FEU spot rates above $5,800 and forcing sellers to re-plan inventory buffers for the back-to-school window.</p>
+      </div>
+    </a>
+
+    <!-- SECONDARY highlights (2 stacked, top image 16:10) -->
+    <div class="lg:col-span-3 flex flex-col gap-4">
+      <a href="#" class="group flex flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="aspect-[16/10] shrink-0 bg-surface2"><img src="https://picsum.photos/seed/tiktokpolicy/480/300" class="h-full w-full object-cover" alt=""/></div>
+        <div class="flex flex-1 flex-col justify-center p-3.5">
+          <div class="ticker mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider"><span class="rounded bg-urgent/15 px-1.5 py-0.5 text-urgent">Act</span><span class="text-signal">Platform</span><span class="text-muted">NA</span></div>
+          <div class="font-display text-[15.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">TikTok Shop US lifts seller commission to 9%</div>
+        </div>
+      </a>
+      <a href="#" class="group flex flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="aspect-[16/10] shrink-0 bg-surface2"><img src="https://picsum.photos/seed/eulaw/480/300" class="h-full w-full object-cover" alt=""/></div>
+        <div class="flex flex-1 flex-col justify-center p-3.5">
+          <div class="ticker mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider"><span class="rounded bg-signal/15 px-1.5 py-0.5 text-signal">Watch</span><span class="text-signal">Regulatory</span><span class="text-muted">EU</span></div>
+          <div class="font-display text-[15.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">EU GPSR enforcement begins — listings need a Responsible Person</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- LATEST list (Wire + Radar mixed, text-only, chronological) -->
+    <aside class="lg:col-span-3 flex flex-col rounded-xl border border-line bg-surface/40">
+      <div class="flex items-center justify-between border-b border-line px-4 py-3">
+        <div class="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-paper">
+          <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-urgent opacity-60 animate-ping"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-urgent"></span></span>
+          Latest
+        </div>
+        <span class="ticker text-[10px] uppercase tracking-wider text-faint">live</span>
+      </div>
+      <div class="flex-1 divide-y divide-line">
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-signal"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-signal">Radar</span><span>10:18Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">Bladeless neck fan tops NA Sports &amp; Outdoors</div></div>
+        </a>
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-urgent"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-urgent">Wire</span><span>09:42Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">USPS rolls back China-origin parcel suspension</div></div>
+        </a>
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-signal"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-signal">Radar</span><span>09:30Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">RGB sunset projector lamp trending in EU</div></div>
+        </a>
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-urgent"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-urgent">Wire</span><span>09:05Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">FMC opens probe into carrier peak-season surcharges</div></div>
+        </a>
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-signal"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-signal">Radar</span><span>08:50Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">Mini handheld phone gimbal climbing in EU</div></div>
+        </a>
+        <a href="#" class="group flex gap-2.5 px-4 py-2.5 hover:bg-surface2/60 transition-colors">
+          <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-urgent"></span>
+          <div class="min-w-0"><div class="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint"><span class="text-urgent">Wire</span><span>08:20Z</span></div>
+          <div class="text-[13px] font-medium leading-snug text-paper/90 group-hover:text-signal transition-colors">Australia tightens product-safety rules for imports</div></div>
+        </a>
+      </div>
+      <a href="#" class="ticker flex items-center justify-center gap-1.5 border-t border-line px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted hover:text-signal transition-colors">See all <span class="text-signal">→</span></a>
+    </aside>
+  </section>
+
+  <!-- ===== WIRE — featured + list (Analysis-style; folds earlier in) ===== -->
+  <section class="mb-12">
+    <div class="flex items-center justify-between mb-4 border-t border-line pt-7">
+      <div class="flex items-center gap-2.5">
+        <span class="h-4 w-1 rounded-full bg-urgent"></span>
+        <h2 class="font-display text-[22px] font-medium text-paper">Wire</h2>
+        <span class="hidden sm:inline text-[13px] text-muted">Real-time regulatory &amp; logistics alerts</span>
+      </div>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-linestrong px-3 py-2 text-[13px] font-medium text-paper hover:border-signal/50 transition-colors">See all <span class="text-signal">→</span></a>
+    </div>
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <!-- featured -->
+      <a href="#" class="group lg:col-span-5 overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors" style="border-top:3px solid #E8B44A">
+        <div class="aspect-[16/10] bg-surface2"><img src="https://picsum.photos/seed/customsfeat/720/450" class="h-full w-full object-cover" alt=""/></div>
+        <div class="p-4 sm:p-5">
+          <div class="ticker mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider">
+            <span class="inline-flex items-center gap-1 rounded bg-signal/15 px-1.5 py-0.5 text-signal"><span class="h-1.5 w-1.5 rounded-full bg-signal"></span>Watch</span>
+            <span class="text-signal">Regulatory</span><span class="text-muted">NA</span><span class="ml-auto text-faint">Federal Register</span>
+          </div>
+          <div class="font-display text-[19px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">De minimis $800 exemption set to end — landed-cost shock for US importers</div>
+          <p class="mt-2 text-[13.5px] leading-relaxed text-muted">Customs signals enforcement ramp-up; sellers shipping direct-to-consumer from Asia face new duty math from Q3.</p>
+        </div>
+      </a>
+      <!-- list (today + earlier, with small thumbs) -->
+      <div class="lg:col-span-7 divide-y divide-line rounded-xl border border-line bg-surface/40">
+        <a href="#" class="group flex items-center gap-4 px-4 py-3.5 hover:bg-surface2/60 transition-colors">
+          <div class="min-w-0 flex-1">
+            <div class="ticker mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider"><span class="rounded bg-signal/15 px-1.5 py-0.5 text-signal">Watch</span><span class="text-signal">Platform</span><span class="text-muted">NA</span><span class="ml-auto text-faint">Modern Retail · 09:42Z</span></div>
+            <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">TikTok Shop US lifts seller commission to 9%, effective Jul 1</div>
+          </div>
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2"><img src="https://picsum.photos/seed/tt2/160/160" class="h-full w-full object-cover" alt=""/></div>
+        </a>
+        <a href="#" class="group flex items-center gap-4 px-4 py-3.5 hover:bg-surface2/60 transition-colors">
+          <div class="min-w-0 flex-1">
+            <div class="ticker mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider"><span class="rounded bg-faint/15 px-1.5 py-0.5 text-muted">FYI</span><span class="text-signal">Logistics</span><span class="text-muted">NA</span><span class="ml-auto text-faint">JOC · 08:20Z</span></div>
+            <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">US West Coast ports brace for labor slowdown as contract talks stall</div>
+          </div>
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2"><img src="https://picsum.photos/seed/ports2/160/160" class="h-full w-full object-cover" alt=""/></div>
+        </a>
+        <a href="#" class="group flex items-center gap-4 px-4 py-3.5 hover:bg-surface2/60 transition-colors">
+          <div class="min-w-0 flex-1">
+            <div class="ticker mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider"><span class="rounded bg-signal/15 px-1.5 py-0.5 text-signal">Watch</span><span class="text-signal">Platform</span><span class="text-muted">Global</span><span class="ml-auto text-faint">Marketplace Pulse · Yesterday</span></div>
+            <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Amazon expands "Buy with Prime" to Shopify checkouts in three new markets</div>
+          </div>
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2"><img src="https://picsum.photos/seed/bwp/160/160" class="h-full w-full object-cover" alt=""/></div>
+        </a>
+        <a href="#" class="group flex items-center gap-4 px-4 py-3.5 hover:bg-surface2/60 transition-colors">
+          <div class="min-w-0 flex-1">
+            <div class="ticker mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider"><span class="rounded bg-faint/15 px-1.5 py-0.5 text-muted">FYI</span><span class="text-signal">Industry</span><span class="text-muted">EU</span><span class="ml-auto text-faint">EcommerceBytes · Yesterday</span></div>
+            <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Etsy raises payment-processing fees for EU sellers starting next quarter</div>
+          </div>
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2"><img src="https://picsum.photos/seed/etsy/160/160" class="h-full w-full object-cover" alt=""/></div>
+        </a>
+        <a href="#" class="group flex items-center gap-4 px-4 py-3.5 hover:bg-surface2/60 transition-colors">
+          <div class="min-w-0 flex-1">
+            <div class="ticker mb-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider"><span class="rounded bg-signal/15 px-1.5 py-0.5 text-signal">Watch</span><span class="text-signal">Regulatory</span><span class="text-muted">ANZ</span><span class="ml-auto text-faint">ACCC · Jun 5</span></div>
+            <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Australia tightens product-safety rules for imported electronics</div>
+          </div>
+          <div class="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2"><img src="https://picsum.photos/seed/anz/160/160" class="h-full w-full object-cover" alt=""/></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RADAR — #1 leader + grid (image-forward, distinct from Wire) ===== -->
+  <section class="mb-12">
+    <div class="flex items-center justify-between mb-4 border-t border-line pt-7">
+      <div class="flex items-center gap-2.5">
+        <span class="h-4 w-1 rounded-full bg-signal"></span>
+        <h2 class="font-display text-[22px] font-medium text-paper">Radar</h2>
+        <span class="hidden sm:inline text-[13px] text-muted">Bestsellers &amp; social signals</span>
+      </div>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-linestrong px-3 py-2 text-[13px] font-medium text-paper hover:border-signal/50 transition-colors">See all <span class="text-signal">→</span></a>
+    </div>
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <!-- #1 leader -->
+      <a href="#" class="group lg:col-span-4 overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="relative aspect-square bg-surface2"><img src="https://picsum.photos/seed/neckfan/640/640" class="h-full w-full object-cover" alt=""/>
+          <span class="ticker absolute left-0 top-0 rounded-br-xl bg-signal px-3 py-1.5 text-[15px] font-semibold text-ink">#1</span>
+          <span class="ticker absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-paper/90">Amazon</span>
+        </div>
+        <div class="p-4">
+          <div class="font-display text-[18px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Portable neck fan, bladeless</div>
+          <div class="ticker mt-2 text-[13px] font-semibold text-signal">BSR #1 · NA Sports &amp; Outdoors</div>
+        </div>
+      </a>
+      <!-- grid of movers -->
+      <div class="lg:col-span-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/sunsetlamp/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#3</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-calm">TikTok</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">RGB sunset projector lamp</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">♥ 18.2k · trending</div></div>
+        </a>
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/gimbal/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#2</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-paper/90">Amazon</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Mini handheld phone gimbal</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">BSR #2 · EU</div></div>
+        </a>
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/mug/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#5</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-paper/90">Amazon</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Self-stirring heated travel mug</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">BSR #5 · NA</div></div>
+        </a>
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/brush/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#7</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-calm">TikTok</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Heated eyelash curler</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">♥ 9.4k · trending</div></div>
+        </a>
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/dog/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#9</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-paper/90">Amazon</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">No-pull dog harness, reflective</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">BSR #9 · EU</div></div>
+        </a>
+        <a href="#" class="group overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+          <div class="relative aspect-[16/11] bg-surface2"><img src="https://picsum.photos/seed/led/480/330" class="h-full w-full object-cover" alt=""/>
+            <span class="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2 py-0.5 text-[11px] font-semibold text-ink">#12</span>
+            <span class="ticker absolute right-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-calm">TikTok</span></div>
+          <div class="p-3"><div class="font-display text-[14.5px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Wireless LED strip, app-controlled</div><div class="ticker mt-1 text-[11px] font-semibold text-signal">♥ 6.1k · trending</div></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HOT ON X — industry discussion (text-forward, social; gives getHotTopicsX a home) ===== -->
+  <section class="mb-12">
+    <div class="flex items-center justify-between mb-4 border-t border-line pt-7">
+      <div class="flex items-center gap-2.5">
+        <span class="h-4 w-1 rounded-full bg-calm"></span>
+        <h2 class="font-display text-[22px] font-medium text-paper">Hot on X</h2>
+        <span class="hidden sm:inline text-[13px] text-muted">What sellers &amp; operators are discussing</span>
+      </div>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-linestrong px-3 py-2 text-[13px] font-medium text-paper hover:border-signal/50 transition-colors">See all <span class="text-signal">→</span></a>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Tariffs</span><span class="text-signal/90">♥ 4.2k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">Sellers scramble as de-minimis repeal timeline leaks ahead of official notice</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Operators debating whether to front-load Q3 inventory now or wait for the final rule — thread with 600+ replies.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@cbecpulse</span><span>🔁 1.1k</span><span class="text-faint/70">· X</span></div>
+      </a>
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Logistics</span><span class="text-signal/90">♥ 3.1k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">"Cape routing is the new normal" — freight forwarder breaks down the math</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Detailed cost comparison vs. Suez, with screenshots of current FEU contract quotes shared in replies.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@freightnerd</span><span>🔁 820</span><span class="text-faint/70">· X</span></div>
+      </a>
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Platform</span><span class="text-signal/90">♥ 2.8k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">TikTok Shop sellers report sudden drop in organic reach after algorithm change</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Multiple US sellers comparing GMV dips this week; some attributing it to a quiet ranking update.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@tiktokshopdaily</span><span>🔁 540</span><span class="text-faint/70">· X</span></div>
+      </a>
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Regulatory</span><span class="text-signal/90">♥ 1.9k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">EU GPSR: what counts as a valid "Responsible Person" — lawyer clarifies</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Popular myth-busting thread on whether a fulfillment agent qualifies; bookmarked 2k+ times.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@eucompliance</span><span>🔁 430</span><span class="text-faint/70">· X</span></div>
+      </a>
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Payments</span><span class="text-signal/90">♥ 1.4k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">Payoneer vs. Wise for cross-border payouts in 2026 — sellers weigh in</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Fee breakdowns and FX-spread comparisons across LATAM and SEA corridors.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@globalseller</span><span>🔁 290</span><span class="text-faint/70">· X</span></div>
+      </a>
+      <a href="#" class="group rounded-xl border border-line border-l-2 border-l-calm bg-surface/60 p-4 hover:bg-surface2 transition-colors">
+        <div class="ticker mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em]"><span class="text-calm">Trends</span><span class="text-signal/90">♥ 1.1k</span></div>
+        <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-calm transition-colors">Summer cooling gadgets dominating EU TikTok — list of breakout SKUs</div>
+        <p class="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">Creator-shared roundup of neck fans, misting bottles and portable AC units gaining traction.</p>
+        <div class="ticker mt-3 flex items-center gap-2.5 text-[11px] text-faint"><span class="text-signal/90">@trendspotter</span><span>🔁 210</span><span class="text-faint/70">· X</span></div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== DAILY INSIGHT — asymmetric (kept) ===== -->
+  <section class="mb-12">
+    <div class="flex items-center justify-between mb-4 border-t border-line pt-7">
+      <div class="flex items-center gap-2.5">
+        <span class="h-4 w-1 rounded-full bg-calm"></span>
+        <h2 class="font-display text-[22px] font-medium text-paper">Daily Insight</h2>
+        <span class="hidden sm:inline text-[13px] text-muted">One original brief a day</span>
+      </div>
+      <a href="#" class="flex items-center gap-1.5 rounded-lg border border-linestrong px-3 py-2 text-[13px] font-medium text-paper hover:border-signal/50 transition-colors">See all <span class="text-signal">→</span></a>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <a href="#" class="group flex overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="w-28 sm:w-32 shrink-0 bg-surface2"><img src="https://picsum.photos/seed/customs/400/440" class="h-full w-full object-cover" alt=""/></div>
+        <div class="flex flex-col justify-center gap-2 p-4">
+          <span class="ticker w-fit rounded bg-signal/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-signal">Brief</span>
+          <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">De minimis is ending: what the $800 repeal means for US landed cost</div>
+          <div class="ticker text-[11px] text-faint">Jun 6 · Agent Joey</div>
+        </div>
+      </a>
+      <a href="#" class="group flex overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="w-28 sm:w-32 shrink-0 bg-surface2"><img src="https://picsum.photos/seed/tiktokshop/400/440" class="h-full w-full object-cover" alt=""/></div>
+        <div class="flex flex-col justify-center gap-2 p-4">
+          <span class="ticker w-fit rounded bg-calm/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-calm">Roundup</span>
+          <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">Five products quietly breaking out on TikTok Shop this week</div>
+          <div class="ticker text-[11px] text-faint">Jun 5 · Agent Joey</div>
+        </div>
+      </a>
+      <a href="#" class="group flex overflow-hidden rounded-xl border border-line bg-surface/70 hover:border-signal/40 transition-colors">
+        <div class="w-28 sm:w-32 shrink-0 bg-surface2"><img src="https://picsum.photos/seed/eu2/400/440" class="h-full w-full object-cover" alt=""/></div>
+        <div class="flex flex-col justify-center gap-2 p-4">
+          <span class="ticker w-fit rounded bg-signal/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-signal">Brief</span>
+          <div class="font-display text-[16px] font-medium leading-snug text-paper group-hover:text-signal transition-colors">The EU's new GPSR regime, explained for non-EU sellers</div>
+          <div class="ticker text-[11px] text-faint">Jun 4 · Agent Joey</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <footer class="pt-8 mt-2 border-t border-line pb-10">
+    <p class="ticker text-[10px] uppercase tracking-[0.2em] text-faint">TradeLinks · BL-026 Home v6 (EN) · wide hero cluster (lead + 2 highlights + Latest) · varied sections · Earlier folded in</p>
+  </footer>
+</main>
+
+<!-- ===== FLOATING subscribe bar ===== -->
+<div class="fixed inset-x-0 bottom-0 z-40">
+  <div class="mx-auto max-w-3xl m-3 sm:m-4 flex items-center gap-3 rounded-xl border border-signal/40 bg-surface2/95 backdrop-blur px-4 py-3 shadow-2xl shadow-black/50">
+    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-signal/15 text-signal">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="text-[14px] font-semibold text-paper leading-tight">Never miss a high-urgency alert</div>
+      <p class="text-[12px] text-muted leading-tight">Push the alerts and categories you watch to Telegram, Slack or email.</p>
+    </div>
+    <a href="#" class="ticker shrink-0 rounded-md bg-signal px-3 py-2 text-[12px] font-semibold text-ink hover:bg-signal/90 transition-colors">Set up push</a>
+    <button class="shrink-0 text-faint hover:text-paper transition-colors text-lg leading-none px-1" aria-label="Dismiss">×</button>
+  </div>
+</div>
+
+</body>
+</html>
