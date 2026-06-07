@@ -102,19 +102,47 @@ async function tgChannelCall(method: string, body: object): Promise<{ ok: boolea
   }
 }
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
+
+export interface ChannelSendOpts {
+  /** Tappable link preview of this URL (tap image → source). Used for alerts. */
+  previewUrl?: string | null;
+  /** Guaranteed image via sendPhoto (our stored URL). Used for products whose
+   * source page (e.g. Amazon) blocks link-preview og:image. */
+  imageUrl?: string | null;
+  /** Source URL for the inline button shown under a photo. */
+  sourceUrl?: string | null;
+  /** Inline button label (e.g. "↗ Amazon"). */
+  buttonLabel?: string;
+}
+
 /**
- * Post a news card to the public channel. When `previewUrl` is given, it's
- * rendered as a large, tappable link preview below the text (tap image → source);
- * the preview image is the URL's og:image. Without it, the preview is disabled.
+ * Post a news card to the public channel. Two modes:
+ *  - `imageUrl` → `sendPhoto` (guaranteed big image we control) + an inline
+ *    button linking to `sourceUrl` (tap button → source). Raw URL → img-proxy
+ *    → text fallback.
+ *  - else `previewUrl` → large tappable link preview (tap image → source).
  * Gated: no token/channel → "skipped".
  */
-export async function sendToChannel(text: string, previewUrl?: string | null): Promise<ChannelSendResult> {
+export async function sendToChannel(text: string, opts: ChannelSendOpts = {}): Promise<ChannelSendResult> {
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHANNEL_ID) return { status: "skipped" };
-  const link_preview_options = previewUrl
-    ? { url: previewUrl, prefer_large_media: true, show_above_text: false }
+  const chat_id = env.TELEGRAM_CHANNEL_ID;
+
+  if (opts.imageUrl) {
+    const markup = opts.sourceUrl
+      ? { reply_markup: { inline_keyboard: [[{ text: opts.buttonLabel ?? "↗ View source", url: opts.sourceUrl }]] } }
+      : {};
+    const proxied = `${SITE}/api/img-proxy?u=${encodeURIComponent(opts.imageUrl)}`;
+    for (const photo of [opts.imageUrl, proxied]) {
+      const r = await tgChannelCall("sendPhoto", { chat_id, photo, caption: text, parse_mode: "HTML", ...markup });
+      if (r.ok) return { status: "sent", messageId: r.messageId };
+    }
+    // both photo attempts failed → fall through to text
+  }
+
+  const link_preview_options = opts.previewUrl
+    ? { url: opts.previewUrl, prefer_large_media: true, show_above_text: false }
     : { is_disabled: true };
-  const r = await tgChannelCall("sendMessage", {
-    chat_id: env.TELEGRAM_CHANNEL_ID, text, parse_mode: "HTML", link_preview_options,
-  });
+  const r = await tgChannelCall("sendMessage", { chat_id, text, parse_mode: "HTML", link_preview_options });
   return r.ok ? { status: "sent", messageId: r.messageId } : { status: "failed" };
 }

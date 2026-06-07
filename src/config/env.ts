@@ -56,7 +56,7 @@ const EnvSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true" || v === "1"),
-  CHANNEL_PUSH_DAILY_MAX: z.coerce.number().int().positive().default(8),
+  CHANNEL_PUSH_DAILY_MAX: z.coerce.number().int().positive().default(12),
   CHANNEL_PUSH_RUN_MAX: z.coerce.number().int().positive().default(3),
   CHANNEL_PUSH_MIN_URGENCY: z.coerce.number().min(0).default(2),
   SLACK_WEBHOOK_URL: z.string().optional(),

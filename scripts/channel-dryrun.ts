@@ -26,10 +26,13 @@ async function main() {
   console.log(`channelId=${channelId} → batch of ${batch.length}\n`);
 
   for (const it of batch) {
-    const previewUrl = it.type === "alert" ? it.alert.sourceUrls[0] : it.product.url;
     console.log("─".repeat(56));
     console.log(it.type === "alert" ? renderChannelAlert(it.alert) : renderChannelProduct(it.product));
-    console.log(`🔗 tap-image → ${previewUrl ?? "(no source url → text-only)"}`);
+    if (it.type === "alert") {
+      console.log(`🔗 link-preview (tap image → source): ${it.alert.sourceUrls[0] ?? "(none → text-only)"}`);
+    } else {
+      console.log(`🖼  sendPhoto: ${it.product.imageUrl ?? "(no image)"}  |  button ↗ ${it.product.url}`);
+    }
     console.log();
   }
   process.exit(0);
