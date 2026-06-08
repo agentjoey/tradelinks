@@ -86,3 +86,53 @@ export function crossRegionDivergence(byRegion: Map<Region, number | null>): Cro
   const strength = 1 - best / 20; // best=1 → ~1
   return { score: Number((0.4 + 0.6 * strength).toFixed(3)), spreadingTo };
 }
+
+export interface TrendScoreInput {
+  history: ProductHistory;
+  isNewEntrant: boolean;
+  cross: CrossRegion;
+}
+
+/**
+ * Trend Score v1（Phase 1 可用的信号；review 速度 Phase 2 加权）：
+ * velocity(rank_delta) + novelty(new_entrant + cross-region) − evergreen_penalty。
+ * 输出 ∈ 约 [0,1]，clamp。
+ */
+export function trendScoreV1(inp: TrendScoreInput): number {
+  const rd = rankDelta(inp.history) ?? 0;
+  const velocity = Math.max(0, Math.min(1, rd / 25)); // +25 名 → 满分
+  const novelty = (inp.isNewEntrant ? 0.4 : 0) + inp.cross.score * 0.6;
+  // 新进只有 1 个点，无从判"低波动"，不施常青惩罚（commodity 仍 1）。
+  const penalty = inp.history.isCommodity ? 1 : inp.isNewEntrant ? 0 : evergreenPenalty(inp.history);
+  const raw = velocity * 0.6 + novelty * 0.4 - penalty * 0.5;
+  return Number(Math.max(0, Math.min(1, raw)).toFixed(3));
+}
+
+export interface Mover {
+  asin: string;
+  title: string;
+  region: Region;
+  category: string;
+  score: number;
+  rankDelta: number | null;
+  reviewDelta: number | null;
+  isNewEntrant: boolean;
+  currentRank: number | null;
+  spreadingTo: Region[];
+}
+
+/** 纯文本渲染每日复盘（telegramSend 用，HTML parse_mode 关闭 → 纯文本安全）。 */
+export function renderRadarReview(movers: Mover[], date: string): string {
+  const head = `📈 爆品复盘 ${date}（Beauty+Toys 验证）`;
+  if (movers.length === 0) return `${head}\n\n今日无显著在动的品（多为新进/常青已过滤）。`;
+  const lines = movers.map((m, i) => {
+    const why: string[] = [];
+    if (m.rankDelta != null) why.push(`排名 ${m.rankDelta >= 0 ? "+" : ""}${m.rankDelta}`);
+    if (m.currentRank != null) why.push(`现#${m.currentRank}`);
+    if (m.isNewEntrant) why.push("新进榜");
+    if (m.reviewDelta != null) why.push(`评论 +${m.reviewDelta}`);
+    if (m.spreadingTo.length) why.push(`或扩散→${m.spreadingTo.join("/")}`);
+    return `${i + 1}. [${m.region}·${m.category}] ${m.title}\n   分 ${m.score} · ${why.join(" · ")}`;
+  });
+  return `${head}\n\n${lines.join("\n\n")}`;
+}

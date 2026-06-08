@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractAsin, isCommodity, rankDelta, reviewDelta, evergreenPenalty, crossRegionDivergence, type ProductHistory } from "../src/trends/product-signal";
+import { extractAsin, isCommodity, rankDelta, reviewDelta, evergreenPenalty, crossRegionDivergence, trendScoreV1, renderRadarReview, type ProductHistory, type Mover } from "../src/trends/product-signal";
 
 describe("extractAsin", () => {
   it("pulls ASIN from a /dp/ url", () => {
@@ -88,5 +88,33 @@ describe("crossRegionDivergence", () => {
     );
     expect(r.score).toBeLessThan(0.2);
     expect(r.spreadingTo).toEqual([]);
+  });
+});
+
+describe("trendScoreV1", () => {
+  it("climbing non-commodity outscores flat evergreen", () => {
+    const climber = trendScoreV1({ history: hist([40, 8]), isNewEntrant: false, cross: { score: 0, spreadingTo: [] } });
+    const evergreen = trendScoreV1({ history: hist([5, 5, 5]), isNewEntrant: false, cross: { score: 0, spreadingTo: [] } });
+    expect(climber).toBeGreaterThan(evergreen);
+  });
+  it("new entrant gets novelty credit", () => {
+    const s = trendScoreV1({ history: hist([12]), isNewEntrant: true, cross: { score: 0, spreadingTo: [] } });
+    expect(s).toBeGreaterThan(0);
+  });
+});
+
+describe("renderRadarReview", () => {
+  it("renders header + per-mover why lines, escapes nothing weird", () => {
+    const movers: Mover[] = [
+      { asin: "B1", title: "Mascara X", region: "north_america", category: "Beauty", score: 0.8,
+        rankDelta: 22, reviewDelta: null, isNewEntrant: false, currentRank: 8, spreadingTo: ["europe"] },
+    ];
+    const txt = renderRadarReview(movers, "2026-06-09");
+    expect(txt).toContain("2026-06-09");
+    expect(txt).toContain("Mascara X");
+    expect(txt).toContain("+22"); // 排名变化证据
+  });
+  it("empty → explicit 'no movers' line", () => {
+    expect(renderRadarReview([], "2026-06-09")).toContain("无");
   });
 });
