@@ -18,6 +18,7 @@ export const QUEUES = {
   dailyNote: "daily-note-tick",
   channelPush: "channel-push-tick",
   translate: "translate-content-tick",
+  radarReview: "radar-review-tick",
 } as const;
 
 /** Per-queue defaults: 3 retries, 2s base delay, exponential backoff. */
