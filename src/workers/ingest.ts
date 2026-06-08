@@ -6,7 +6,35 @@ import { urlHash, normalizeUrl } from "../lib/hash.js";
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from "../lib/gnews.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
-import { BESTSELLER_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
+import { BESTSELLER_SOURCE_IDS, VALIDATION_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
+import { extractAsin, isCommodity } from "../trends/product-signal.js";
+import { upsertProductSnapshot } from "../trends/product-snapshots.js";
+
+/** BL-042: 验证集 bestseller 写当日 product_snapshot（幂等）。失败不阻塞 ingest。 */
+async function recordValidationSnapshot(
+  sourceId: string,
+  url: string,
+  title: string,
+  rawContent: unknown,
+  imageUrl: string | null,
+): Promise<void> {
+  if (!VALIDATION_SOURCE_IDS.has(sourceId)) return;
+  const asin = extractAsin(url);
+  if (!asin) return;
+  const src = SOURCES_BY_ID.get(sourceId);
+  const category = src?.name.match(/\(([^)]+)\)\s*$/)?.[1] ?? src?.name ?? sourceId;
+  const region = (src?.regions[0] as string) ?? "north_america";
+  const rc = rawContent as { rank?: unknown } | null;
+  const m = rc?.rank != null ? String(rc.rank).match(/\d+/) : null;
+  const rank = m ? Number(m[0]) : null;
+  try {
+    await upsertProductSnapshot({
+      asin, region: region as never, category, rank, title, imageUrl, isCommodity: isCommodity(title), sourceId,
+    });
+  } catch (e) {
+    logger.warn({ sourceId, asin, err: String(e) }, "snapshot write failed");
+  }
+}
 
 /**
  * ingest-queue worker. Upserts RawItems into `items` (url unique = dedup
@@ -57,6 +85,7 @@ export async function registerIngestWorker(boss: PgBoss) {
                 crawledAt: new Date(),
               },
             });
+            await recordValidationSnapshot(sourceId, url, raw.title, raw.rawContent ?? null, bsImage);
           }
           continue;
         }
@@ -82,6 +111,7 @@ export async function registerIngestWorker(boss: PgBoss) {
           },
         });
         created++;
+        if (isBestseller) await recordValidationSnapshot(sourceId, url, raw.title, raw.rawContent ?? null, bsImage);
         if (!isBestseller) await boss.send(QUEUES.process, { itemId: item.id }, sendOpts);
       }
 
