@@ -10,6 +10,7 @@ import { registerXWorker } from "./x.js";
 import { registerDailyNoteWorker } from "./daily-note.js";
 import { registerChannelPushWorker } from "./channel-push.js";
 import { registerTranslateWorker } from "./translate.js";
+import { registerRadarReviewWorker } from "./radar-review.js";
 import { registerScheduler } from "./scheduler.js";
 import { seedSources } from "./seed-sources.js";
 import { QUEUES } from "../queue/queues.js";
@@ -34,6 +35,7 @@ async function main() {
   await registerDailyNoteWorker(boss);
   await registerChannelPushWorker(boss);
   await registerTranslateWorker(boss);
+  await registerRadarReviewWorker(boss);
   await registerScheduler(boss);
   // daily trends ingest + diffusion at 02:00 UTC
   await boss.schedule(QUEUES.trends, "0 2 * * *");
@@ -46,7 +48,9 @@ async function main() {
   // curated Telegram channel push: 3×/day (02:00/10:00/16:00 UTC) to spread across timezones
   await boss.schedule(QUEUES.channelPush, "0 2,10,16 * * *");
   await boss.schedule(QUEUES.translate, "*/15 * * * *");
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push + translate (pg-boss)");
+  // BL-042 爆品每日复盘 13:30 UTC（在 ~12:xx 的 BSR 抓取批次之后）
+  await boss.schedule(QUEUES.radarReview, "30 13 * * *");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push + translate + radar-review (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");
