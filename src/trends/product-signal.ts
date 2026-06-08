@@ -121,7 +121,7 @@ export interface Mover {
   spreadingTo: Region[];
 }
 
-/** 纯文本渲染每日复盘（telegramSend 用，HTML parse_mode 关闭 → 纯文本安全）。 */
+/** 纯文本渲染每日复盘（sendOpsAlert 用，HTML parse_mode 关闭 → 纯文本安全）。 */
 export function renderRadarReview(movers: Mover[], date: string): string {
   const head = `📈 爆品复盘 ${date}（Beauty+Toys 验证）`;
   if (movers.length === 0) return `${head}\n\n今日无显著在动的品（多为新进/常青已过滤）。`;
