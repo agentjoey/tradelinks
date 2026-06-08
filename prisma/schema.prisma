@@ -169,6 +169,28 @@ model TrendSnapshot {
   @@map("trend_snapshots")
 }
 
+model ProductSnapshot {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  asin        String
+  region      Region
+  category    String                     // 真实品类标签（"Beauty"/"Toys & Games"），非 categoryHint
+  rank        Int?
+  reviewCount Int?                        // Phase 2 富集，Phase 1 恒 null
+  rating      Float?                      // Phase 2
+  price       Float?                      // Phase 2
+  title       String
+  imageUrl    String?
+  isCommodity Boolean  @default(false)
+  sourceId    String
+  createdAt   DateTime @default(now())
+
+  @@unique([date, asin, region])
+  @@index([asin, date])
+  @@index([region, category, date])
+  @@map("product_snapshots")
+}
+
 model TrendSignal {
   id           String   @id @default(cuid())
   keyword      String

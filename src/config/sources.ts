@@ -680,3 +680,6 @@ export const BESTSELLER_SOURCE_IDS = new Set<string>([
   "D02", "D03", "D04", "D05", "D06", "D30", "D31", "D32", "D33", "D34",
   "D40", "D41", "D42", "D50", "D51", "D60", "D61", "D62",
 ]);
+
+/** BL-042 Phase 1 验证范围：Beauty×4 区 + Toys US（仅这些源写 product_snapshots）。 */
+export const VALIDATION_SOURCE_IDS = new Set(["D33", "D42", "D51", "D61", "D32"]);
