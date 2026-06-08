@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractAsin, isCommodity, rankDelta, reviewDelta, type ProductHistory } from "../src/trends/product-signal";
+import { extractAsin, isCommodity, rankDelta, reviewDelta, evergreenPenalty, crossRegionDivergence, type ProductHistory } from "../src/trends/product-signal";
 
 describe("extractAsin", () => {
   it("pulls ASIN from a /dp/ url", () => {
@@ -51,5 +51,42 @@ describe("reviewDelta", () => {
   });
   it("null when reviews absent (Phase 1)", () => {
     expect(reviewDelta(hist([1, 1]))).toBeNull();
+  });
+});
+
+describe("evergreenPenalty", () => {
+  it("high & flat rank → strong penalty", () => {
+    // 一直 top-10、几乎不动 = 常青
+    expect(evergreenPenalty(hist([5, 6, 5, 4]))).toBeGreaterThan(0.5);
+  });
+  it("commodity flag alone → penalty 1", () => {
+    const h = { ...hist([20, 19]), isCommodity: true };
+    expect(evergreenPenalty(h)).toBe(1);
+  });
+  it("moving product → low penalty", () => {
+    expect(evergreenPenalty(hist([40, 8]))).toBeLessThan(0.3);
+  });
+});
+
+describe("crossRegionDivergence", () => {
+  it("strong in one region, absent in another → divergence + spreadingTo", () => {
+    const r = crossRegionDivergence(
+      new Map([
+        ["north_america", 3],
+        ["europe", null],
+      ]),
+    );
+    expect(r.score).toBeGreaterThan(0);
+    expect(r.spreadingTo).toContain("europe");
+  });
+  it("present & similar everywhere → ~0 divergence", () => {
+    const r = crossRegionDivergence(
+      new Map([
+        ["north_america", 5],
+        ["europe", 6],
+      ]),
+    );
+    expect(r.score).toBeLessThan(0.2);
+    expect(r.spreadingTo).toEqual([]);
   });
 });
