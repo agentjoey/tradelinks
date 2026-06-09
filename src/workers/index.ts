@@ -11,6 +11,7 @@ import { registerDailyNoteWorker } from "./daily-note.js";
 import { registerChannelPushWorker } from "./channel-push.js";
 import { registerTranslateWorker } from "./translate.js";
 import { registerRadarReviewWorker } from "./radar-review.js";
+import { registerNewsletterWorker } from "./newsletter.js";
 import { registerScheduler } from "./scheduler.js";
 import { seedSources } from "./seed-sources.js";
 import { QUEUES } from "../queue/queues.js";
@@ -36,6 +37,7 @@ async function main() {
   await registerChannelPushWorker(boss);
   await registerTranslateWorker(boss);
   await registerRadarReviewWorker(boss);
+  await registerNewsletterWorker(boss);
   await registerScheduler(boss);
   // daily trends ingest + diffusion at 02:00 UTC
   await boss.schedule(QUEUES.trends, "0 2 * * *");
@@ -50,7 +52,9 @@ async function main() {
   await boss.schedule(QUEUES.translate, "*/15 * * * *");
   // BL-042 爆品每日复盘 13:30 UTC（在 ~12:xx 的 BSR 抓取批次之后）
   await boss.schedule(QUEUES.radarReview, "30 13 * * *");
-  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push + translate + radar-review (pg-boss)");
+  // BL-043 每周简报：周一 14:00 UTC（贴美欧工作周开端）
+  await boss.schedule(QUEUES.newsletter, "0 14 * * 1");
+  logger.info("workers online: scheduler + crawl + scrape + ingest + process + score + trends + health + x + daily-note + channel-push + translate + radar-review + newsletter (pg-boss)");
 
   const shutdown = async () => {
     logger.info("shutting down workers…");
