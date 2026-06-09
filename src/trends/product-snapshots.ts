@@ -13,23 +13,29 @@ export interface SnapshotWrite {
   region: Region;
   category: string;
   rank: number | null;
+  reviewCount: number | null;
+  rating: number | null;
+  price: number | null;
   title: string;
   imageUrl: string | null;
   isCommodity: boolean;
   sourceId: string;
 }
 
-/** 幂等写当日快照（同 date+asin+region 覆盖 rank/title/image）。 */
+/** 幂等写当日快照（同 date+asin+region 覆盖 rank/title/image/review/rating/price）。 */
 export async function upsertProductSnapshot(s: SnapshotWrite, date = today()): Promise<void> {
   await prisma.productSnapshot.upsert({
     where: { date_asin_region: { date, asin: s.asin, region: s.region as never } },
-    update: { rank: s.rank, title: s.title, imageUrl: s.imageUrl, isCommodity: s.isCommodity },
+    update: { rank: s.rank, title: s.title, imageUrl: s.imageUrl, isCommodity: s.isCommodity, reviewCount: s.reviewCount, rating: s.rating, price: s.price },
     create: {
       date,
       asin: s.asin,
       region: s.region as never,
       category: s.category,
       rank: s.rank,
+      reviewCount: s.reviewCount,
+      rating: s.rating,
+      price: s.price,
       title: s.title,
       imageUrl: s.imageUrl,
       isCommodity: s.isCommodity,

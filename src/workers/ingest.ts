@@ -9,6 +9,7 @@ import { logger } from "../lib/logger.js";
 import { BESTSELLER_SOURCE_IDS, VALIDATION_SOURCE_IDS, SOURCES_BY_ID } from "../config/sources.js";
 import { extractAsin, isCommodity } from "../trends/product-signal.js";
 import { upsertProductSnapshot } from "../trends/product-snapshots.js";
+import { parseReviewCount, parsePrice, parseRating } from "../trends/parse-bsr.js";
 
 /** BL-042: 验证集 bestseller 写当日 product_snapshot（幂等）。失败不阻塞 ingest。 */
 async function recordValidationSnapshot(
@@ -27,9 +28,14 @@ async function recordValidationSnapshot(
   const rc = rawContent as { rank?: unknown } | null;
   const m = rc?.rank != null ? String(rc.rank).match(/\d+/) : null;
   const rank = m ? Number(m[0]) : null;
+  const rc2 = rawContent as { ratingText?: string; reviewText?: string; priceText?: string } | null;
+  const rating = parseRating(rc2?.ratingText ?? null);
+  const reviewCount = parseReviewCount(rc2?.reviewText ?? null);
+  const price = parsePrice(rc2?.priceText ?? null);
   try {
     await upsertProductSnapshot({
       asin, region: region as never, category, rank, title, imageUrl, isCommodity: isCommodity(title), sourceId,
+      reviewCount, rating, price,
     });
   } catch (e) {
     logger.warn({ sourceId, asin, err: String(e) }, "snapshot write failed");
