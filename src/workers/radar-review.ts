@@ -2,12 +2,11 @@ import type PgBoss from "pg-boss";
 import { QUEUES } from "../queue/queues.js";
 import { sendOpsAlert } from "../push/send.js"; // → admin Telegram chat（wraps 私有 telegramSend）
 import { getValidationHistories } from "../trends/product-snapshots.js";
-import { trendScoreV1, crossRegionDivergence, renderRadarReview, type Mover } from "../trends/product-signal.js";
+import { trendScoreV1, crossRegionDivergence, isTrueNewEntrant, qualifiesAsMover, renderRadarReview, type Mover } from "../trends/product-signal.js";
 import type { Region } from "../config/sources.js";
 import { logger } from "../lib/logger.js";
 
 const TOP_N = 8;
-const MIN_SCORE = 0.15;
 
 /** 算今日 movers 并发一条 Telegram 复盘（admin chat）。可被 script 直接调用。 */
 export async function runRadarReview(date = new Date().toISOString().slice(0, 10)): Promise<{ movers: number }> {
@@ -23,13 +22,24 @@ export async function runRadarReview(date = new Date().toISOString().slice(0, 10
     byCatAsin.set(key, reg);
   }
 
+  // 每个源（region|category）覆盖的日期集合 → 判定"真·新进"与是否有基线
+  const daysBySource = new Map<string, Set<string>>();
+  for (const h of histories) {
+    const key = `${h.region}|${h.category}`;
+    const set = daysBySource.get(key) ?? new Set<string>();
+    for (const p of h.points) set.add(p.date);
+    daysBySource.set(key, set);
+  }
+
   const movers: Mover[] = [];
   for (const h of histories) {
-    if (h.isCommodity) continue; // 对照样本不进复盘
-    const isNewEntrant = h.points.length === 1; // 只见过一天 = 新进
+    const days = daysBySource.get(`${h.region}|${h.category}`)!;
+    const sourceDayCount = days.size;
+    const sourceLatestDate = [...days].sort().at(-1)!;
     const cross = crossRegionDivergence(byCatAsin.get(`${h.category}|${h.asin}`) ?? new Map());
+    if (!qualifiesAsMover(h, sourceDayCount, sourceLatestDate, cross)) continue; // 无真信号 → 排除（含 Day-1 噪音）
+    const isNewEntrant = isTrueNewEntrant(h, sourceDayCount, sourceLatestDate);
     const score = trendScoreV1({ history: h, isNewEntrant, cross });
-    if (score < MIN_SCORE) continue;
     const ranked = h.points.filter((p) => p.rank != null);
     const currentRank = ranked.length ? ranked[ranked.length - 1]!.rank : null;
     const rd = ranked.length >= 2 ? ranked[0]!.rank! - ranked[ranked.length - 1]!.rank! : null;
