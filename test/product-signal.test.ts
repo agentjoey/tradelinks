@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractAsin, isCommodity, rankDelta, reviewDelta, evergreenPenalty, crossRegionDivergence, trendScoreV1, renderRadarReview, type ProductHistory, type Mover } from "../src/trends/product-signal";
+import { extractAsin, isCommodity, rankDelta, reviewDelta, evergreenPenalty, crossRegionDivergence, trendScoreV1, isTrueNewEntrant, qualifiesAsMover, renderRadarReview, type ProductHistory, type Mover } from "../src/trends/product-signal";
 
 describe("extractAsin", () => {
   it("pulls ASIN from a /dp/ url", () => {
@@ -116,5 +116,52 @@ describe("renderRadarReview", () => {
   });
   it("empty → explicit 'no movers' line", () => {
     expect(renderRadarReview([], "2026-06-09")).toContain("无");
+  });
+});
+
+const ph = (points: { date: string; rank: number | null }[], opts: Partial<ProductHistory> = {}): ProductHistory => ({
+  asin: "B000",
+  region: "north_america",
+  category: "Beauty",
+  title: "T",
+  isCommodity: false,
+  points: points.map((p) => ({ ...p, reviewCount: null })),
+  ...opts,
+});
+
+describe("isTrueNewEntrant", () => {
+  it("true when source has ≥2 days and product only on the latest day", () => {
+    expect(isTrueNewEntrant(ph([{ date: "2026-06-09", rank: 5 }]), 2, "2026-06-09")).toBe(true);
+  });
+  it("false when source has only 1 day (no baseline → can't judge)", () => {
+    expect(isTrueNewEntrant(ph([{ date: "2026-06-09", rank: 5 }]), 1, "2026-06-09")).toBe(false);
+  });
+  it("false for a drop-out (single point on the OLDER day)", () => {
+    expect(isTrueNewEntrant(ph([{ date: "2026-06-08", rank: 5 }]), 2, "2026-06-09")).toBe(false);
+  });
+  it("false when product spans 2 days (not new)", () => {
+    expect(isTrueNewEntrant(ph([{ date: "2026-06-08", rank: 8 }, { date: "2026-06-09", rank: 5 }]), 2, "2026-06-09")).toBe(false);
+  });
+});
+
+describe("qualifiesAsMover", () => {
+  const noCross = { score: 0, spreadingTo: [] };
+  it("qualifies a climber (rankDelta>0)", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-08", rank: 30 }, { date: "2026-06-09", rank: 8 }]), 2, "2026-06-09", noCross)).toBe(true);
+  });
+  it("excludes a flat product (rankDelta=0, not new)", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-08", rank: 5 }, { date: "2026-06-09", rank: 5 }]), 2, "2026-06-09", noCross)).toBe(false);
+  });
+  it("excludes a single-day product on a 1-day source (the day-1 noise)", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-09", rank: 3 }]), 1, "2026-06-09", noCross)).toBe(false);
+  });
+  it("qualifies a true new entrant (source has a prior day)", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-09", rank: 3 }]), 2, "2026-06-09", noCross)).toBe(true);
+  });
+  it("qualifies on cross-region spread", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-09", rank: 3 }]), 1, "2026-06-09", { score: 0.7, spreadingTo: ["europe"] })).toBe(true);
+  });
+  it("excludes commodity regardless", () => {
+    expect(qualifiesAsMover(ph([{ date: "2026-06-08", rank: 30 }, { date: "2026-06-09", rank: 8 }], { isCommodity: true }), 2, "2026-06-09", noCross)).toBe(false);
   });
 });

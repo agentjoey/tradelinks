@@ -108,6 +108,37 @@ export function trendScoreV1(inp: TrendScoreInput): number {
   return Number(Math.max(0, Math.min(1, raw)).toFixed(3));
 }
 
+/**
+ * 真·新进：源（region+category）已有 ≥2 天历史，且该品只出现在最新一天
+ * （= 昨天不在、今天在）。源只有 1 天时无基线，无法判定 → false（避免"开始追踪
+ * 某区"被误当成"该品刚火"）。掉榜品（单点落在更早一天）也为 false。
+ */
+export function isTrueNewEntrant(h: ProductHistory, sourceDayCount: number, sourceLatestDate: string): boolean {
+  if (sourceDayCount < 2 || h.points.length !== 1) return false;
+  return h.points[h.points.length - 1]!.date === sourceLatestDate;
+}
+
+/**
+ * mover 资格门：必须有真信号才进复盘 ——
+ *   ① 排名爬升（rankDelta>0，需 ≥2 个点）
+ *   ② 真·新进（见 isTrueNewEntrant）
+ *   ③ 跨区扩散（强势且有缺席区）
+ * 单天源里"只出现一次"的无信号品被排除（Day-1 噪音）。commodity 永远排除。
+ */
+export function qualifiesAsMover(
+  h: ProductHistory,
+  sourceDayCount: number,
+  sourceLatestDate: string,
+  cross: CrossRegion,
+): boolean {
+  if (h.isCommodity) return false;
+  const rd = rankDelta(h);
+  if (rd != null && rd > 0) return true;
+  if (isTrueNewEntrant(h, sourceDayCount, sourceLatestDate)) return true;
+  if (cross.spreadingTo.length > 0 && cross.score >= 0.4) return true;
+  return false;
+}
+
 export interface Mover {
   asin: string;
   title: string;
