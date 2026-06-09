@@ -4,3 +4,7 @@ uvicorn>=0.32,<1.0
 # [fetchers] extra pulls the browser engines + curl_cffi needed by StealthyFetcher
 scrapling[fetchers]>=0.4,<1.0
 pytrends>=4.9.2
+# pytrends 4.9.2 passes Retry(method_whitelist=…), which urllib3 2.x removed.
+# Pin <2 — an unpinned rebuild to urllib3 2.7 silently broke Google Trends
+# ingestion (~2026-06-04: every pytrends call raised TypeError, swallowed → []).
+urllib3<2

@@ -9,9 +9,12 @@ a paid provider (SerpAPI / DataForSEO Google Trends) — see sprint-004 notes.
 """
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any
+
+log = logging.getLogger("scrapers.trends")
 
 
 def _now_z() -> str:
@@ -40,7 +43,11 @@ def scrape_trends(keywords: list[str], geo: str | None) -> list[dict[str, Any]]:
                 break
             except TooManyRequestsError:
                 time.sleep(15 * (attempt + 1))  # 15s, 30s, 45s backoff
-            except Exception:
+            except Exception as e:
+                # Don't swallow silently — a dependency break (e.g. urllib3 2.x
+                # removing Retry.method_whitelist) froze Trends for days unnoticed.
+                log.warning("trends batch failed (geo=%s kw=%s): %s: %s",
+                            geo, batch, type(e).__name__, str(e)[:200])
                 break
         if df is None:
             continue  # skip this batch on persistent failure
