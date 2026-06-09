@@ -40,7 +40,7 @@ export interface SourceConfig {
   categoryHint?: Category;
   fetchConfig?: FetchParseConfig;
   /** when adapter=scrapling stealth: CSS selectors passed to the Python service */
-  scrapeSelectors?: { item: string; title: string; link?: string; rank?: string };
+  scrapeSelectors?: { item: string; title: string; link?: string; rank?: string; rating?: string; reviewCount?: string; price?: string };
   /** false = skip in scheduler (e.g. source gated/unavailable) */
   enabled?: boolean;
   note?: string;
@@ -273,7 +273,7 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"] as Region[],
     platforms: ["amazon"],
     categoryHint: "trend" as Category,
-    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
+    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text", rating: "i[class*='a-icon-star'] .a-icon-alt", reviewCount: ".a-icon-row .a-size-small", price: "span[class*='p13n-sc-price']" },
   })),
   // Regional best-seller categories — broaden non-US coverage so the Radar isn't
   // NA-only. Slugs verified per-domain 2026-06-05 (only the ones that return 30
@@ -300,7 +300,7 @@ export const SOURCES: SourceConfig[] = [
     regions: [region] as Region[],
     platforms: ["amazon"],
     categoryHint: "trend" as Category,
-    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text" },
+    scrapeSelectors: { item: "#gridItemRoot", title: "div[class*='line-clamp']", link: "a.a-link-normal[href*='/dp/']", rank: ".zg-bdg-text", rating: "i[class*='a-icon-star'] .a-icon-alt", reviewCount: ".a-icon-row .a-size-small", price: "span[class*='p13n-sc-price']" },
   })),
   {
     id: "D07",
