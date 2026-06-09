@@ -22,6 +22,9 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
     title_sel = selectors.get("title", "h2, h3")
     link_sel = selectors.get("link", "a")
     rank_sel = selectors.get("rank")  # optional (e.g. Amazon BSR badge)
+    rating_sel = selectors.get("rating")         # BL-042 P2a
+    review_sel = selectors.get("reviewCount")    # BL-042 P2a
+    price_sel = selectors.get("price")           # BL-042 P2a
     image_sel = selectors.get("image", "img")  # product thumbnail
 
     StealthyFetcher.adaptive = True  # Smart Element Tracking / auto-heal
@@ -59,6 +62,15 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
         img = _first_attr(node, image_sel, "src") or _first_attr(node, image_sel, "data-src")
         if img:
             raw["image"] = img
+        if rating_sel:
+            v = _first_text(node, rating_sel)
+            if v: raw["ratingText"] = v.strip()
+        if review_sel:
+            v = _first_text(node, review_sel)
+            if v: raw["reviewText"] = v.strip()
+        if price_sel:
+            v = _first_text(node, price_sel)
+            if v: raw["priceText"] = v.strip()
         items.append(
             {
                 "url": urljoin(url, href),
