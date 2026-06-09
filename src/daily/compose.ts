@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { LlmClient } from "../ai/client.js";
 import { extractJson } from "../ai/json.js";
+import { ANALYTICAL_DEPTH, HUMAN_VOICE, GROUNDING } from "../ai/prompts/writing-standard.js";
 
 export interface DailyNoteAlert {
   id: string;
@@ -115,25 +116,11 @@ Your byline is "${AUTHOR}". Write ONE original daily article in ${langName(lang)
 
 ${angle}
 
-ANALYTICAL DEPTH (this is the whole job — a shallow summary is a failure):
-- Don't stop at WHAT happened. Explain the MECHANISM (why it's happening), the SECOND-ORDER effects
-  (what it forces next), and the NON-OBVIOUS implication a casual reader would miss.
-- Quantify with the specific figures in the source set (rank deltas, %, like counts, confidence is
-  internal — reason from it but never print it). Tie numbers to a concrete consequence.
-- For sourcing/trend angles: give the actual playbook — which market, what lead time, why now, what
-  the margin/risk trade-off is. Name at least one non-consensus take or a risk most sellers will miss.
-- Connect the items into ONE argument. If two facts interact, say how. No item-by-item recap.
+${ANALYTICAL_DEPTH}
 
-VOICE (write like a sharp human analyst, not an AI):
-- Take a clear position. Vary sentence length. Be specific over abstract.
-- BANNED phrases/tics: "In conclusion", "Moreover", "Furthermore", "It's important to note",
-  "In today's fast-paced", "game-changer", "navigate the landscape", "a testament to", and empty
-  intensifiers ("massive", "powerful", "robust") used without a number. Avoid tidy 3-part listicles
-  and clichés — they read like AI filler.
+${HUMAN_VOICE}
 
-GROUNDING:
-- Use ONLY the facts provided below. Never invent numbers, dates, companies, thresholds, or claims.
-- Do NOT paste raw URLs in the body; citations are rendered separately.
+${GROUNDING}
 - 600–1000 words.
 
 Respond ONLY with JSON:
