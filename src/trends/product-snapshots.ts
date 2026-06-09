@@ -50,7 +50,7 @@ export async function getValidationHistories(lookbackDays = 14): Promise<Product
   const rows = await prisma.productSnapshot.findMany({
     where: { sourceId: { in: [...VALIDATION_SOURCE_IDS] }, date: { gte: since } },
     orderBy: { date: "asc" },
-    select: { asin: true, region: true, category: true, title: true, isCommodity: true, rank: true, reviewCount: true, date: true },
+    select: { asin: true, region: true, category: true, title: true, isCommodity: true, rank: true, reviewCount: true, rating: true, price: true, date: true },
   });
   const map = new Map<string, ProductHistory>();
   for (const r of rows) {
@@ -61,7 +61,7 @@ export async function getValidationHistories(lookbackDays = 14): Promise<Product
       map.set(key, h);
     }
     h.title = r.title; // 用最新标题
-    h.points.push({ date: r.date.toISOString().slice(0, 10), rank: r.rank, reviewCount: r.reviewCount });
+    h.points.push({ date: r.date.toISOString().slice(0, 10), rank: r.rank, reviewCount: r.reviewCount, rating: r.rating, price: r.price });
   }
   return [...map.values()];
 }

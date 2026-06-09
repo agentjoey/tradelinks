@@ -18,6 +18,8 @@ export interface SnapshotPoint {
   date: string; // YYYY-MM-DD，升序
   rank: number | null;
   reviewCount: number | null;
+  rating?: number | null; // P2a 富集（可选）
+  price?: number | null; // P2a 富集（可选）
 }
 
 export interface ProductHistory {
