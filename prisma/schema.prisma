@@ -314,3 +314,18 @@ model Translation {
   @@index([entityType, lang])
   @@map("translations")
 }
+
+model Subscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  status         String    @default("pending") // pending | confirmed | unsubscribed
+  lang           String    @default("en")
+  confirmToken   String    @unique
+  unsubToken     String    @unique
+  createdAt      DateTime  @default(now())
+  confirmedAt    DateTime?
+  unsubscribedAt DateTime?
+
+  @@index([status])
+  @@map("subscribers")
+}
