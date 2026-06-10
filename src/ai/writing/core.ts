@@ -6,7 +6,8 @@
 export const DEPTH = `ANALYTICAL DEPTH (this is the whole job — a shallow summary is a failure):
 - Don't stop at WHAT happened. Explain the MECHANISM (why it's happening), the SECOND-ORDER effects
   (what it forces next), and the NON-OBVIOUS implication a casual reader would miss.
-- Quantify with the specific figures in the source set. Tie every number to a concrete consequence.
+- Quantify with the specific figures in the source set. Internal scores (e.g. confidence) are for your
+  reasoning only — never print them as figures. Tie every number to a concrete consequence.
 - Show the reasoning — phenomenon → why → the non-obvious implication — don't just assert a conclusion.
 - Connect the items into ONE argument with a through-line that pays off by the end. If two facts
   interact, say how. No item-by-item recap.`;
