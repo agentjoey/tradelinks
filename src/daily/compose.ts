@@ -107,6 +107,17 @@ Your byline is "${AUTHOR}". Write ONE original daily article in ${langName(lang)
   return `${preamble}\n\n${composeSystemPrompt(spec)}`;
 }
 
+/**
+ * Map an internal signal-confidence score to a qualitative band. The editor and
+ * reviewer see the band, never the raw float — internal scores must never surface
+ * as figures in the published prose (the editor would otherwise print "confidence 0.47").
+ */
+export function confidenceBand(c: number): string {
+  if (c >= 0.7) return "strong";
+  if (c >= 0.5) return "moderate";
+  return "tentative";
+}
+
 function factsBlock(input: DailyNoteInput): string {
   const lines: string[] = [`Date covered: ${input.date}`, ""];
   if (input.alerts.length) {
@@ -123,7 +134,7 @@ function factsBlock(input: DailyNoteInput): string {
   if (input.signals.length) {
     lines.push("TREND SIGNALS (cross-region diffusion):");
     for (const s of input.signals) {
-      lines.push(`- "${s.keyword}" rising in ${s.originRegion} → spreading to ${s.spreadingTo.join("/")} (confidence ${s.confidence.toFixed(2)})`);
+      lines.push(`- "${s.keyword}" rising in ${s.originRegion} → spreading to ${s.spreadingTo.join("/")} (${confidenceBand(s.confidence)} cross-region signal)`);
     }
     lines.push("");
   }

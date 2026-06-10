@@ -8,7 +8,7 @@
 import { z } from "zod";
 import type { LlmClient } from "../ai/client.js";
 import { extractJson } from "../ai/json.js";
-import { slugify, type ComposedNote, type DailyNoteInput } from "./compose.js";
+import { slugify, confidenceBand, type ComposedNote, type DailyNoteInput } from "./compose.js";
 import { selfCheckRubric } from "../ai/writing/self-check.js";
 
 export interface ReviewedNote extends ComposedNote {
@@ -33,7 +33,7 @@ function sourceFacts(input: DailyNoteInput): string {
   for (const a of input.alerts) {
     lines.push(`- ALERT [${a.category}/${a.regions.join("/") || "global"}] ${a.title}` + (a.summary ? ` — ${a.summary}` : "") + (a.actionRequired ? ` (action: ${a.actionRequired})` : ""));
   }
-  for (const s of input.signals) lines.push(`- SIGNAL "${s.keyword}" ${s.originRegion} → ${s.spreadingTo.join("/")} (conf ${s.confidence.toFixed(2)})`);
+  for (const s of input.signals) lines.push(`- SIGNAL "${s.keyword}" ${s.originRegion} → ${s.spreadingTo.join("/")} (${confidenceBand(s.confidence)} signal)`);
   for (const r of input.radar) lines.push(`- RADAR [${r.kind}] ${r.title}${r.likes != null ? ` (${r.likes} likes)` : ""}`);
   return lines.join("\n");
 }

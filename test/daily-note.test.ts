@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   passesQualityGate,
   composeDailyNote,
+  confidenceBand,
   type DailyNoteInput,
 } from "../src/daily/compose.js";
 import type { LlmClient } from "../src/ai/client.js";
@@ -152,5 +153,28 @@ describe("composeDailyNote", () => {
     const client = stubClient(GOOD_JSON);
     await composeDailyNote(input({ lang: "zh" }), client);
     expect(client.lastSystem?.toLowerCase()).toContain("chinese");
+  });
+});
+
+describe("confidenceBand (internal scores never surface as raw figures)", () => {
+  it("maps a signal-confidence score to a qualitative band", () => {
+    expect(confidenceBand(0.9)).toBe("strong");
+    expect(confidenceBand(0.7)).toBe("strong");
+    expect(confidenceBand(0.6)).toBe("moderate");
+    expect(confidenceBand(0.5)).toBe("moderate");
+    expect(confidenceBand(0.47)).toBe("tentative");
+    expect(confidenceBand(0.1)).toBe("tentative");
+  });
+
+  it("the editor never sees a raw confidence float in the facts — only the band", async () => {
+    const client = stubClient(GOOD_JSON);
+    await composeDailyNote(
+      input({ signals: [{ keyword: "neck fan", originRegion: "north_america", spreadingTo: ["southeast_asia"], confidence: 0.47 }] }),
+      client,
+      "roundup",
+    );
+    expect(client.lastUser).not.toMatch(/confidence 0\.\d/);
+    expect(client.lastUser).not.toContain("0.47");
+    expect(client.lastUser!.toLowerCase()).toContain("tentative");
   });
 });
