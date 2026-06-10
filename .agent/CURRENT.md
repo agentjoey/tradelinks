@@ -3,8 +3,21 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-08 by claude-opus-4-8 (review/release) + opencode (dev)
+Last Updated:   2026-06-10 by claude-opus-4-8 (BL-033 写作模块库 + confidence 桶化修复)
 Sprint File:    .agent/sprints/sprint-005.md
+
+## 🆕 本轮新增（2026-06-10）：BL-033 写作模块库（depth+voice+grounding 解耦）
+
+- **BL-033 v2 写作模块库（已合并 main，PR #2）** — 把内联在 editor prompt 里的写作标准拆成可组合的运行时 prompt 模块 `src/ai/writing/`，为后续复用/开源铺路。
+  - **core.ts**：领域无关写作核心（`DEPTH`/`VOICE`/`GROUNDING`/`ESCALATION` + `writingCore()`）；`BANNED_PHRASES` 单一来源；**零业务依赖、可开源**（测试守边界）。VOICE 增强正面技法（展开推理 / 有据预期反转 / 主线收口 / 升番排序）。
+  - **topic-gate.ts**：泛化 `passesTopicGate(input, config)` 谓词 + `topicGateBlock()` 深度门 prompt。
+  - **self-check.ts**：reviewer rubric `selfCheckRubric()`，banned 列表从 core 取（**消除 review.ts 的重复**）。
+  - **columns/**：daily-brief / daily-roundup / movers-insight 的 `ColumnSpec` + `composeSystemPrompt()` 装配器。
+  - 三个消费方（`compose.ts` / `mover-insight.ts` / `review.ts`）迁移到模块，删除旧 `writing-standard.ts`。
+  - 子代理驱动 TDD，每任务双审（spec + 质量）；沿途修两处缺陷：列 import 路径少一层 `../`、补回"内部分数不外露"护栏。
+  - **实测**：真实 D-1 数据跑生产链路（草稿）验证文风——升番排序 / 有据预期反转 / 机制+非显风险肉眼可见；抓到并修复 **confidence 分数泄漏进正文**：`confidenceBand()` 在源头把分数桶化成 strong/moderate/tentative，editor/reviewer 不再看到裸浮点。
+  - **282 测试绿 / tsc 干净**；无 schema 变更；无新生产开关（daily-note 仍 **03:30 UTC**、`DAILY_NOTE_AUTOPUBLISH` 默认 ON）。
+  - spec/plan：`docs/superpowers/{specs,plans}/2026-06-10-writing-modules*`。
 
 ## 🆕 本轮新增（2026-06-08）：多语言/中文化 (BL-041 P1+P2)，v0.12.0
 
@@ -145,6 +158,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.12.0+ | 2026-06-10 | BL-033 写作模块库：core/topic-gate/self-check/columns 拆分 + 三消费方迁移、单一 `BANNED_PHRASES`、confidence 桶化修复（282 测试；merged main PR #2，未单独 tag） |
 | v0.12.0 | 2026-06-08 | BL-041 多语言/中文化 P1+P2:`/zh` 子路径+hreflang/canonical、Translation 表(migration 0007)+预警/Daily 中文翻译(DeepSeek+术语表+reviewer)、locale-aware 导航(220 测试) |
 | v0.11.0 | 2026-06-07 | BL-026 编辑式首页 v2(hero+次级+Latest 簇 / 板块差异化 / Hot on X)+ BL-040 Google News 真 URL 解析 + channelId 归一化(189 测试) |
 | v0.10.0 | 2026-06-07 | BL-026 UI 改版 + BL-040 频道大图新闻卡(sendPhoto+按钮 / 来源美化 / cap 12) |
