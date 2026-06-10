@@ -1,5 +1,5 @@
 import type { ColumnSpec } from "./types.js";
-import type { DailyNoteInput } from "../../daily/compose.js";
+import type { DailyNoteInput } from "../../../daily/compose.js";
 
 const DAILY_OUTPUT = `Respond ONLY with JSON:
 {"title","dek","body_markdown","key_takeaways":[..],"meta_description","tags":[..]}`;

@@ -1,5 +1,5 @@
 import type { ColumnSpec } from "./types.js";
-import type { MoverEvidence } from "../../movers/evidence.js";
+import type { MoverEvidence } from "../../../movers/evidence.js";
 
 const ANTI_CAUSE = `- CRITICAL — do not invent the CAUSE. The facts above are ALL that is known. Never claim a "viral push", "coordinated marketing", "restock", "social spike", "pent-up demand", or any reason the data does not show. If the only signal is a fresh appearance with no rank/review change yet, say plainly: it is an early, not-yet-explained entry, and name what to watch next (rank holding? reviews accelerating? spreading to other regions?).
 - Separate what the data SHOWS from what it might MEAN. Hedge interpretation ("could", "worth watching", "if it holds"); never state a guessed cause as fact. A thin, honest card beats a confident fabricated one.`;
