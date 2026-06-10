@@ -7,7 +7,10 @@
 import { z } from "zod";
 import type { LlmClient } from "../ai/client.js";
 import { extractJson } from "../ai/json.js";
-import { ANALYTICAL_DEPTH, HUMAN_VOICE, GROUNDING } from "../ai/prompts/writing-standard.js";
+import { composeSystemPrompt } from "../ai/writing/index.js";
+import { passesTopicGate } from "../ai/writing/topic-gate.js";
+import { dailyBrief, dailyVolume, briefHook } from "../ai/writing/columns/daily-brief.js";
+import { dailyRoundup, roundupHook } from "../ai/writing/columns/daily-roundup.js";
 
 export interface DailyNoteAlert {
   id: string;
@@ -80,15 +83,13 @@ export interface QualityGateOpts {
  */
 export function passesQualityGate(input: DailyNoteInput, opts: QualityGateOpts = {}): boolean {
   const kind = opts.kind ?? "brief";
-  const minItems = opts.minItems ?? 4;
+  const minVolume = opts.minItems ?? 4;
   const highUrgency = opts.highUrgency ?? 3;
-  const volume = input.alerts.length + input.signals.length + input.radar.length;
-  if (volume < minItems) return false;
-  const hook =
-    kind === "roundup"
-      ? input.signals.length >= 1 || input.radar.length >= 2
-      : input.alerts.some((a) => a.urgencyScore >= highUrgency);
-  return hook;
+  return passesTopicGate(input, {
+    minVolume,
+    measure: dailyVolume,
+    hook: kind === "roundup" ? roundupHook : (i) => briefHook(i, highUrgency),
+  });
 }
 
 const BRAND = "TradeLinks";
@@ -100,31 +101,10 @@ function langName(lang: string): string {
 }
 
 function systemPrompt(lang: string, kind: DailyNoteKind): string {
-  const angle =
-    kind === "roundup"
-      ? `Write a VIRAL-PRODUCT / sourcing roundup. Lead with what is trending and WHY, framed as an
-EARLY SOURCING SIGNAL for cross-border sellers. Make cross-region diffusion the core thesis — a
-product rising in one region is an advance signal for the markets it is spreading to; tell sellers
-what to source and which secondary markets to pre-position inventory for. Center the trend signals
-and radar (viral tweets, bestseller movers); alerts are supporting context.`
-      : `Write a POLICY / ALERT interpretation brief. Lead with the most consequential alerts and
-synthesize across regulatory, platform and logistics changes. Tell the reader who is affected and
-what to do. Trend/radar signals are secondary colour.`;
-
-  return `You are the lead editor of ${BRAND}, a cross-border e-commerce intelligence outlet.
-Your byline is "${AUTHOR}". Write ONE original daily article in ${langName(lang)}.
-
-${angle}
-
-${ANALYTICAL_DEPTH}
-
-${HUMAN_VOICE}
-
-${GROUNDING}
-- 600–1000 words.
-
-Respond ONLY with JSON:
-{"title","dek","body_markdown","key_takeaways":[..],"meta_description","tags":[..]}`;
+  const spec = kind === "roundup" ? dailyRoundup : dailyBrief;
+  const preamble = `You are the lead editor of ${BRAND}, a cross-border e-commerce intelligence outlet.
+Your byline is "${AUTHOR}". Write ONE original daily article in ${langName(lang)}.`;
+  return `${preamble}\n\n${composeSystemPrompt(spec)}`;
 }
 
 function factsBlock(input: DailyNoteInput): string {
