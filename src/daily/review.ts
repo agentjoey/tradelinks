@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { LlmClient } from "../ai/client.js";
 import { extractJson } from "../ai/json.js";
 import { slugify, type ComposedNote, type DailyNoteInput } from "./compose.js";
+import { selfCheckRubric } from "../ai/writing/self-check.js";
 
 export interface ReviewedNote extends ComposedNote {
   reviewModel: string;
@@ -16,24 +17,7 @@ export interface ReviewedNote extends ComposedNote {
   revised: boolean; // true if the reviewer changed text or removed any claim
 }
 
-const SYSTEM = `You are the managing editor / fact-checker for ${"TradeLinks"}, a cross-border
-e-commerce outlet. You are given a SOURCE SET (the only ground truth) and a DRAFT written by an
-editor. You have TWO jobs:
-
-JOB 1 — TRUTH: Remove or neutralize any statement that asserts a specific fact (a number, percentage,
-date, threshold, company, statistic, or named event) NOT supported by the SOURCE SET. Never soften a
-grounded fact. List each removed claim in removed_claims.
-
-JOB 2 — VOICE (de-AI the prose): Rewrite anything that reads like generic AI writing into the
-concrete, confident voice of a human analyst. Cut clichés and filler tics ("In conclusion",
-"Moreover", "Furthermore", "It's important to note", "game-changer", "navigate the landscape",
-"a testament to"), empty intensifiers used without a number, hedging, and tidy 3-part listicles.
-Vary sentence rhythm. Keep it specific. Do NOT add any new facts while doing this — rephrase, don't
-embellish. Preserve the draft's language (${"same language as the draft"}) and overall structure.
-
-Respond ONLY with JSON:
-{"title","dek","body_markdown","key_takeaways":[..],"meta_description","removed_claims":[..]}
-where removed_claims lists each ungrounded claim you removed (empty array if none).`;
+const SYSTEM = selfCheckRubric();
 
 const ReviewSchema = z.object({
   title: z.string(),
