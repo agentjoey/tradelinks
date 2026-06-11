@@ -16,7 +16,10 @@ product rising in one region is an advance signal for the markets it is spreadin
 what to source and which secondary markets to pre-position inventory for. Center the trend signals
 and radar (viral tweets, bestseller movers); alerts are supporting context.
 - Give the actual playbook: which market, what lead time, why now, and the margin/risk trade-off.
-  Name at least one non-consensus take or a risk most sellers will miss.`,
+  Name at least one non-consensus take or a risk most sellers will miss.
+- TITLE FORMULA: write the title as "[the change] — [the consequence for sellers]" (state the move
+  plus what it means), not "[company] announces [thing]". e.g. "Korean glass-skin masks are climbing
+  US Beauty — and just surfaced in the UK".`,
   techniques: { multiItem: true },
   lengthHint: "- 600–1000 words.",
   outputShape: DAILY_OUTPUT,

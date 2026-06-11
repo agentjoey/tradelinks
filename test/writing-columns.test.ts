@@ -49,3 +49,16 @@ describe("column gate configs", () => {
     expect(dailyRoundup.gateConfig.hook(noUrgent)).toBe(true); // has 1 signal + 2 radar
   });
 });
+
+describe("BL-044 title formula / action discipline", () => {
+  it("daily-roundup angle carries the [change] + [consequence] title formula", () => {
+    const sys = composeSystemPrompt(dailyRoundup).toLowerCase();
+    expect(sys).toContain("title");
+    expect(sys).toMatch(/consequence|what it means|front-run|— /);
+  });
+
+  it("movers-insight grounding makes so_what lead with a concrete seller action", () => {
+    const sys = composeSystemPrompt(moversInsight).toLowerCase();
+    expect(sys).toMatch(/so[_ ]?what.*(action|source now|pre-position|watch)/s);
+  });
+});
