@@ -146,3 +146,43 @@ export async function getBestsellers(maxPerRegionCategory = 30): Promise<Bestsel
   }
   return out;
 }
+
+// Read model for the /radar "The Movers" cards. (whatItIs/trajectory are persisted in
+// mover_insights but not surfaced in the v1 card — add here if a richer surface needs them.)
+export interface MoverCard {
+  asin: string;
+  title: string;
+  region: string;
+  category: string;
+  rank: number | null;
+  rankDelta: number | null;
+  reviewDelta: number | null;
+  isNewEntrant: boolean;
+  spreadingTo: string[];
+  whyNow: string;
+  soWhat: string;
+}
+
+/** The Movers (BL-044): the latest day's persisted insight cards, top by score. */
+export async function getMovers(limit = 8): Promise<MoverCard[]> {
+  const latest = await prisma.moverInsight.findFirst({ orderBy: { date: "desc" }, select: { date: true } });
+  if (!latest) return [];
+  const rows = await prisma.moverInsight.findMany({
+    where: { date: latest.date },
+    orderBy: { score: "desc" },
+    take: limit,
+  });
+  return rows.map((r) => ({
+    asin: r.asin,
+    title: r.title,
+    region: r.region as string,
+    category: r.category,
+    rank: r.rank,
+    rankDelta: r.rankDelta,
+    reviewDelta: r.reviewDelta,
+    isNewEntrant: r.isNewEntrant,
+    spreadingTo: r.spreadingTo as string[],
+    whyNow: r.whyNow,
+    soWhat: r.soWhat,
+  }));
+}

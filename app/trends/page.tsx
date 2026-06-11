@@ -1,4 +1,4 @@
-import { getTrendsView, getBestsellers, getRadarKpis } from "../../src/trends/db.js";
+import { getTrendsView, getBestsellers, getRadarKpis, getMovers } from "../../src/trends/db.js";
 import { getViralX, getHotTopicsX } from "../../src/social/db.js";
 import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
 import { getDict } from "../lib/i18n";
@@ -31,12 +31,13 @@ function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }
 
 export default async function TrendsPage() {
   const { t } = await getDict();
-  const [{ signals }, bestsellers, kpis, viralX, hotX] = await Promise.all([
+  const [{ signals }, bestsellers, kpis, viralX, hotX, movers] = await Promise.all([
     getTrendsView(),
     getBestsellers(),
     getRadarKpis(),
     getViralX(),
     getHotTopicsX(),
+    getMovers(),
   ]);
 
   // KPI derivations from the bestseller rows
@@ -63,6 +64,43 @@ export default async function TrendsPage() {
         <Kpi n={feeds} label={t.kpiFeeds} />
         <Kpi n={kpis.signals} label={t.kpiSignals} />
       </div>
+
+      {/* The Movers — flagship: proprietary movers + evidence-bound insight (BL-044) */}
+      {movers.length > 0 && (
+        <div className="mb-12">
+          <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">The Movers</h2>
+          <p className="mb-4 max-w-xl text-[13px] text-muted">
+            Products on the move on Amazon — what changed, why now, and what it means for sellers.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {movers.map((m, i) => (
+              <article
+                key={`${m.asin}-${m.region}`}
+                className="animate-rise rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4"
+                style={{ animationDelay: `${i * 45}ms` }}
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="font-display text-[16px] leading-tight text-paper">{m.title}</div>
+                  {m.rankDelta != null && m.rankDelta > 0 && (
+                    <span className="ticker flex-none text-[11px] text-signal">▲ {m.rankDelta}</span>
+                  )}
+                </div>
+                <div className="ticker mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.1em]">
+                  <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">{REGION_LABEL[m.region] ?? m.region}</span>
+                  <span className="text-faint">· {m.category}</span>
+                  {m.rank != null && <span className="text-faint">· #{m.rank}</span>}
+                  {m.isNewEntrant && <span className="rounded-sm bg-signal/15 px-1.5 py-0.5 text-signal">NEW</span>}
+                  {m.spreadingTo.map((r) => (
+                    <span key={r} className="rounded-sm bg-signal/15 px-1.5 py-0.5 text-signal">→ {REGION_LABEL[r] ?? r}</span>
+                  ))}
+                </div>
+                <p className="mt-2 text-[13px] leading-relaxed text-muted">{m.whyNow}</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-paper/90">{m.soWhat}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* bestsellers board (region chips + category cards live inside) */}
       <div className="mb-12">

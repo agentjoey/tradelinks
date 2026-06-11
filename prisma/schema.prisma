@@ -191,6 +191,33 @@ model ProductSnapshot {
   @@map("product_snapshots")
 }
 
+// The Movers (BL-044): one persisted AI insight card per mover per day. Written by the
+// radar-review worker (evidence → generateInsight), surfaced on /radar. Text-only (no image).
+model MoverInsight {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  asin         String
+  region       Region
+  category     String
+  rank         Int?
+  rankDelta    Int?
+  reviewDelta  Int?
+  isNewEntrant Boolean  @default(false)
+  score        Float
+  spreadingTo  Region[]
+  title        String
+  whatItIs     String
+  whyNow       String
+  trajectory   String
+  soWhat       String
+  model        String?
+  createdAt    DateTime @default(now())
+
+  @@unique([date, asin, region])
+  @@index([date, score])
+  @@map("mover_insights")
+}
+
 model TrendSignal {
   id           String   @id @default(cuid())
   keyword      String

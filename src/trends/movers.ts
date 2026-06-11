@@ -1,5 +1,5 @@
-// BL-043/BL-044 — 共享的 top-movers 计算 + 英文 "why"，供 newsletter（及后续 The
-// Movers / radar-review 收敛）复用,避免多处各算一套。
+// BL-043/BL-044 — 共享的 top-movers 计算 + evidence + 英文 "why"。
+// rankMovers 是纯函数(吃 histories);computeTopMovers / radar-review 都复用它。
 import { getValidationHistories } from "./product-snapshots.js";
 import {
   trendScoreV1,
@@ -7,13 +7,18 @@ import {
   isTrueNewEntrant,
   qualifiesAsMover,
   type Mover,
+  type ProductHistory,
 } from "./product-signal.js";
+import { buildMoverEvidence, type MoverEvidence } from "../movers/evidence.js";
 import type { Region } from "../config/sources.js";
 
-/** 算当前 top movers(真信号门 + 评分排序),取前 limit 个。 */
-export async function computeTopMovers(limit: number): Promise<Mover[]> {
-  const histories = await getValidationHistories(14);
+export interface MoverWithEvidence {
+  mover: Mover;
+  evidence: MoverEvidence;
+}
 
+/** 纯函数:从 histories 算出 movers + evidence(真信号门 + 评分),按分降序。不切片。 */
+export function rankMovers(histories: ProductHistory[]): MoverWithEvidence[] {
   const byCatAsin = new Map<string, Map<Region, number | null>>();
   for (const h of histories) {
     const cur = [...h.points].reverse().find((p) => p.rank != null)?.rank ?? null;
@@ -31,7 +36,7 @@ export async function computeTopMovers(limit: number): Promise<Mover[]> {
     daysBySource.set(key, set);
   }
 
-  const movers: Mover[] = [];
+  const out: MoverWithEvidence[] = [];
   for (const h of histories) {
     const days = daysBySource.get(`${h.region}|${h.category}`)!;
     const sourceDayCount = days.size;
@@ -43,17 +48,25 @@ export async function computeTopMovers(limit: number): Promise<Mover[]> {
     const ranked = h.points.filter((p) => p.rank != null);
     const currentRank = ranked.length ? ranked[ranked.length - 1]!.rank : null;
     const rd = ranked.length >= 2 ? ranked[0]!.rank! - ranked[ranked.length - 1]!.rank! : null;
-    movers.push({
+    const mover: Mover = {
       asin: h.asin, title: h.title, region: h.region, category: h.category, score,
       rankDelta: rd, reviewDelta: null, isNewEntrant, currentRank, spreadingTo: cross.spreadingTo,
-    });
+    };
+    const evidence = buildMoverEvidence(h, { spreadingTo: cross.spreadingTo });
+    out.push({ mover, evidence });
   }
 
-  movers.sort((a, b) => b.score - a.score);
-  return movers.slice(0, limit);
+  out.sort((a, b) => b.mover.score - a.mover.score);
+  return out;
 }
 
-/** 英文一行 "why"(给 newsletter / The Movers 用;radar-review 的中文版另在 renderRadarReview)。 */
+/** 算当前 top movers,取前 limit 个(供 newsletter 复用)。 */
+export async function computeTopMovers(limit: number): Promise<Mover[]> {
+  const histories = await getValidationHistories(14);
+  return rankMovers(histories).map((x) => x.mover).slice(0, limit);
+}
+
+/** 英文一行 "why"(给 newsletter / The Movers 用)。 */
 export function moverWhyEn(m: Mover): string {
   const parts: string[] = [];
   if (m.rankDelta != null) parts.push(`rank ${m.rankDelta >= 0 ? "+" : ""}${m.rankDelta}`);
