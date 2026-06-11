@@ -40,6 +40,11 @@ export interface HomeData {
 
 const hasImg = (a: AlertRow) => !!(a.imageUrl && a.imageUrl.trim() !== "");
 
+// 单品召回 feed（ACCC 等）：内容是合法预警，但标题是单个商品名、配图常是占位图，
+// 做头条大图不合适。Hero 排除这些 feed —— 召回仍正常进 Wire/Latest 列表。
+const RECALL_HOSTS = ["productsafety.gov.au"];
+const isRecall = (a: AlertRow) => a.sourceUrls.some((u) => RECALL_HOSTS.some((h) => u.includes(h)));
+
 /**
  * Assemble everything the editorial Home needs in one parallel fetch, then derive
  * the hero, the two secondary highlights, the live Latest rail, and each section's
@@ -58,8 +63,9 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
   const notesLocalized = notes.length > 0 ? notes : lang === "en" ? notes : await getPublishedNotes(4, "en");
 
   // ---- top cluster ----
-  // 爆品（trend 类）不进 Hero —— 其商品图常不适合做头条大图；爆品仍在 Radar 区展示。
-  const heroAlert = pickHero(alerts.filter((a) => a.category !== "trend"), now);
+  // 爆品（trend 类）与单品召回不进 Hero —— 商品/占位图不适合做头条大图；
+  // 二者仍分别在 Radar 区、Wire 列表展示。
+  const heroAlert = pickHero(alerts.filter((a) => a.category !== "trend" && !isRecall(a)), now);
   const secondary = topAlerts(alerts, 2, heroAlert?.id);
   const usedTop = new Set([heroAlert?.id, ...secondary.map((a) => a.id)].filter(Boolean) as string[]);
   const hero: HeroItem = heroAlert
