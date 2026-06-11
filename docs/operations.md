@@ -1,6 +1,6 @@
 # TradeLinks — Operations Manual
 
-> Last updated: 2026-06-05 v0.7.0
+> Last updated: 2026-06-11 v0.12.0
 
 ## Source health dashboard
 
@@ -13,6 +13,7 @@ newly crossing into 🔴/💀. ⚠️ `/admin/*` has no auth yet — add before 
 ## Ops scripts
 
 ```bash
+pnpm patrol                         # daily 信号源&内容巡检 — read-only inspection of D-1 (see below)
 pnpm tsx scripts/health.ts          # pipeline alive? (worker heartbeat / items / scrapling)
 pnpm tsx scripts/db-size.ts         # storage breakdown by relation (catches bloat)
 pnpm tsx scripts/db-cleanup.ts      # purge finished pg-boss jobs + VACUUM (safe, re-runnable)
@@ -20,6 +21,48 @@ pnpm tsx scripts/dedup-amazon.ts    # one-off: collapse Amazon dup items by /dp/
 # items ingested last 24h, by source:
 psql "$DATABASE_URL" -c "SELECT \"sourceId\", count(*) FROM items WHERE \"crawledAt\" > now()-'24h'::interval GROUP BY 1 ORDER BY 2 DESC;"
 ```
+
+## Daily patrol (信号源 & 内容巡检)
+
+The standing daily inspection: source health, content quality, the 爆品/趋势 tracks,
+distribution. Read-only against the production Neon DB (always exits 0 — it's an
+inspection, not a liveness gate; use `scripts/health.ts` for liveness).
+
+```bash
+pnpm patrol              # yesterday (D-1 UTC) — the default
+pnpm patrol 2026-06-10   # a specific UTC day
+```
+
+`scripts/patrol.ts` prints eight sections; the **`daily-patrol` skill**
+(`.claude/skills/daily-patrol/`) encodes the interpretation rules (what is normal
+vs. a problem) so any agent runs the script and synthesises a consistent markdown
+report rather than a raw dump. The skill is auto-discovered by Claude Code when the
+repo is the working directory — no install step.
+
+### Running it on another dev machine
+
+The script and skill live in git; the only thing not in git is `.env` (secrets).
+
+```bash
+# one-time
+git clone https://github.com/agentjoey/tradelinks-mvp.git && cd tradelinks-mvp
+pnpm install                       # Node ≥20 + pnpm
+cp .env.example .env               # then set DATABASE_URL (+ DIRECT_URL) — patrol only hard-needs DATABASE_URL.
+                                   # Single-env MVP: same production Neon URLs as the main machine.
+pnpm db:gen                        # prisma generate — a fresh clone has no generated client
+pnpm patrol 2026-06-10             # verify against a known day
+
+# daily
+git pull && pnpm patrol            # pull first to pick up script/skill changes
+```
+
+Notes:
+- `.env` is gitignored — copy it securely (`scp .env user@box:~/tradelinks-mvp/.env`),
+  never commit. It carries **production** credentials.
+- patrol is read-only and safe, but don't run write scripts (translations/backfills)
+  on that machine — single-env MVP means local writes hit prod.
+- Every env var except `DATABASE_URL` is optional with a default, so a minimal
+  `.env` is enough for patrol.
 
 ## Alert Monitoring
 
