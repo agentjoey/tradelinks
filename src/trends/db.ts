@@ -147,6 +147,8 @@ export async function getBestsellers(maxPerRegionCategory = 30): Promise<Bestsel
   return out;
 }
 
+// Read model for the /radar "The Movers" cards. (whatItIs/trajectory are persisted in
+// mover_insights but not surfaced in the v1 card — add here if a richer surface needs them.)
 export interface MoverCard {
   asin: string;
   title: string;
@@ -157,9 +159,7 @@ export interface MoverCard {
   reviewDelta: number | null;
   isNewEntrant: boolean;
   spreadingTo: string[];
-  whatItIs: string;
   whyNow: string;
-  trajectory: string;
   soWhat: string;
 }
 
@@ -182,9 +182,7 @@ export async function getMovers(limit = 8): Promise<MoverCard[]> {
     reviewDelta: r.reviewDelta,
     isNewEntrant: r.isNewEntrant,
     spreadingTo: r.spreadingTo as string[],
-    whatItIs: r.whatItIs,
     whyNow: r.whyNow,
-    trajectory: r.trajectory,
     soWhat: r.soWhat,
   }));
 }

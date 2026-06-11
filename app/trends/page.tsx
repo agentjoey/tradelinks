@@ -75,7 +75,7 @@ export default async function TrendsPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {movers.map((m, i) => (
               <article
-                key={m.asin + i}
+                key={`${m.asin}-${m.region}`}
                 className="animate-rise rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4"
                 style={{ animationDelay: `${i * 45}ms` }}
               >
