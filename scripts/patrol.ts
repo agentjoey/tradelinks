@@ -11,6 +11,7 @@
  * report (see the `daily-patrol` skill). Exit 0 always — this is a read-only
  * inspection, not a health gate (use scripts/health.ts for liveness).
  */
+import "dotenv/config"; // load .env so DATABASE_URL is present on any machine (not just where Prisma auto-loads it)
 import { prisma } from "../src/db/client.js";
 import { SOURCES } from "../src/config/sources.js";
 import { computeTopMovers, moverWhyEn } from "../src/trends/movers.js";
