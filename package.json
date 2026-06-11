@@ -12,6 +12,7 @@
     "start": "next start",
     "worker": "tsx src/workers/index.ts",
     "worker:run-once": "tsx src/workers/run-once.ts",
+    "patrol": "tsx scripts/patrol.ts",
     "db:gen": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
