@@ -40,7 +40,7 @@ export function AccountNav({
       <a href="#upgrade" className="inline-flex items-center rounded-md bg-signal px-3 py-1.5 text-[13px] font-semibold text-ink transition-colors hover:bg-signal/90">
         {upgradeLabel}
       </a>
-      <a href={langHref} className="ticker hidden rounded-md border border-linestrong px-2 py-1.5 text-[12px] text-paper transition-colors hover:border-signal/50 sm:inline-flex">
+      <a href={langHref} className="ticker inline-flex rounded-md border border-linestrong px-2 py-1.5 text-[12px] text-paper transition-colors hover:border-signal/50">
         {langLabel}
       </a>
       <div className="relative" ref={ref}>

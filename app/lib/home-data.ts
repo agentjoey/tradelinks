@@ -58,7 +58,8 @@ export async function getHomeData(lang: Lang, now = Date.now()): Promise<HomeDat
   const notesLocalized = notes.length > 0 ? notes : lang === "en" ? notes : await getPublishedNotes(4, "en");
 
   // ---- top cluster ----
-  const heroAlert = pickHero(alerts, now);
+  // 爆品（trend 类）不进 Hero —— 其商品图常不适合做头条大图；爆品仍在 Radar 区展示。
+  const heroAlert = pickHero(alerts.filter((a) => a.category !== "trend"), now);
   const secondary = topAlerts(alerts, 2, heroAlert?.id);
   const usedTop = new Set([heroAlert?.id, ...secondary.map((a) => a.id)].filter(Boolean) as string[]);
   const hero: HeroItem = heroAlert
