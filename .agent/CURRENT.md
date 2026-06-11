@@ -3,8 +3,20 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-10 by claude-opus-4-8 (BL-033 写作模块库 + confidence 桶化修复)
+Last Updated:   2026-06-10 by claude-opus-4-8 (BL-044 The Movers v1 + BL-033 写作模块库 + confidence 桶化修复)
 Sprint File:    .agent/sprints/sprint-005.md
+
+## 🆕 本轮新增（2026-06-10）：BL-044 The Movers v1（爆品洞察卡持久化 + /radar 门面）
+
+- **BL-044 The Movers v1（已合并 main `3547ce1`，第一刀切片）** — 把 BL-042 的爆品洞察引擎接上站内门面，给爆品/跨区扩散数据一个有名字的旗舰系列。
+  - **接上引擎**：`generateInsight`（此前从未被调用）正式接进 `radar-review` worker —— rank → 逐个生成 evidence-bound 洞察卡（what/why-now/trajectory/so-what）→ 持久化 → 照常发 admin Telegram；逐 mover 失败隔离。
+  - **持久化**：新增 `MoverInsight` 模型 + migration `0010_mover_insights`（**已上 prod**，手写 SQL 与模型逐字段一致、无 drift）。
+  - **门面**：`/radar` 新增「The Movers」服务端区块（`getMovers()` 取最新一天、按分排序），卡片显示标题 + ▲rankDelta/区域/品类/#rank/NEW/扩散箭头 + whyNow + soWhat。已用真实数据 preview 验证（8 张卡在线）。
+  - **标题公式**：「[变化] — [对卖家的后果]」进 roundup prompt；mover 卡 `so_what` 要求以**具体卖家动作**开头。
+  - **重构**：抽出纯函数 `rankMovers(histories)→{mover,evidence}[]`，收敛 radar-review 与 `computeTopMovers` 的重复循环。
+  - 子代理驱动 TDD，7 任务逐个 spec+质量双审 + 整体终审；**287 测试绿 / tsc 干净**。spec `…/specs/2026-06-09-bl044-content-franchising-design.md` · plan `…/plans/2026-06-10-bl044-the-movers-v1.md`。
+  - **⚠️ 待 worker 部署生效**：13:30 UTC 的 `radar-review` cron 需 Railway 带上新 main 后才走「生成+持久化卡」新逻辑（在此之前仍为旧的纯 Telegram 文本，不落卡）。
+  - **后续切片（BL-044 未完）**：Wire 多维 Briefing、5 个主题 hub、副线策展、China Supply、命名定稿、区块 i18n。数据随每日快照 + BL-042 评分成熟而变厚。
 
 ## 🆕 本轮新增（2026-06-10）：BL-033 写作模块库（depth+voice+grounding 解耦）
 
@@ -158,6 +170,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.12.0+ | 2026-06-10 | BL-044 The Movers v1：洞察引擎接进 radar-review（生成+持久化 `MoverInsight`，migration 0010 上 prod）+ /radar「The Movers」门面 + 标题公式 + 纯函数 `rankMovers`（287 测试；merged main `3547ce1`） |
 | v0.12.0+ | 2026-06-10 | BL-033 写作模块库：core/topic-gate/self-check/columns 拆分 + 三消费方迁移、单一 `BANNED_PHRASES`、confidence 桶化修复（282 测试；merged main PR #2，未单独 tag） |
 | v0.12.0 | 2026-06-08 | BL-041 多语言/中文化 P1+P2:`/zh` 子路径+hreflang/canonical、Translation 表(migration 0007)+预警/Daily 中文翻译(DeepSeek+术语表+reviewer)、locale-aware 导航(220 测试) |
 | v0.11.0 | 2026-06-07 | BL-026 编辑式首页 v2(hero+次级+Latest 簇 / 板块差异化 / Hot on X)+ BL-040 Google News 真 URL 解析 + channelId 归一化(189 测试) |
