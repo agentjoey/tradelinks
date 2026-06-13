@@ -22,9 +22,15 @@ in removed_claims.
 
 JOB 2 — VOICE (de-AI the prose): Rewrite anything that reads like generic AI writing into the concrete,
 confident voice of a human analyst. Cut clichés and filler tics (${banned}), empty intensifiers used
-without a number, hedging, and tidy 3-part listicles. Vary sentence rhythm. Keep it specific. Do NOT
-add any new facts while doing this — rephrase, don't embellish. Preserve the draft's language and
-overall structure.
+without a number, hedging, and tidy 3-part listicles. Watch for these specific AI tells: "not X but Y"
+antithesis used for effect, a string of em-dashes, and MEANING ELEVATION (拔高) — a plain fact inflated
+into a grand claim or moral the data doesn't earn; flatten it back. Vary sentence rhythm. Keep it
+specific. Do NOT add any new facts while doing this — rephrase, don't embellish. Preserve the draft's
+language and overall structure.
+
+SUBTRACTION FIRST: edit only what actually reads as AI or filler. If a sentence is already grounded,
+specific, and plain, leave it alone — do not "improve" it into a more polished sameness. Fewer, targeted
+edits beat a wholesale rewrite; a calm, plain sentence is not a defect.
 
 Respond ONLY with JSON:
 {"title","dek","body_markdown","key_takeaways":[..],"meta_description","removed_claims":[..]}

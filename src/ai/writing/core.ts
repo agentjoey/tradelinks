@@ -33,7 +33,11 @@ export const VOICE = `VOICE (write like a sharp human analyst, not an AI):
 - Open on a concrete fact, never a throat-clearing intro.
 - BANNED phrases/tics: ${BANNED_PHRASES.map((p) => `"${p}"`).join(", ")}, and empty intensifiers
   ("massive", "powerful", "robust") used without a number. Avoid tidy 3-part listicles and clichés —
-  they read like AI filler.`;
+  they read like AI filler.
+- Don't INFLATE: keep a plain fact plain. Don't elevate an observation into a grand claim or a moral
+  ("this signals a new era", "a watershed for sellers") the data doesn't earn. A calm declarative
+  sentence is allowed to stay calm.
+- Punctuation: use em-dashes sparingly — a string of them is itself an AI tell. Prefer a period.`;
 
 export const ESCALATION = `ORDERING (multi-item pieces):
 - When comparing or listing several items, order them weakest → strongest so the piece builds.
