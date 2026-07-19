@@ -4,7 +4,9 @@ import { THEME_COOKIE, type Theme } from "../lib/theme";
 
 /** Header theme toggle: flips data-theme, persists cookie (1y) + localStorage mirror. */
 export function ThemeToggle({ initial, label }: { initial: Theme; label: string }) {
-  const [theme, setTheme] = useState<Theme>(initial);
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof document !== "undefined" && document.documentElement.dataset.theme === "light" ? "light" : initial,
+  );
   function toggle() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
