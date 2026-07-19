@@ -5,6 +5,7 @@ import { getDict } from "./lib/i18n";
 import { Analytics } from "./components/Analytics";
 import { MainNav } from "./components/MainNav";
 import { AccountNav } from "./components/AccountNav";
+import { ThemeToggle } from "./components/ThemeToggle";
 import "./globals.css";
 import { cookies, headers } from "next/headers";
 import Script from "next/script";
@@ -59,11 +60,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const toggleHref = addLocale(stripLocale(curPath), other);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang={lang} data-theme={theme} className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang={lang} data-theme={theme} suppressHydrationWarning className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <Script id="theme-init" strategy="beforeInteractive">{`
           try {
-            if (!document.cookie.includes("${THEME_COOKIE}=")) {
+            if (!/(^| )${THEME_COOKIE}=/.test(document.cookie)) {
               var t = localStorage.getItem("${THEME_COOKIE}");
               if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
             }
@@ -94,13 +95,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   moreLabel={t.nav.more}
                 />
               </div>
-              <AccountNav
-                alertsLabel={t.navAlerts}
-                upgradeLabel={t.navUpgrade}
-                account={t.account}
-                langHref={toggleHref}
-                langLabel={other === "zh" ? "ZH" : "EN"}
-              />
+              <div className="flex items-center gap-2.5">
+                <ThemeToggle initial={theme} label={t.themeToggle} />
+                <AccountNav
+                  alertsLabel={t.navAlerts}
+                  upgradeLabel={t.navUpgrade}
+                  deskLabel={t.nav.desk}
+                  sourcesLabel={t.nav.sources}
+                  langHref={toggleHref}
+                  langLabel={other === "zh" ? "ZH" : "EN"}
+                />
+              </div>
             </div>
           </header>
 

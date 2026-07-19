@@ -1,18 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-interface Account { profile: string; billing: string; settings: string; signout: string }
-
 /**
  * Right-side account cluster: Alerts (subscribe) · Upgrade · language toggle ·
- * avatar dropdown (Profile/Billing/Settings/Sign out). The dropdown is where
- * future SaaS surfaces hang, keeping the editorial nav clean. Links are
- * placeholders for now — BL-026 wires the entry points only.
+ * avatar dropdown (admin desk / source health). The dropdown is where
+ * internal ops surfaces hang, keeping the editorial nav clean.
  */
 export function AccountNav({
-  alertsLabel, upgradeLabel, account, langHref, langLabel,
+  alertsLabel, upgradeLabel, deskLabel, sourcesLabel, langHref, langLabel,
 }: {
-  alertsLabel: string; upgradeLabel: string; account: Account; langHref: string; langLabel: string;
+  alertsLabel: string; upgradeLabel: string; deskLabel: string; sourcesLabel: string; langHref: string; langLabel: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -29,7 +26,7 @@ export function AccountNav({
   return (
     <div className="flex items-center gap-2.5">
       <a
-        href="#subscribe"
+        href="/subscribe"
         className="ticker hidden items-center gap-1.5 rounded-md border border-linestrong px-2.5 py-1.5 text-[12px] text-muted transition-colors hover:border-signal/50 hover:text-ink sm:inline-flex"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -37,7 +34,7 @@ export function AccountNav({
         </svg>
         {alertsLabel}
       </a>
-      <a href="#upgrade" className="inline-flex items-center rounded-md bg-signal px-3 py-1.5 text-[13px] font-semibold text-chipink transition-colors hover:bg-signal/90">
+      <a href="/subscribe" className="inline-flex items-center rounded-md bg-signal px-3 py-1.5 text-[13px] font-semibold text-chipink transition-colors hover:bg-signal/90">
         {upgradeLabel}
       </a>
       <a href={langHref} className="ticker inline-flex rounded-md border border-linestrong px-2 py-1.5 text-[12px] text-ink transition-colors hover:border-signal/50">
@@ -54,11 +51,8 @@ export function AccountNav({
         </button>
         {open && (
           <div role="menu" className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-linestrong bg-surface2 py-1 shadow-2xl shadow-black/50">
-            {[account.profile, account.billing, account.settings].map((label) => (
-              <a key={label} href="#" role="menuitem" className="block px-4 py-2 text-[13px] text-muted transition-colors hover:bg-surface hover:text-ink">{label}</a>
-            ))}
-            <div className="my-1 h-px bg-line" />
-            <a href="#" role="menuitem" className="block px-4 py-2 text-[13px] text-muted transition-colors hover:bg-surface hover:text-ink">{account.signout}</a>
+            <a role="menuitem" href="/admin/review" className="block px-4 py-2 text-[13px] text-muted transition-colors hover:bg-surface hover:text-ink">{deskLabel}</a>
+            <a role="menuitem" href="/admin/sources" className="block px-4 py-2 text-[13px] text-muted transition-colors hover:bg-surface hover:text-ink">{sourcesLabel}</a>
           </div>
         )}
       </div>
