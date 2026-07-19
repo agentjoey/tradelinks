@@ -80,7 +80,7 @@
   --c-calm: 79 209 197;
   --c-chip-bg: 232 180 74;
   --c-chip-ink: 8 9 12;
-  --c-eyebrow: 232 180 74 / 0.8;
+  --c-eyebrow: rgba(232, 180, 74, 0.8);
   --halo: radial-gradient(120% 80% at 50% -10%, rgba(232, 180, 74, 0.06), transparent 60%);
   --grid-line: rgba(233, 228, 217, 0.025);
   --grain-opacity: 0.04;
@@ -101,7 +101,7 @@
   --c-calm: 14 117 104;
   --c-chip-bg: 138 90 11;
   --c-chip-ink: 255 248 234;
-  --c-eyebrow: 138 90 11;
+  --c-eyebrow: #8A5A0B;
   --halo: radial-gradient(120% 80% at 50% -10%, rgba(138, 90, 11, 0.05), transparent 60%);
   --grid-line: rgba(27, 26, 22, 0.03);
   --grain-opacity: 0.025;
