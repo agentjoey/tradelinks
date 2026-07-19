@@ -18,7 +18,7 @@ export function MainNav({ items, moreLabel }: { items: { href: string; label: st
         <Link
           key={it.href}
           href={it.href}
-          className={active(it.href) ? "font-semibold text-paper" : "text-muted transition-colors hover:text-paper"}
+          className={active(it.href) ? "font-semibold text-ink" : "text-muted transition-colors hover:text-ink"}
         >
           {it.label}
         </Link>

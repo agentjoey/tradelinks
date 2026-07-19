@@ -34,7 +34,7 @@ export function AlertCard({ a, index = 0, t }: { a: Row; index?: number; t: Dict
           <span className="text-signal">{CAT_LABEL[a.category] ?? a.category}</span>
           <span className="text-faint">·</span>
           {a.regions.map((r) => <span key={r} className="text-muted">{REGION_LABEL[r] ?? r}</span>)}
-          {a.platforms.map((p) => <span key={p} className="rounded-sm bg-paper/[0.06] px-1.5 py-0.5 text-[9px] text-paper/70">{p}</span>)}
+          {a.platforms.map((p) => <span key={p} className="rounded-sm bg-surface2 px-1.5 py-0.5 text-[9px] text-ink/70">{p}</span>)}
           {src && <span className="text-faint">{src}</span>}
           <span className="ml-auto text-faint">{hhmm(a.publishedAt ?? a.createdAt)}</span>
         </div>
@@ -43,19 +43,19 @@ export function AlertCard({ a, index = 0, t }: { a: Row; index?: number; t: Dict
           <div className="min-w-0 flex-1">
             {href ? (
               <TrackedLink href={href} event="alert_open" params={ev}
-                className="group/title block font-display text-[19px] font-medium leading-snug text-paper transition-colors hover:text-signal">
+                className="group/title block font-display text-[19px] font-medium leading-snug text-ink transition-colors hover:text-signal">
                 {a.title}
                 <span className="ml-1 text-[13px] text-faint transition-colors group-hover/title:text-signal">↗</span>
               </TrackedLink>
             ) : (
-              <h2 className="font-display text-[19px] font-medium leading-snug text-paper">{a.title}</h2>
+              <h2 className="font-display text-[19px] font-medium leading-snug text-ink">{a.title}</h2>
             )}
             {a.summary && <p className="mt-1.5 text-[14px] leading-relaxed text-muted">{a.summary}</p>}
           </div>
 
           {href && (
             <TrackedLink href={href} event="alert_open" params={ev} className="block shrink-0">
-              <span className="flex h-[104px] w-[140px] items-center justify-center overflow-hidden rounded border border-line bg-ink sm:w-[156px]">
+              <span className="flex h-[104px] w-[140px] items-center justify-center overflow-hidden rounded border border-line bg-canvas sm:w-[156px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img} alt="" loading="lazy" className="h-full w-full object-cover" />
               </span>
@@ -66,7 +66,7 @@ export function AlertCard({ a, index = 0, t }: { a: Row; index?: number; t: Dict
         {a.actionRequired && (
           <div className="mt-3 flex gap-2 border-l border-signal/30 pl-3 text-[13px] leading-relaxed">
             <span className="ticker shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-signal">{t.act}</span>
-            <span className="text-paper/90">{a.actionRequired}</span>
+            <span className="text-ink/90">{a.actionRequired}</span>
           </div>
         )}
 

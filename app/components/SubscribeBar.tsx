@@ -50,11 +50,11 @@ export function SubscribeBar({ title, sub, cta }: { title: string; sub: string; 
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40">
-      <div className="relative mx-auto m-3 max-w-3xl rounded-xl border border-signal/40 bg-surface2/95 px-4 py-3 shadow-2xl shadow-black/50 backdrop-blur sm:m-4">
+      <div className="relative mx-auto m-3 max-w-3xl rounded-lg border border-signal/40 bg-surface2/95 px-4 py-3 shadow-2xl shadow-black/50 backdrop-blur sm:m-4">
         <button
           onClick={dismiss}
           aria-label="Dismiss"
-          className="absolute right-2 top-2 px-1 text-lg leading-none text-faint transition-colors hover:text-paper"
+          className="absolute right-2 top-2 px-1 text-lg leading-none text-faint transition-colors hover:text-ink"
         >
           ×
         </button>
@@ -67,7 +67,7 @@ export function SubscribeBar({ title, sub, cta }: { title: string; sub: string; 
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold leading-tight text-paper">{title}</div>
+              <div className="text-[14px] font-semibold leading-tight text-ink">{title}</div>
               <p className="text-[12px] leading-tight text-muted">
                 {state === "done" ? "Check your inbox to confirm." : sub}
               </p>
@@ -82,12 +82,12 @@ export function SubscribeBar({ title, sub, cta }: { title: string; sub: string; 
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 aria-label="Email address"
-                className="min-w-0 flex-1 rounded-md border border-signal/30 bg-surface px-2 py-1.5 text-[12px] text-paper placeholder:text-faint sm:w-48 sm:flex-none"
+                className="min-w-0 flex-1 rounded-md border border-signal/30 bg-surface px-2 py-1.5 text-[12px] text-ink placeholder:text-faint sm:w-48 sm:flex-none"
               />
               <button
                 type="submit"
                 disabled={state === "loading"}
-                className="ticker shrink-0 rounded-md bg-signal px-3 py-2 text-[12px] font-semibold text-ink transition-colors hover:bg-signal/90 disabled:opacity-50"
+                className="ticker shrink-0 rounded-md bg-signal px-3 py-2 text-[12px] font-semibold text-chipink transition-colors hover:bg-signal/90 disabled:opacity-50"
               >
                 {state === "loading" ? "…" : cta}
               </button>

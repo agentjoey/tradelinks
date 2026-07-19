@@ -49,7 +49,7 @@ export default function SignIn() {
       <button
         onClick={signIn}
         disabled={busy}
-        className="ticker mt-6 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-[12px] uppercase tracking-[0.15em] text-paper transition-colors hover:border-signal/50 hover:text-signal disabled:opacity-50"
+        className="ticker mt-6 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-[12px] uppercase tracking-[0.15em] text-ink transition-colors hover:border-signal/50 hover:text-signal disabled:opacity-50"
       >
         {busy ? "Redirecting…" : "Sign in with Google"}
       </button>

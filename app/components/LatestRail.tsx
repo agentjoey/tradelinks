@@ -18,9 +18,9 @@ export function LatestRail({
   kindLabels: Record<LatestKind, string>;
 }) {
   return (
-    <aside className="flex flex-col rounded-xl border border-line bg-surface/40 lg:col-span-3">
+    <aside className="flex flex-col rounded-lg border border-line bg-surface/40 lg:col-span-3">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <div className="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-paper">
+        <div className="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-ink">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-urgent opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-urgent" />
@@ -40,7 +40,7 @@ export function LatestRail({
                 <span>{hhmm(new Date(it.time))}</span>
                 {it.author && <span className="truncate text-muted">{it.author}</span>}
               </div>
-              <div className="text-[13px] font-medium leading-snug text-paper/90 transition-colors group-hover:text-signal">{it.title}</div>
+              <div className="text-[13px] font-medium leading-snug text-ink/90 transition-colors group-hover:text-signal">{it.title}</div>
             </div>
           </a>
         ))}

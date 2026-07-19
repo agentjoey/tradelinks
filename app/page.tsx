@@ -29,7 +29,7 @@ export default async function Home() {
   return (
     <div>
       <div className="mb-7">
-        <h1 className="font-display text-[26px] leading-tight tracking-tight text-paper sm:text-[31px]">
+        <h1 className="font-display text-[26px] leading-tight tracking-tight text-ink sm:text-[31px]">
           {t.homeMastheadPre}<span className="italic text-signal">{t.homeMastheadEm}</span>{t.homeMastheadPost}
         </h1>
         <p className="mt-2 max-w-2xl text-[14.5px] text-muted">{t.homeMastheadSub}</p>

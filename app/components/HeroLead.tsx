@@ -23,7 +23,7 @@ export function HeroLead({
   if (!hero) return null;
 
   const shell =
-    "group flex flex-col overflow-hidden rounded-2xl border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-6";
+    "group flex flex-col overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-6";
 
   if (hero.kind === "note") {
     const n = hero.note;
@@ -36,7 +36,7 @@ export function HeroLead({
             <span className={`rounded px-1.5 py-0.5 ${roundup ? "bg-calm/15 text-calm" : "bg-signal/15 text-signal"}`}>{roundup ? roundupLabel : briefLabel}</span>
             <span className="text-faint">· {date} · {byLabel}</span>
           </div>
-          <h2 className="font-display text-[23px] font-medium leading-[1.13] tracking-tight text-paper transition-colors group-hover:text-signal sm:text-[27px]">{n.title}</h2>
+          <h2 className="font-display text-[23px] font-medium leading-[1.13] tracking-tight text-ink transition-colors group-hover:text-signal sm:text-[27px]">{n.title}</h2>
           {n.dek && <p className="mt-2.5 line-clamp-2 max-w-2xl text-[14.5px] leading-relaxed text-muted">{n.dek}</p>}
         </div>
       </Link>
@@ -59,7 +59,7 @@ export function HeroLead({
         <div className="relative aspect-[2/1] bg-surface2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={proxied(img)} alt="" loading="lazy" className="h-full w-full object-cover" />
-          <span className="ticker absolute left-3 top-3 inline-flex items-center gap-1.5 rounded bg-ink/80 px-2 py-1 text-[10px] uppercase tracking-wider text-signal backdrop-blur">★ {topStoryLabel}</span>
+          <span className="ticker absolute left-3 top-3 inline-flex items-center gap-1.5 rounded bg-canvas/80 px-2 py-1 text-[10px] uppercase tracking-wider text-signal backdrop-blur">★ {topStoryLabel}</span>
         </div>
       )}
       <div className="flex flex-1 flex-col justify-center p-5">
@@ -72,7 +72,7 @@ export function HeroLead({
           {a.regions.map((r) => <span key={r} className="text-muted">{REGION_LABEL[r] ?? r}</span>)}
           <span className="text-faint">· {src ?? ""} · {hhmm(a.publishedAt ?? a.createdAt)}</span>
         </div>
-        <h2 className="font-display text-[23px] font-medium leading-[1.13] tracking-tight text-paper transition-colors group-hover:text-signal sm:text-[27px]">{a.title}</h2>
+        <h2 className="font-display text-[23px] font-medium leading-[1.13] tracking-tight text-ink transition-colors group-hover:text-signal sm:text-[27px]">{a.title}</h2>
         {a.summary && <p className="mt-2.5 line-clamp-2 max-w-2xl text-[14.5px] leading-relaxed text-muted">{a.summary}</p>}
       </div>
     </TrackedLink>

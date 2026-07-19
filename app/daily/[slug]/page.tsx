@@ -76,7 +76,7 @@ export default async function DailyNotePage({ params }: { params: Promise<{ slug
         <span className={n.kind === "roundup" ? "text-calm" : "text-signal"}>{n.kind === "roundup" ? t.kindRoundup : t.kindBrief}</span>
       </div>
 
-      <h1 className="mt-2 font-display text-[2.1rem] leading-[1.12] tracking-tight text-paper">{n.title}</h1>
+      <h1 className="mt-2 font-display text-[2.1rem] leading-[1.12] tracking-tight text-ink">{n.title}</h1>
       {n.dek && <p className="mt-3 text-[17px] italic leading-7 text-muted">{n.dek}</p>}
       <p className="mt-3 ticker text-[11px] uppercase tracking-[0.14em] text-faint">{t.dailyBy}</p>
 

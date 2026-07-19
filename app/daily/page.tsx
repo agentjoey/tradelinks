@@ -44,8 +44,8 @@ export default async function DailyIndex() {
         <div className="space-y-8">
           {groups.map((g) => (
             <section key={g.key}>
-              <div className="ticker sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-ink/85 px-1 py-1 backdrop-blur">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-paper">{fmtDate(g.date, lang)}</h2>
+              <div className="ticker sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-canvas/85 px-1 py-1 backdrop-blur">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink">{fmtDate(g.date, lang)}</h2>
                 <div className="h-px flex-1 bg-line" />
               </div>
               <div className="space-y-3">
@@ -58,7 +58,7 @@ export default async function DailyIndex() {
                     <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.14em]">
                       <span className={n.kind === "roundup" ? "text-calm" : "text-signal"}>{n.kind === "roundup" ? t.kindRoundup : t.kindBrief}</span>
                     </div>
-                    <h3 className="font-display text-xl leading-snug tracking-tight text-paper">{n.title}</h3>
+                    <h3 className="font-display text-xl leading-snug tracking-tight text-ink">{n.title}</h3>
                     {n.dek && <p className="mt-1.5 text-[14px] leading-6 text-muted">{n.dek}</p>}
                   </Link>
                 ))}

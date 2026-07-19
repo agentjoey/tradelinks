@@ -62,7 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="fixed top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-signal/70 to-transparent animate-pulse-bar z-30" />
 
         <div className="relative z-10">
-          <header className="sticky top-0 z-30 border-b border-line bg-ink/85 backdrop-blur">
+          <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur">
             <div className="mx-auto max-w-[88rem] px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
               <div className="flex items-center gap-8">
                 <Link href={addLocale("/", lang)} className="leading-none">

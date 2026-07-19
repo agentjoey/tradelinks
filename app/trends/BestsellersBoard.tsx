@@ -31,16 +31,16 @@ function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
       onClick={() => track("bestseller_open", { product_title: b.title, product_region: b.region, product_category: b.category, product_rank: b.rank ?? undefined })}
       className="group flex gap-4 rounded-lg border border-line bg-surface/70 p-3.5 transition-colors hover:border-signal/40"
     >
-      <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-paper/[0.05]">
+      <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-surface2">
         <Img src={b.imageUrl} alt={b.title} />
         {b.rank != null && (
-          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-2 py-1 text-[11px] font-semibold text-ink">
+          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-2 py-1 text-[11px] font-semibold text-chipink">
             #{b.rank}
           </span>
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-        <p className="line-clamp-3 text-[14px] leading-snug text-paper group-hover:text-signal">{b.title}</p>
+        <p className="line-clamp-3 text-[14px] leading-snug text-ink group-hover:text-signal">{b.title}</p>
         <div className="ticker mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.1em]">
           {b.rank != null && <span className="text-signal">BSR&nbsp;#{b.rank}</span>}
           {showRegion && (
@@ -59,7 +59,7 @@ function Chip({ active, onClick, label, count }: { active: boolean; onClick: () 
       className={`ticker inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] transition-colors ${
         active
           ? "border-signal/60 bg-signal/15 text-signal"
-          : "border-line bg-surface/60 text-muted hover:border-signal/40 hover:text-paper"
+          : "border-line bg-surface/60 text-muted hover:border-signal/40 hover:text-ink"
       }`}
     >
       <span>{label}</span>
@@ -101,7 +101,7 @@ export function BestsellersBoard({ items }: { items: BestsellerRow[] }) {
         <div className="space-y-8">
           {byCat.map(([category, rows]) => (
             <div key={category}>
-              <h3 className="font-display mb-3 text-[17px] text-paper">
+              <h3 className="font-display mb-3 text-[17px] text-ink">
                 {category} <span className="ticker text-[11px] text-faint">top {Math.min(12, rows.length)}</span>
               </h3>
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

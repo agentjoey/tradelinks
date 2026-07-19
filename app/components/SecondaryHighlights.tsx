@@ -18,7 +18,7 @@ export function SecondaryHighlights({ alerts, tiers }: { alerts: AlertRow[]; tie
           <TrackedLink
             key={a.id} href={href} event="alert_open"
             params={{ alert_title: a.title, alert_category: a.category, alert_region: a.regions[0], source: src }}
-            className="group flex flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface/70 transition-colors hover:border-signal/40"
+            className="group flex flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40"
           >
             {img && (
               <div className="aspect-[16/9] shrink-0 bg-surface2">
@@ -32,7 +32,7 @@ export function SecondaryHighlights({ alerts, tiers }: { alerts: AlertRow[]; tie
                 <span className="text-signal">{CAT_LABEL[a.category] ?? a.category}</span>
                 {a.regions[0] && <span className="text-muted">{REGION_LABEL[a.regions[0]] ?? a.regions[0]}</span>}
               </div>
-              <div className="font-display text-[15.5px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{a.title}</div>
+              <div className="font-display text-[15.5px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{a.title}</div>
             </div>
           </TrackedLink>
         );

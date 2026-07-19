@@ -9,7 +9,7 @@ export function SignOutButton() {
   return (
     <button
       onClick={signOut}
-      className="ticker mt-6 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-[12px] uppercase tracking-[0.15em] text-paper transition-colors hover:border-signal/50 hover:text-signal"
+      className="ticker mt-6 inline-flex items-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-[12px] uppercase tracking-[0.15em] text-ink transition-colors hover:border-signal/50 hover:text-signal"
     >
       Sign out &amp; try another account
     </button>

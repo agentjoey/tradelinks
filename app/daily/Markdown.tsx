@@ -6,7 +6,7 @@ function inline(text: string, keyBase: string): React.ReactNode[] {
   const parts = text.split(/\*\*(.+?)\*\*/g); // odd indices = bolded
   parts.forEach((p, i) => {
     if (!p) return;
-    out.push(i % 2 === 1 ? <strong key={`${keyBase}-${i}`} className="font-semibold text-paper">{p}</strong> : <React.Fragment key={`${keyBase}-${i}`}>{p}</React.Fragment>);
+    out.push(i % 2 === 1 ? <strong key={`${keyBase}-${i}`} className="font-semibold text-ink">{p}</strong> : <React.Fragment key={`${keyBase}-${i}`}>{p}</React.Fragment>);
   });
   return out;
 }
@@ -50,8 +50,8 @@ export function Markdown({ source }: { source: string }) {
       const txt = h[2]!;
       blocks.push(
         h[1]!.length <= 2
-          ? <h2 key={`h${blocks.length}`} className="mt-8 mb-2 font-display text-2xl tracking-tight text-paper">{inline(txt, `h${blocks.length}`)}</h2>
-          : <h3 key={`h${blocks.length}`} className="mt-6 mb-2 font-display text-xl tracking-tight text-paper">{inline(txt, `h${blocks.length}`)}</h3>,
+          ? <h2 key={`h${blocks.length}`} className="mt-8 mb-2 font-display text-2xl tracking-tight text-ink">{inline(txt, `h${blocks.length}`)}</h2>
+          : <h3 key={`h${blocks.length}`} className="mt-6 mb-2 font-display text-xl tracking-tight text-ink">{inline(txt, `h${blocks.length}`)}</h3>,
       );
       continue;
     }

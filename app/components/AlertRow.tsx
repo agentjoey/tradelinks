@@ -8,7 +8,7 @@ export function AlertRow({ a, tiers }: { a: Row; tiers: Tiers }) {
   const u = tierStyle(a.urgencyScore, tiers);
   const href = a.sourceUrls[0];
   const src = domainOf(href);
-  const cls = "group block rounded-xl border border-line bg-surface/70 px-4 py-3.5 transition-colors hover:bg-surface2";
+  const cls = "group block rounded-lg border border-line bg-surface/70 px-4 py-3.5 transition-colors hover:bg-surface2";
   const style = { borderLeft: `3px solid ${u.rail}` };
 
   const inner = (
@@ -22,7 +22,7 @@ export function AlertRow({ a, tiers }: { a: Row; tiers: Tiers }) {
         {src && <span className="text-faint">· {src}</span>}
         <span className="ml-auto text-faint">{hhmm(a.publishedAt ?? a.createdAt)}</span>
       </div>
-      <div className="font-display text-[17px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">
+      <div className="font-display text-[17px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">
         {a.title}
       </div>
     </>

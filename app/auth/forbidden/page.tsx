@@ -16,9 +16,9 @@ export default async function Forbidden() {
       <p className="mt-3 max-w-sm text-[14px] text-muted">
         {email ? (
           <>
-            You&apos;re signed in as <span className="text-paper">{email}</span>, but that
+            You&apos;re signed in as <span className="text-ink">{email}</span>, but that
             address isn&apos;t on the admin allowlist. Ask an admin to add it to{" "}
-            <code className="text-paper">ADMIN_EMAILS</code>, or sign in with an authorised account.
+            <code className="text-ink">ADMIN_EMAILS</code>, or sign in with an authorised account.
           </>
         ) : (
           <>This account isn&apos;t on the admin allowlist.</>

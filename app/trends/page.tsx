@@ -16,7 +16,7 @@ const REGION_ORDER = ["north_america", "europe", "middle_east", "australia_nz", 
 function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }) {
   return (
     <div className="rounded-lg border border-line bg-surface/70 p-4">
-      <div className="font-display text-3xl leading-none text-paper">{n}</div>
+      <div className="font-display text-3xl leading-none text-ink">{n}</div>
       <div className="ticker mt-1.5 text-[10px] uppercase tracking-[0.12em] text-faint">{label}</div>
       {spark && spark.length > 0 && (
         <div className="mt-2 flex h-4 items-end gap-1">
@@ -80,7 +80,7 @@ export default async function TrendsPage() {
                 style={{ animationDelay: `${i * 45}ms` }}
               >
                 <div className="flex items-baseline justify-between gap-3">
-                  <div className="font-display text-[16px] leading-tight text-paper">{m.title}</div>
+                  <div className="font-display text-[16px] leading-tight text-ink">{m.title}</div>
                   {m.rankDelta != null && m.rankDelta > 0 && (
                     <span className="ticker flex-none text-[11px] text-signal">▲ {m.rankDelta}</span>
                   )}
@@ -95,7 +95,7 @@ export default async function TrendsPage() {
                   ))}
                 </div>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted">{m.whyNow}</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-paper/90">{m.soWhat}</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-ink/90">{m.soWhat}</p>
               </article>
             ))}
           </div>
@@ -135,7 +135,7 @@ export default async function TrendsPage() {
                   <img src={x.imageUrl} alt="" className="h-20 w-20 flex-none rounded-md object-cover" loading="lazy" />
                 )}
                 <div className="min-w-0">
-                  <div className="font-display text-[15px] leading-tight text-paper group-hover:text-signal">{x.product}</div>
+                  <div className="font-display text-[15px] leading-tight text-ink group-hover:text-signal">{x.product}</div>
                   {x.whyViral && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyViral}</p>}
                   <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
                     <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
@@ -167,7 +167,7 @@ export default async function TrendsPage() {
                 style={{ animationDelay: `${i * 45}ms` }}
               >
                 <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.1em] text-calm">{x.category}</div>
-                <div className="font-display text-[15px] leading-tight text-paper group-hover:text-calm">{x.headline}</div>
+                <div className="font-display text-[15px] leading-tight text-ink group-hover:text-calm">{x.headline}</div>
                 {x.whyHot && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyHot}</p>}
                 <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
                   <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
@@ -193,7 +193,7 @@ export default async function TrendsPage() {
               style={{ animationDelay: `${i * 45}ms` }}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <div className="font-display text-[18px] text-paper">{s.keyword}</div>
+                <div className="font-display text-[18px] text-ink">{s.keyword}</div>
                 <span className="ticker text-[11px] text-signal">{Math.round(s.confidence * 100)}%</span>
               </div>
               <div className="ticker mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.1em]">

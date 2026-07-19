@@ -17,7 +17,7 @@ export function WireCard({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
     <TrackedLink
       href={href} event="alert_open"
       params={{ alert_title: a.title, alert_category: a.category, alert_region: a.regions[0], source: src }}
-      className="group block overflow-hidden rounded-xl border border-line bg-surface/70 transition-colors hover:border-signal/40"
+      className="group block overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40"
       style={{ borderTop: `3px solid ${u.rail}` }}
     >
       <div className="aspect-[16/10] overflow-hidden bg-surface2">
@@ -33,7 +33,7 @@ export function WireCard({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
           {a.regions.map((r) => <span key={r} className="text-muted">{REGION_LABEL[r] ?? r}</span>)}
           {src && <span className="ml-auto text-faint">{src}</span>}
         </div>
-        <div className="font-display text-[16px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{a.title}</div>
+        <div className="font-display text-[16px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{a.title}</div>
       </div>
     </TrackedLink>
   );
@@ -45,7 +45,7 @@ export function RadarCard({ p }: { p: ProductCard }) {
     <TrackedLink
       href={p.url} event="bestseller_open"
       params={{ product_title: p.title, product_platform: p.platform, product_region: p.region }}
-      className="group block overflow-hidden rounded-xl border border-line bg-surface/70 transition-colors hover:border-signal/40"
+      className="group block overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-surface2">
         {p.imageUrl ? (
@@ -55,12 +55,12 @@ export function RadarCard({ p }: { p: ProductCard }) {
           <span className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-wider text-faint">no image</span>
         )}
         {p.rank != null && (
-          <span className="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2.5 py-1 text-[12px] font-semibold text-ink">#{p.rank}</span>
+          <span className="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-2.5 py-1 text-[12px] font-semibold text-chipink">#{p.rank}</span>
         )}
-        <span className="ticker absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-paper/90">{p.platform}</span>
+        <span className="ticker absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink/90">{p.platform}</span>
       </div>
       <div className="p-4">
-        <div className="font-display text-[16px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{p.title}</div>
+        <div className="font-display text-[16px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{p.title}</div>
         <div className="ticker mt-2 text-[12px] font-semibold text-signal">
           {p.metric}{p.region ? ` · ${REGION_LABEL[p.region] ?? p.region}` : ""}
         </div>
@@ -79,11 +79,11 @@ export function DailyCard({ note, briefLabel, roundupLabel, byLabel, lang }: {
   const date = new Intl.DateTimeFormat(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(note.date));
   return (
     <Link href={addLocale(`/daily/${note.slug}`, lang as "en" | "zh")}
-      className="group block rounded-xl border border-line bg-surface/70 p-5 transition-colors hover:border-signal/40"
+      className="group block rounded-lg border border-line bg-surface/70 p-5 transition-colors hover:border-signal/40"
       style={{ borderLeft: `2px solid ${roundup ? "#4FD1C5" : "#E8B44A"}` }}
     >
       <span className={`ticker text-[10px] uppercase tracking-wider ${roundup ? "text-calm" : "text-signal"}`}>{roundup ? roundupLabel : briefLabel}</span>
-      <div className="mt-1 font-display text-[17px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{note.title}</div>
+      <div className="mt-1 font-display text-[17px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{note.title}</div>
       {note.dek && <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted">{note.dek}</p>}
       <div className="ticker mt-2 text-[11px] text-faint">{date} · {byLabel}</div>
     </Link>

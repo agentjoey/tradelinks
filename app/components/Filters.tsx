@@ -9,7 +9,7 @@ const REGION_LABEL: Record<string, string> = {
 
 function chip(active: boolean) {
   return `ticker rounded-sm px-2.5 py-1 text-[10px] uppercase tracking-[0.1em] transition-colors ${
-    active ? "bg-signal text-ink" : "text-muted hover:text-paper hover:bg-paper/[0.05]"
+    active ? "bg-signal text-chipink" : "text-muted hover:text-ink hover:bg-surface2"
   }`;
 }
 
