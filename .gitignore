@@ -20,3 +20,6 @@ bench-out/
 
 # design mockup renders (screenshots) — keep the .html mockups, not the PNGs
 design/*.png
+
+# git worktrees
+.worktrees/
