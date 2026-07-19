@@ -6,8 +6,10 @@ import { Analytics } from "./components/Analytics";
 import { MainNav } from "./components/MainNav";
 import { AccountNav } from "./components/AccountNav";
 import "./globals.css";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import Script from "next/script";
 import { alternatesFor, stripLocale, addLocale } from "./lib/locale";
+import { parseTheme, THEME_COOKIE } from "./lib/theme";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
 
@@ -55,9 +57,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const other: "en" | "zh" = lang === "zh" ? "en" : "zh";
   const curPath = (await headers()).get("x-tl-path") ?? "/";
   const toggleHref = addLocale(stripLocale(curPath), other);
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang={lang} className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang={lang} data-theme={theme} className={`${display.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen font-sans antialiased">
+        <Script id="theme-init" strategy="beforeInteractive">{`
+          try {
+            if (!document.cookie.includes("${THEME_COOKIE}=")) {
+              var t = localStorage.getItem("${THEME_COOKIE}");
+              if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+            }
+          } catch (e) {}
+        `}</Script>
         {/* live signal bar */}
         <div className="fixed top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-signal/70 to-transparent animate-pulse-bar z-30" />
 
