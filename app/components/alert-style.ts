@@ -9,14 +9,13 @@ export function domainOf(url?: string): string | undefined {
 export { CAT_LABEL, REGION_LABEL } from "../lib/labels";
 
 export interface Tiers { act: string; watch: string; fyi: string }
-export interface TierStyle { label: string; pill: string; dot: string; rail: string; accent: string }
+export interface TierStyle { label: string; pill: string; dot: string; accent: string }
 
-/** Urgency → presentation. `rail` is a hex for inline left/top borders; `accent`
- * is a bg-* class for tick marks. */
+/** Urgency → presentation. `accent` is a bg-* class for tick marks. */
 export function tierStyle(s: number, tiers: Tiers): TierStyle {
-  if (s >= 4) return { label: tiers.act, pill: "bg-urgent/15 text-urgent", dot: "bg-urgent", rail: "#FF5A4D", accent: "bg-urgent" };
-  if (s >= 2) return { label: tiers.watch, pill: "bg-signal/15 text-signal", dot: "bg-signal", rail: "#E8B44A", accent: "bg-signal" };
-  return { label: tiers.fyi, pill: "bg-faint/15 text-muted", dot: "bg-faint", rail: "#5a5f6b", accent: "bg-faint" };
+  if (s >= 4) return { label: tiers.act, pill: "bg-urgent/15 text-urgent", dot: "bg-urgent", accent: "bg-urgent" };
+  if (s >= 2) return { label: tiers.watch, pill: "bg-signal/15 text-signal", dot: "bg-signal", accent: "bg-signal" };
+  return { label: tiers.fyi, pill: "bg-faint/15 text-muted", dot: "bg-faint", accent: "bg-faint" };
 }
 
 export function hhmm(d: Date | string | null): string {
