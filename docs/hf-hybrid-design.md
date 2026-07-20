@@ -84,11 +84,34 @@ jobs:
 ```
 （Space repo 根目录还需一个 README.md 带 YAML front-matter：`sdk: docker`、`app_port: 7860` —— 直接提交进 `scraper-py/README.md` 的 YAML 块即可被同步。）
 
-### 4.2 Dockerfile 改造（3 处）
+### 4.2 Dockerfile 改造（4 处）
+
+0. **（必须先做）uid 1000 非 root 用户**——HF Docker 容器以 uid 1000 运行（[官方范式](https://huggingface.co/docs/hub/spaces-sdks-docker)），现 Dockerfile 未建用户，Chromium/patchright 需要可写 `HOME`（profile/cache 目录）：
+```dockerfile
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
+COPY --chown=user . $HOME/app
+```
+（浏览器二进制安装到 `$HOME` 下；`scrapling install` / `patchright install chromium` 在 USER user 之后执行。）
 
 1. **端口**：CMD 改 shell 形式读 `PORT`：`CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]`（HF 注入 7860，Railway/本地继续 8000，向后兼容）。
 2. **`.dockerignore`** 新增：`__pycache__/`、`.venv/`、`explore.py`、`*.pyc`。
 3. 浏览器安装失败不再静默：`scrapling install` / `patchright install chromium` 保留 `|| true` 但在 CMD 前加一行启动自检 `python -c "from scrapling import StealthyFetcher; print('scrapling ok')"`，失败则镜像起不来（比带病上线好）。
+
+### 4.6 HF 免费层特质适配清单（逐条核对）
+
+| 特质 | 影响 | 设计适配 |
+|---|---|---|
+| **重启/重部署后磁盘清零**（50GB 非持久盘） | scraper 零磁盘状态：无 DB、无文件产物、浏览器每请求新建（无 profile 复用） | ✅ 天然免疫，无数据可丢；token 走 Secrets(env)，不随盘丢 |
+| **~48h 无流量睡眠** | 见 §4.4：最长空闲 12h（BSR）≪ 阈值 | ✅ 稳态不睡；部署后冷启动有 prewarm+retry |
+| **出站限 80/443/8080** | scraper 只抓 HTTP(S)，无 DB 连接 | ✅ 无违例；worker 留 Railway 不受此限 |
+| **容器 uid 1000（非 root）** | Chromium 需可写 HOME | ✅ §4.2-0 已补（本清单的唯一真实缺口） |
+| **2 vCPU shared** | BSR 串行批次耗时拉长 | 可接受（batchSize=1 本来就是串行设计）；trends 批次同 |
+| **构建时长/镜像体积** | 镜像 ~2GB ≪ 50GB；构建含 Chromium 下载，分钟级 | ✅；`startup_duration_timeout` 默认 30min 足够 |
+| **源码/构建日志公开** | 无密钥硬编码（token 在 Secrets） | ✅；部署后顺手自查一遍日志无泄漏 |
+| **无 SLA / 公平使用** | ~2 次/天、分钟级负载 | 远低于公平线 |
 
 ### 4.3 鉴权（公网化的代价）
 
