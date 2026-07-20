@@ -10,6 +10,8 @@ import { HotOnX } from "../components/HotOnX";
 import { DailyCard } from "../components/StreamCard";
 import { SectionHeader } from "../components/SectionHeader";
 import { SubscribeBar } from "../components/SubscribeBar";
+import { UtcClock } from "../components/UtcClock";
+import { WireTape } from "../components/WireTape";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +30,22 @@ export default async function Home() {
 
   return (
     <div>
+      {/* wire tape — full-bleed, flush under the site header */}
+      <div className="-mx-5 -mt-8 mb-10 sm:-mx-8">
+        <WireTape items={latest} liveLabel={t.live} />
+      </div>
+
       <div className="mb-7">
         <h1 className="font-display text-[26px] leading-tight tracking-tight text-ink sm:text-[31px]">
-          {t.homeMastheadPre}<span className="italic text-signal">{t.homeMastheadEm}</span>{t.homeMastheadPost}
+          <span className="lm"><span className="li">{t.homeMastheadPre}</span></span>
+          <span className="lm"><span className="li li-d2"><em className="focus-in italic text-signal">{t.homeMastheadEm}</em>{t.homeMastheadPost}</span></span>
         </h1>
         <p className="mt-2 max-w-2xl text-[14.5px] text-muted">{t.homeMastheadSub}</p>
       </div>
 
       <div className="ticker mb-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-faint">
         <span className="h-1.5 w-1.5 rounded-full bg-signal" /> {t.glance}
+        <UtcClock className="ticker text-meta text-faint" />
       </div>
 
       {/* top cluster: hero + 2 secondary highlights + live Latest rail */}

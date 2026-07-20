@@ -75,3 +75,8 @@ export function buildLatest(alerts: AlertRow[], viral: ViralLite[], topics: Topi
   ];
   return items.sort((a, b) => b.time - a.time).slice(0, n);
 }
+
+/** Item landed within `windowMs` (default 15 min) — drives the rail insert animation. */
+export function isFresh(time: number, now: number, windowMs = 15 * 60_000): boolean {
+  return now - time >= 0 && now - time <= windowMs;
+}
