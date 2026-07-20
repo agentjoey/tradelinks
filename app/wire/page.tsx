@@ -53,7 +53,7 @@ export default async function Wire({
         </div>
       </PageHeader>
 
-      <Filters region={sp.region} category={sp.category} t={t} />
+      <Filters region={sp.region} category={sp.category} t={t} lang={lang} />
 
       {items.length === 0 ? (
         <EmptyState

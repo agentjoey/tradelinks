@@ -1,5 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { btnPrimary, inputField } from "./ui";
 
 type State = "idle" | "loading" | "done" | "already" | "error";
 
@@ -43,12 +44,12 @@ export function SubscribeForm() {
           aria-label="Email address"
           aria-invalid={state === "error"}
           aria-describedby={state === "error" ? "sub-err" : undefined}
-          className="min-h-[44px] flex-1 rounded-md border border-linestrong bg-surface px-3 py-2 text-[15px] text-ink placeholder:text-faint focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
+          className={`${inputField} flex-1`}
         />
         <button
           type="submit"
           disabled={state === "loading"}
-          className="min-h-[44px] rounded-md bg-chipbg px-4 py-2 text-[15px] font-semibold text-chipink transition hover:brightness-110 disabled:opacity-50"
+          className={btnPrimary}
         >
           {state === "loading" ? "…" : "Get the brief"}
         </button>
