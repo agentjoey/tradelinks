@@ -7,8 +7,10 @@ export interface Dict {
   nav: { home: string; wire: string; radar: string; daily: string; more: string; desk: string; sources: string };
   navUpgrade: string;
   navAlerts: string;
+  navSubscribe: string;
+  navTelegram: string;
+  navRss: string;
   themeToggle: string;
-  account: { profile: string; billing: string; settings: string; signout: string };
   eyebrow: string;
   live: string;
   dispatches: string;
@@ -99,8 +101,10 @@ const en: Dict = {
   nav: { home: "Home", wire: "Wire", radar: "Radar", daily: "Daily Insight", more: "More", desk: "Desk", sources: "Sources" },
   navUpgrade: "Upgrade",
   navAlerts: "Alerts",
+  navSubscribe: "Subscribe",
+  navTelegram: "Telegram alerts",
+  navRss: "RSS feed",
   themeToggle: "Toggle color theme",
-  account: { profile: "Profile", billing: "Billing", settings: "Settings", signout: "Sign out" },
   eyebrow: "◆ Intelligence Wire",
   live: "live",
   dispatches: "dispatches",
@@ -187,8 +191,10 @@ const zh: Dict = {
   nav: { home: "首页", wire: "情报流", radar: "趋势雷达", daily: "每日洞察", more: "更多", desk: "审核台", sources: "信息源" },
   navUpgrade: "升级",
   navAlerts: "订阅",
+  navSubscribe: "订阅",
+  navTelegram: "Telegram 推送",
+  navRss: "RSS 订阅",
   themeToggle: "切换明暗主题",
-  account: { profile: "个人", billing: "账单", settings: "设置", signout: "退出" },
   eyebrow: "◆ 跨境情报电台",
   live: "实时",
   dispatches: "条情报",

@@ -94,6 +94,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     { href: addLocale("/daily", lang), label: t.nav.daily },
                   ]}
                   moreLabel={t.nav.more}
+                  lang={lang}
+                  menu={{ subscribe: t.navSubscribe, telegram: t.navTelegram, rss: t.navRss }}
                 />
               </div>
               <div className="flex items-center gap-2.5">
