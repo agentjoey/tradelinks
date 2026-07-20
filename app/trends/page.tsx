@@ -7,6 +7,9 @@ import { BestsellersBoard } from "./BestsellersBoard";
 import { SignalCard } from "../components/SignalCard";
 import { PageHeader } from "../components/PageHeader";
 import { EmptyState } from "../components/EmptyState";
+import { SectionHeader } from "../components/SectionHeader";
+import { RadarGlyph } from "../components/RadarGlyph";
+import { DiffusionArc } from "../components/DiffusionArc";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -66,26 +69,39 @@ export default async function TrendsPage() {
       {/* The Movers — flagship: proprietary movers + evidence-bound insight (BL-044) */}
       {movers.length > 0 && (
         <div className="mb-12">
-          <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">The Movers</h2>
-          <p className="mb-4 max-w-xl text-[13px] text-muted">
-            Products on the move on Amazon — what changed, why now, and what it means for sellers.
-          </p>
+          <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={t.movers} sublabel={t.moversSub} />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {movers.map((m, i) => (
               <div key={`${m.asin}-${m.region}`} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
                 <SignalCard
                   tone="signal"
-                  tierLabel={REGION_LABEL[m.region] ?? m.region}
-                  meta={[
-                    CAT_LABEL[m.category] ?? m.category,
-                    m.rank != null ? `#${m.rank}` : null,
-                    m.rankDelta != null && m.rankDelta > 0 ? `▲ ${m.rankDelta}` : null,
-                    m.isNewEntrant ? "NEW" : null,
-                    ...m.spreadingTo.map((r) => `→ ${REGION_LABEL[r] ?? r}`),
-                  ].filter((s): s is string => !!s).join(" · ")}
+                  tierLabel={CAT_LABEL[m.category] ?? m.category}
+                  meta={m.rank != null ? `#${m.rank}` : ""}
                   title={m.title}
                   foot={
                     <>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {m.rankDelta != null && m.rankDelta > 0 && (
+                          <span className="delta ticker text-meta font-medium text-signal">▲ {m.rankDelta}</span>
+                        )}
+                        {m.rankDelta != null && m.rankDelta < 0 && (
+                          <span className="delta ticker text-meta font-medium text-faint">▼ {Math.abs(m.rankDelta)}</span>
+                        )}
+                        <span className="rounded-full border border-line px-2 py-0.5 font-mono text-label text-muted">
+                          {REGION_LABEL[m.region] ?? m.region}
+                        </span>
+                        {m.spreadingTo.map((r) => (
+                          <span key={r} className="flex items-center gap-1.5">
+                            <DiffusionArc />
+                            <span className="rounded-full border border-line px-2 py-0.5 font-mono text-label text-muted">
+                              {REGION_LABEL[r] ?? r}
+                            </span>
+                          </span>
+                        ))}
+                        {m.isNewEntrant && (
+                          <span className="ticker text-meta font-medium text-signal">NEW</span>
+                        )}
+                      </span>
                       <span className="block text-meta leading-relaxed text-muted">{m.whyNow}</span>
                       <span className="mt-1.5 block text-meta leading-relaxed text-ink/90">{m.soWhat}</span>
                     </>
@@ -99,8 +115,7 @@ export default async function TrendsPage() {
 
       {/* bestsellers board (region chips + category cards live inside) */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
+        <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={t.bestsellers} sublabel={t.bestsellersSub} />
         {bestsellers.length === 0 ? (
           <EmptyState title={t.bestsellersEmpty} />
         ) : (
@@ -110,8 +125,7 @@ export default async function TrendsPage() {
 
       {/* viral on X — social product signal (Radar-only) */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.viralX}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.viralXSub}</p>
+        <SectionHeader accent="bg-signal" title={t.viralX} sublabel={t.viralXSub} />
         {viralX.length === 0 ? (
           <EmptyState title={t.viralXEmpty} />
         ) : (
@@ -136,8 +150,7 @@ export default async function TrendsPage() {
 
       {/* cross-border e-commerce hot topics on X — separate track */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.hotX}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.hotXSub}</p>
+        <SectionHeader accent="bg-calm" title={t.hotX} sublabel={t.hotXSub} />
         {hotX.length === 0 ? (
           <p className="text-sm text-muted">{t.hotXEmpty}</p>
         ) : (
@@ -161,23 +174,25 @@ export default async function TrendsPage() {
       </div>
 
       {/* cross-region diffusion — analytics cards */}
-      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.diffusionSignals}</h2>
-      {signals.length === 0 ? (
-        <p className="text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {signals.map((s, i) => (
-            <div key={s.keyword + i} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
-              <SignalCard
-                tone="signal"
-                meta={`${REGION_LABEL[s.originRegion] ?? s.originRegion} → ${s.spreadingTo.map((r) => REGION_LABEL[r] ?? r).join(", ")} · ${Math.round(s.confidence * 100)}%`}
-                title={s.keyword}
-                dek={s.signalBasis}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mb-12">
+        <SectionHeader accent="bg-signal" title={t.diffusionSignals} />
+        {signals.length === 0 ? (
+          <p className="text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {signals.map((s, i) => (
+              <div key={s.keyword + i} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
+                <SignalCard
+                  tone="signal"
+                  meta={`${REGION_LABEL[s.originRegion] ?? s.originRegion} → ${s.spreadingTo.map((r) => REGION_LABEL[r] ?? r).join(", ")} · ${Math.round(s.confidence * 100)}%`}
+                  title={s.keyword}
+                  dek={s.signalBasis}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

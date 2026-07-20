@@ -26,12 +26,12 @@ function Card({ b, showRegion }: { b: BestsellerRow; showRegion: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => track("bestseller_open", { product_title: b.title, product_region: b.region, product_category: b.category, product_rank: b.rank ?? undefined })}
-      className="group flex gap-4 rounded-lg border border-line bg-surface/70 p-3.5 transition-colors hover:border-signal/40"
+      className="group flex gap-4 rounded-md border border-line bg-surface p-3.5 transition-colors hover:border-signal/40"
     >
       <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-md bg-surface2">
         <Img src={b.imageUrl} alt={b.title} />
         {b.rank != null && (
-          <span className="ticker absolute left-0 top-0 rounded-br-md bg-signal px-2 py-1 text-[11px] font-semibold text-chipink">
+          <span className="ticker absolute left-0 top-0 rounded-br-md bg-chipbg px-2 py-1 text-[11px] font-semibold text-chipink">
             #{b.rank}
           </span>
         )}

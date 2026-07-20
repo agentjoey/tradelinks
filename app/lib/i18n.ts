@@ -44,6 +44,8 @@ export interface Dict {
   radarSub: string;
   diffusionSignals: string;
   risingNow: string;
+  movers: string;
+  moversSub: string;
   bestsellers: string;
   bestsellersSub: string;
   bestsellersEmpty: string;
@@ -137,6 +139,8 @@ const en: Dict = {
   radarSub: "Where a product is already hot in mature markets but still lagging elsewhere — an early window before it spreads. Signal, not prophecy.",
   diffusionSignals: "diffusion signals",
   risingNow: "rising now",
+  movers: "the movers",
+  moversSub: "Products on the move on Amazon — what changed, why now, and what it means for sellers.",
   bestsellers: "bestsellers board",
   bestsellersSub: "Top products surfacing in Amazon best-seller grids across regions — raw hot-product signal, by category.",
   bestsellersEmpty: "No bestseller data yet — run the Amazon scraper.",
@@ -228,6 +232,8 @@ const zh: Dict = {
   radarSub: "某品类在成熟市场已起量、在其他区域仍滞后 —— 扩散前的早期窗口。是信号，不是预言。",
   diffusionSignals: "扩散信号",
   risingNow: "正在上升",
+  movers: "异动榜",
+  moversSub: "亚马逊上正在异动的产品 —— 变了什么、为什么是现在、对卖家意味着什么。",
   bestsellers: "热销榜",
   bestsellersSub: "各区域亚马逊畅销榜中正在涌现的热门产品 —— 按品类划分的原始爆品信号。",
   bestsellersEmpty: "暂无热销数据 —— 请运行亚马逊采集。",
