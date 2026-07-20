@@ -3,8 +3,22 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-06-10 by claude-opus-4-8 (BL-044 The Movers v1 + BL-033 写作模块库 + confidence 桶化修复)
+Last Updated:   2026-07-19 by kimi-code (BL-045 前端重设计：双主题 + 移动端导航 + 设计系统收敛 + Instrument Panel 动效)
 Sprint File:    .agent/sprints/sprint-005.md
+
+## 🆕 本轮新增（2026-07-19）：BL-045 前端重设计（已上线 main `17aa648`，frontend-harness-workflow Tier 3 全流程）
+
+- **BL-045 前端重设计（已合并 main，生产冒烟通过）** — 公开五页（首页/Wire/Radar/Daily/订阅）系统性提质，按 frontend-harness-workflow v3.1 走完全流程：brainstorm → spec → 双 mockup（v1 布局/token + v2 动效）→ 18 任务 SDD（每任务实现+spec/质量双审）→ 全分支终审 → Human Owner 走查 → 合并。
+  - **设计系统地基**：语义 token 双层（`:root` 暗色默认 + `[data-theme="light"]` 纸感亮色，对比度全部预验证 ≥4.5:1，`faint` 3.1:1 缺陷修复）；type scale 六档（label/meta/body/lede/title/headline）+ 圆角三档；类名 codemod（text-paper→text-ink、bg-ink→bg-canvas）。
+  - **主题机制**：cookie `tl-theme`（1y, SameSite=Lax）SSR 直渲 `data-theme` 无闪烁 + localStorage 兜底脚本；header 日/月切换钮（DOM 惰性初始化）。
+  - **Chrome**：移动端底部 tab bar（Home/Wire/Radar/Daily，`aria-current`，safe-area 适配）；Radix More 下拉（Subscribe/Telegram/RSS，键盘全可达）；Alerts/Upgrade 指向真实 `/subscribe`；头像菜单指向 admin；skip-link；浮条层叠规则（订阅条移动端隐藏 + consent 未决时让位）。
+  - **组件/状态层**：`labels.ts` 单一来源（5 份 REGION_LABEL 复制消除）；`SignalCard` 统一 5 种卡片（保留 `alert_open`/`bestseller_open`/`hot_topic_open` 埋点 + imageLayout 大图变体）；`PageHeader`/`EmptyState`/`Skeleton`；全路由 loading/error + 全站 not-found（**soft-404 修复**：`(home)` 路由组让首页有骨架且 daily 死链回真 404）；`ui.ts` 共享控件类；Filters 丢 locale bug 修复。
+  - **Instrument Panel 动效**：编排式 masthead 开场（遮罩行升起 + 品牌词对焦，~1.3s 一次）+ 电报纸带 + UTC 实时钟 + 雷达扫描 glyph + 扩散弧 + 新鲜插入（服务端 isFresh，不造假轮换）+ 卡片 hover 扫描；全部 reduced-motion 降级。
+  - **订阅页主题断裂修复**（浅色样式 → 语义 token）+ 表单五态（409 already 为防御性死代码，API 永远 200，已注释说明）。
+  - **无 >1px 侧边色条**（impeccable 禁令）：tier 全部由 chip + 1px 细边框承载，`tierStyle.rail` 裸 hex 已删。
+  - 子代理驱动 TDD，18 任务 ×（实现+双审），全分支终审（skip-link/lazy-loading 合并前修复）；**297 测试绿 / tsc/build 干净**；零 schema/env 变更；唯一新依赖 `@radix-ui/react-dropdown-menu`。
+  - spec `docs/superpowers/specs/2026-07-19-bl045-frontend-redesign-design.md` · plan `…/plans/2026-07-19-bl045-frontend-redesign.md` · 验证记录 `…/verification/2026-07-19-bl045-verification.md` · mockups `design/bl045-mockup-v{1,2}.html`。
+  - **后续 backlog**（终审 minors）：错误/404 文案中文化、`liveLabel` 硬编码、dead eyebrow token、toneOf 去重、段落化错误文案、cookie Secure 属性、skeleton role=status、mover 弧线上数据验证（当前 prod movers 全 `spreadingTo:[]`）、Measurement window：上线后 7 天 GA（跳出/订阅转化/移动端占比）。
 
 ## 🆕 本轮新增（2026-06-10）：BL-044 The Movers v1（爆品洞察卡持久化 + /radar 门面）
 
@@ -117,7 +131,7 @@ Sprint File:    .agent/sprints/sprint-005.md
    - 踩坑沉淀（**关键**）：① 自定义域名必须加进 Neon Auth **trusted_origins**（否则 CSRF 403）② 会话 cookie 必须 **`sameSite:"lax"`**（默认 strict 会在 OAuth 跨站跳回时丢 cookie→死循环）③ **必须挂 `auth.middleware()`**(scoped `/admin`)来校验/刷新会话并喂给 server component,否则 session 建了但页面读不到→循环 ④ Vercel 偶发漏触发 webhook→空提交重推或手动 Redeploy
 2b. **UI 深度优化**：
    - ✅ Wire 时间线改为「最近1h/4h/8h/今天/昨天/日期」递进分桶（2026-06-05）
-   - 待办：移动端布局与卡片密度、urgency 视觉层级、Radar 爆品卡（缩略图/榜位/区域 chip）、骨架屏/加载态、空态与错误态、字体与间距打磨、暗色对比度可达性
+   - 待办：移动端布局与卡片密度（tab bar 已上线）、urgency 视觉层级（tier chip 统一 ✅）、Radar 爆品卡（缩略图/榜位/区域 chip ✅ SignalCard）、骨架屏/加载态（✅ 路由 loading）、空态与错误态（✅ EmptyState/error.tsx）、字体与间距打磨（✅ type scale 六档）、暗色对比度可达性（✅ faint 3.1→5.2:1）
 3. **物流/平台再补源**：EU 稳定法规 feed（替 B04/B05）、ME/LatAm/SEA 平台与物流覆盖
 4. **反爬 backlog（Phase 2，需付费API/代理）**：Temu(D21)/AliExpress(D23)/MercadoLibre(D20)/Noon(D22)/CIFNews(F09)/Ebrun(F10)
 5. **Radar 深化**：BSR rank delta 时序（目前 first-seen rank）+ 三源扩散佐证
@@ -170,6 +184,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.12.0+ | 2026-07-19 | BL-045 前端重设计（workflow T3）：双主题 token 体系 + cookie 主题机制 + 移动端 tab bar + Radix More 下拉 + labels/SignalCard/PageHeader/EmptyState/ui.ts 组件层 + 路由状态层 + Instrument Panel 动效 + 订阅页修复（297 测试；merged main `17aa648`，生产冒烟通过） |
 | v0.12.0+ | 2026-06-10 | BL-044 The Movers v1：洞察引擎接进 radar-review（生成+持久化 `MoverInsight`，migration 0010 上 prod）+ /radar「The Movers」门面 + 标题公式 + 纯函数 `rankMovers`（287 测试；merged main `3547ce1`） |
 | v0.12.0+ | 2026-06-10 | BL-033 写作模块库：core/topic-gate/self-check/columns 拆分 + 三消费方迁移、单一 `BANNED_PHRASES`、confidence 桶化修复（282 测试；merged main PR #2，未单独 tag） |
 | v0.12.0 | 2026-06-08 | BL-041 多语言/中文化 P1+P2:`/zh` 子路径+hreflang/canonical、Translation 表(migration 0007)+预警/Daily 中文翻译(DeepSeek+术语表+reviewer)、locale-aware 导航(220 测试) |

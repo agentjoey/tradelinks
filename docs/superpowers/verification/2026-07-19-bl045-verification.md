@@ -29,7 +29,7 @@ Branch / worktree: feat/frontend-redesign @ .worktrees/feat-frontend-redesign
 
 Review findings and disposition: per-task minors (see progress ledger .superpowers/sdd/progress.md). T18 dark-matrix findings — both token-discipline items are RESOLVED at HEAD (`b8a3d5c`): (1) raw hex `#4FD1C5` inline top-border in app/components/HeroLead.tsx and (2) tierStyle `rail` hexes (#FF5A4D/#E8B44A/#5a5f6b) in app/components/alert-style.ts were removed; raw-hex grep in app/**/*.tsx is now CLEAN. Final whole-branch review (agent-49): Ready to merge with fixes — skip-link added, SignalCard lazy-loading restored, record refreshed.
 Exceptions / deferrals: EN-only error.tsx copy (sanctioned); subscribe page EN-only (sanctioned); light-theme screenshots at walkthrough; mover arcs unverified on live data (all current prod movers spreadingTo:[]); trends stat tiles show 0 PRODUCTS TRACKED / 0 REGIONS (prod data state, not a layout defect)
-Human decisions: (walkthrough pending)
-Post-deploy result: (pending)
+Human decisions: Human Owner walkthrough approved for release (2026-07-19); one walkthrough finding (motion gaps vs mockup — home radar glyph, entrance stagger, card-scan coverage) fixed pre-merge (`2a7e918`)
+Post-deploy result: PASS — merged main `17aa648`; 7 routes 200 (/ /wire /trends /daily /subscribe /zh /zh/wire); data-theme="dark" in SSR; hreflang en/zh-Hans/x-default; feed.xml valid; tape/glyph/cluster live on prod
 Measurement follow-up: 7-day GA window post-launch (bounce, subscribe conversion, mobile share)
-Completion date: (pending)
+Completion date: 2026-07-19
