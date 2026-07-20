@@ -645,7 +645,7 @@ git commit -m "feat(BL-045): real More menu via Radix DropdownMenu + nav dict ke
 
 **Interfaces:**
 - Consumes: token classes from Task 1.
-- Produces: subscribe surfaces correct in both themes; form states `idle | loading | done | already | error`.
+- Produces: subscribe surfaces correct in both themes; form states `idle | loading | done | already | error` (`already` is defensive/dead today — API returns 200 by anti-enumeration design).
 
 - [ ] **Step 1: Rewrite `app/subscribe/page.tsx` body classes**
 

@@ -16,6 +16,7 @@ export function SubscribeForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      // 409 → "already": defensive — the API currently always returns 200 (anti-enumeration by design); ready if it ever signals duplicates.
       if (res.status === 409) setState("already");
       else if (res.ok) setState("done");
       else setState("error");
