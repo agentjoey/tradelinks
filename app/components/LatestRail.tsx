@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { LatestItem, LatestKind } from "../lib/home";
+import { isFresh } from "../lib/home";
 import { hhmm } from "./alert-style";
 
 const DOT: Record<LatestKind, string> = { wire: "bg-urgent", radar: "bg-signal", x: "bg-calm" };
@@ -18,9 +20,9 @@ export function LatestRail({
   kindLabels: Record<LatestKind, string>;
 }) {
   return (
-    <aside className="flex flex-col rounded-xl border border-line bg-surface/40 lg:col-span-3">
+    <aside className="flex flex-col rounded-lg border border-line bg-surface/40 lg:col-span-3" style={{ "--i": 2 } as CSSProperties}>
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <div className="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-paper">
+        <div className="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-ink">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-urgent opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-urgent" />
@@ -30,9 +32,11 @@ export function LatestRail({
         <span className="ticker text-[10px] uppercase tracking-wider text-faint">{liveLabel}</span>
       </div>
       <div className="flex-1 divide-y divide-line">
-        {items.map((it, i) => (
+        {items.map((it, i) => {
+          const fresh = isFresh(it.time, Date.now());
+          return (
           <a key={`${it.kind}:${it.href}:${i}`} href={it.href} target="_blank" rel="noopener noreferrer"
-             className="group flex gap-2.5 px-4 py-2.5 transition-colors hover:bg-surface2/60">
+             className={`group flex gap-2.5 px-4 py-2.5 transition-colors hover:bg-surface2/60 ${fresh ? "insert-row" : ""}`}>
             <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${DOT[it.kind]}`} />
             <div className="min-w-0">
               <div className="ticker mb-0.5 flex items-center gap-2 text-[9.5px] uppercase tracking-wider text-faint">
@@ -40,10 +44,11 @@ export function LatestRail({
                 <span>{hhmm(new Date(it.time))}</span>
                 {it.author && <span className="truncate text-muted">{it.author}</span>}
               </div>
-              <div className="text-[13px] font-medium leading-snug text-paper/90 transition-colors group-hover:text-signal">{it.title}</div>
+              <div className="text-[13px] font-medium leading-snug text-ink/90 transition-colors group-hover:text-signal">{it.title}</div>
             </div>
           </a>
-        ))}
+          );
+        })}
       </div>
       <Link href={href} className="ticker flex items-center justify-center gap-1.5 border-t border-line px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted transition-colors hover:text-signal">
         {seeAllLabel} <span className="text-signal">→</span>

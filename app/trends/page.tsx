@@ -2,21 +2,24 @@ import { getTrendsView, getBestsellers, getRadarKpis, getMovers } from "../../sr
 import { getViralX, getHotTopicsX } from "../../src/social/db.js";
 import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
 import { getDict } from "../lib/i18n";
+import { CAT_LABEL, REGION_LABEL } from "../lib/labels";
 import { BestsellersBoard } from "./BestsellersBoard";
+import { SignalCard } from "../components/SignalCard";
+import { PageHeader } from "../components/PageHeader";
+import { EmptyState } from "../components/EmptyState";
+import { SectionHeader } from "../components/SectionHeader";
+import { RadarGlyph } from "../components/RadarGlyph";
+import { DiffusionArc } from "../components/DiffusionArc";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
 const REGION_ORDER = ["north_america", "europe", "middle_east", "australia_nz", "southeast_asia", "latin_america"];
 
 function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }) {
   return (
     <div className="rounded-lg border border-line bg-surface/70 p-4">
-      <div className="font-display text-3xl leading-none text-paper">{n}</div>
+      <div className="font-display text-3xl leading-none text-ink">{n}</div>
       <div className="ticker mt-1.5 text-[10px] uppercase tracking-[0.12em] text-faint">{label}</div>
       {spark && spark.length > 0 && (
         <div className="mt-2 flex h-4 items-end gap-1">
@@ -49,13 +52,11 @@ export default async function TrendsPage() {
 
   return (
     <div>
-      <div className="mb-7">
-        <div className="ticker text-[10px] uppercase tracking-[0.2em] text-signal/80 mb-2">{t.radarEyebrow}</div>
-        <h1 className="font-display text-4xl leading-[1.05] tracking-tight">
-          {t.radarPre}<span className="italic text-signal">{t.radarEm}</span>.
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] text-muted">{t.radarSub}</p>
-      </div>
+      <PageHeader
+        eyebrow={t.radarEyebrow}
+        title={<>{t.radarPre}<span className="italic text-signal">{t.radarEm}</span>.</>}
+        sub={t.radarSub}
+      />
 
       {/* KPI strip */}
       <div className="mb-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -68,35 +69,45 @@ export default async function TrendsPage() {
       {/* The Movers — flagship: proprietary movers + evidence-bound insight (BL-044) */}
       {movers.length > 0 && (
         <div className="mb-12">
-          <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">The Movers</h2>
-          <p className="mb-4 max-w-xl text-[13px] text-muted">
-            Products on the move on Amazon — what changed, why now, and what it means for sellers.
-          </p>
+          <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={t.movers} sublabel={t.moversSub} />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {movers.map((m, i) => (
-              <article
-                key={`${m.asin}-${m.region}`}
-                className="animate-rise rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4"
-                style={{ animationDelay: `${i * 45}ms` }}
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="font-display text-[16px] leading-tight text-paper">{m.title}</div>
-                  {m.rankDelta != null && m.rankDelta > 0 && (
-                    <span className="ticker flex-none text-[11px] text-signal">▲ {m.rankDelta}</span>
-                  )}
-                </div>
-                <div className="ticker mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.1em]">
-                  <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">{REGION_LABEL[m.region] ?? m.region}</span>
-                  <span className="text-faint">· {m.category}</span>
-                  {m.rank != null && <span className="text-faint">· #{m.rank}</span>}
-                  {m.isNewEntrant && <span className="rounded-sm bg-signal/15 px-1.5 py-0.5 text-signal">NEW</span>}
-                  {m.spreadingTo.map((r) => (
-                    <span key={r} className="rounded-sm bg-signal/15 px-1.5 py-0.5 text-signal">→ {REGION_LABEL[r] ?? r}</span>
-                  ))}
-                </div>
-                <p className="mt-2 text-[13px] leading-relaxed text-muted">{m.whyNow}</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-paper/90">{m.soWhat}</p>
-              </article>
+              <div key={`${m.asin}-${m.region}`} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
+                <SignalCard
+                  tone="signal"
+                  tierLabel={CAT_LABEL[m.category] ?? m.category}
+                  meta={m.rank != null ? `#${m.rank}` : ""}
+                  title={m.title}
+                  foot={
+                    <>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {m.rankDelta != null && m.rankDelta > 0 && (
+                          <span className="delta ticker text-meta font-medium text-signal">▲ {m.rankDelta}</span>
+                        )}
+                        {m.rankDelta != null && m.rankDelta < 0 && (
+                          <span className="delta ticker text-meta font-medium text-faint">▼ {Math.abs(m.rankDelta)}</span>
+                        )}
+                        <span className="rounded-full border border-line px-2 py-0.5 font-mono text-label text-muted">
+                          {REGION_LABEL[m.region] ?? m.region}
+                        </span>
+                        {m.spreadingTo.map((r) => (
+                          <span key={r} className="flex items-center gap-1.5">
+                            <DiffusionArc />
+                            <span className="rounded-full border border-line px-2 py-0.5 font-mono text-label text-muted">
+                              {REGION_LABEL[r] ?? r}
+                            </span>
+                          </span>
+                        ))}
+                        {m.isNewEntrant && (
+                          <span className="ticker text-meta font-medium text-signal">NEW</span>
+                        )}
+                      </span>
+                      <span className="block text-meta leading-relaxed text-muted">{m.whyNow}</span>
+                      <span className="mt-1.5 block text-meta leading-relaxed text-ink/90">{m.soWhat}</span>
+                    </>
+                  }
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -104,10 +115,9 @@ export default async function TrendsPage() {
 
       {/* bestsellers board (region chips + category cards live inside) */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
+        <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={t.bestsellers} sublabel={t.bestsellersSub} />
         {bestsellers.length === 0 ? (
-          <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
+          <EmptyState title={t.bestsellersEmpty} />
         ) : (
           <BestsellersBoard items={bestsellers} />
         )}
@@ -115,35 +125,24 @@ export default async function TrendsPage() {
 
       {/* viral on X — social product signal (Radar-only) */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.viralX}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.viralXSub}</p>
+        <SectionHeader accent="bg-signal" title={t.viralX} sublabel={t.viralXSub} />
         {viralX.length === 0 ? (
-          <p className="text-sm text-muted">{t.viralXEmpty}</p>
+          <EmptyState title={t.viralXEmpty} />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {viralX.map((x, i) => (
-              <a
-                key={x.link + i}
-                href={x.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="animate-rise group flex gap-3 rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4 transition-colors hover:border-l-signal hover:bg-surface"
-                style={{ animationDelay: `${i * 45}ms` }}
-              >
-                {x.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={x.imageUrl} alt="" className="h-20 w-20 flex-none rounded-md object-cover" loading="lazy" />
-                )}
-                <div className="min-w-0">
-                  <div className="font-display text-[15px] leading-tight text-paper group-hover:text-signal">{x.product}</div>
-                  {x.whyViral && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyViral}</p>}
-                  <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
-                    <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
-                    <span>🔁 {x.retweets.toLocaleString()}</span>
-                    <span className="text-faint/70">X</span>
-                  </div>
-                </div>
-              </a>
+              <div key={x.link + i} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
+                <SignalCard
+                  href={x.link} external tone="signal"
+                  meta={`♥ ${x.likes.toLocaleString()}`}
+                  title={x.product}
+                  dek={x.whyViral || undefined}
+                  imageUrl={x.imageUrl}
+                  foot={
+                    <span className="ticker text-meta text-faint">🔁 {x.retweets.toLocaleString()} · X</span>
+                  }
+                />
+              </div>
             ))}
           </div>
         )}
@@ -151,67 +150,49 @@ export default async function TrendsPage() {
 
       {/* cross-border e-commerce hot topics on X — separate track */}
       <div className="mb-12">
-        <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.hotX}</h2>
-        <p className="mb-4 max-w-xl text-[13px] text-muted">{t.hotXSub}</p>
+        <SectionHeader accent="bg-calm" title={t.hotX} sublabel={t.hotXSub} />
         {hotX.length === 0 ? (
           <p className="text-sm text-muted">{t.hotXEmpty}</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {hotX.map((x, i) => (
-              <a
-                key={x.link + i}
-                href={x.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="animate-rise group rounded-lg border border-line border-l-2 border-l-calm bg-surface/70 p-4 transition-colors hover:bg-surface"
-                style={{ animationDelay: `${i * 45}ms` }}
-              >
-                <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.1em] text-calm">{x.category}</div>
-                <div className="font-display text-[15px] leading-tight text-paper group-hover:text-calm">{x.headline}</div>
-                {x.whyHot && <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">{x.whyHot}</p>}
-                <div className="ticker mt-2 flex items-center gap-3 text-[11px] text-faint">
-                  <span className="text-signal/90">♥ {x.likes.toLocaleString()}</span>
-                  <span>🔁 {x.retweets.toLocaleString()}</span>
-                  <span className="text-faint/70">X</span>
-                </div>
-              </a>
+              <div key={x.link + i} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
+                <SignalCard
+                  href={x.link} external tone="calm"
+                  tierLabel={x.category}
+                  meta={`${x.author ? `@${x.author.replace(/^@/, "")} · ` : ""}♥ ${x.likes.toLocaleString()}`}
+                  title={x.headline}
+                  dek={x.whyHot || undefined}
+                  foot={
+                    <span className="ticker text-meta text-faint">🔁 {x.retweets.toLocaleString()} · X</span>
+                  }
+                />
+              </div>
             ))}
           </div>
         )}
       </div>
 
       {/* cross-region diffusion — analytics cards */}
-      <h2 className="ticker mb-3 text-[10px] uppercase tracking-[0.2em] text-faint">{t.diffusionSignals}</h2>
-      {signals.length === 0 ? (
-        <p className="text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {signals.map((s, i) => (
-            <article
-              key={s.keyword + i}
-              className="animate-rise rounded-lg border border-line border-l-2 border-l-signal bg-surface/70 p-4"
-              style={{ animationDelay: `${i * 45}ms` }}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="font-display text-[18px] text-paper">{s.keyword}</div>
-                <span className="ticker text-[11px] text-signal">{Math.round(s.confidence * 100)}%</span>
+      <div className="mb-12">
+        <SectionHeader accent="bg-signal" title={t.diffusionSignals} />
+        {signals.length === 0 ? (
+          <p className="text-sm text-muted">No diffusion signals yet — run the trends ingest.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {signals.map((s, i) => (
+              <div key={s.keyword + i} className="animate-rise" style={{ animationDelay: `${i * 45}ms` }}>
+                <SignalCard
+                  tone="signal"
+                  meta={`${REGION_LABEL[s.originRegion] ?? s.originRegion} → ${s.spreadingTo.map((r) => REGION_LABEL[r] ?? r).join(", ")} · ${Math.round(s.confidence * 100)}%`}
+                  title={s.keyword}
+                  dek={s.signalBasis}
+                />
               </div>
-              <div className="ticker mt-2 flex flex-wrap items-center gap-1.5 text-[11px] uppercase tracking-[0.1em]">
-                <span className="rounded-sm bg-calm/15 px-1.5 py-0.5 text-calm">
-                  {REGION_LABEL[s.originRegion] ?? s.originRegion}
-                </span>
-                <span className="text-faint">→</span>
-                {s.spreadingTo.map((r) => (
-                  <span key={r} className="rounded-sm bg-signal/15 px-1.5 py-0.5 text-signal">
-                    {REGION_LABEL[r] ?? r}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-muted">{s.signalBasis}</p>
-            </article>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

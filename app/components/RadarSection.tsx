@@ -1,5 +1,6 @@
 import type { ProductCard } from "../lib/home-data";
 import { SectionHeader } from "./SectionHeader";
+import { RadarGlyph } from "./RadarGlyph";
 import { RadarCard } from "./StreamCard";
 import { TrackedLink } from "./TrackedLink";
 import { REGION_LABEL } from "./alert-style";
@@ -20,7 +21,7 @@ export function RadarSection({
 }) {
   return (
     <section className="mb-12">
-      <SectionHeader accent="bg-signal" title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
+      <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {leader && <Leader p={leader} />}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-8">
@@ -35,7 +36,7 @@ function Leader({ p }: { p: ProductCard }) {
   return (
     <TrackedLink href={p.url} event="bestseller_open"
       params={{ product_title: p.title, product_platform: p.platform, product_region: p.region }}
-      className="group overflow-hidden rounded-xl border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-4"
+      className="card-scan group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-4"
     >
       <div className="relative aspect-square bg-surface2">
         {p.imageUrl ? (
@@ -45,12 +46,12 @@ function Leader({ p }: { p: ProductCard }) {
           <span className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-wider text-faint">no image</span>
         )}
         {p.rank != null && (
-          <span className="ticker absolute left-0 top-0 rounded-br-xl bg-signal px-3 py-1.5 text-[15px] font-semibold text-ink">#{p.rank}</span>
+          <span className="ticker absolute left-0 top-0 rounded-br-lg bg-signal px-3 py-1.5 text-[15px] font-semibold text-chipink">#{p.rank}</span>
         )}
-        <span className="ticker absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-paper/90">{p.platform}</span>
+        <span className="ticker absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-ink/90">{p.platform}</span>
       </div>
       <div className="p-4">
-        <div className="font-display text-[18px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{p.title}</div>
+        <div className="font-display text-[18px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{p.title}</div>
         <div className="ticker mt-2 text-[13px] font-semibold text-signal">
           {p.metric}{p.region ? ` · ${REGION_LABEL[p.region] ?? p.region}` : ""}
         </div>

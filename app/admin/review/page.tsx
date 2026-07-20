@@ -1,13 +1,9 @@
 import { listPending } from "../../../src/alerts/review.js";
 import { approve, reject } from "./actions";
+import { REGION_LABEL } from "../../lib/labels";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
 
 export default async function ReviewPage() {
   const pending = await listPending();
@@ -45,17 +41,17 @@ export default async function ReviewPage() {
                   <span key={r} className="text-muted">{REGION_LABEL[r] ?? r}</span>
                 ))}
               </div>
-              <h2 className="font-display text-[19px] font-medium leading-snug text-paper">{a.title}</h2>
+              <h2 className="font-display text-[19px] font-medium leading-snug text-ink">{a.title}</h2>
               {a.actionRequired && (
                 <div className="mt-2 flex gap-2 border-l border-signal/30 pl-3 text-[13px]">
                   <span className="ticker shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-signal">act</span>
-                  <span className="text-paper/90">{a.actionRequired}</span>
+                  <span className="text-ink/90">{a.actionRequired}</span>
                 </div>
               )}
               <div className="mt-4 flex gap-2">
                 <form action={approve}>
                   <input type="hidden" name="id" value={a.id} />
-                  <button className="ticker rounded-sm bg-signal px-3.5 py-1.5 text-[10px] uppercase tracking-[0.12em] text-ink transition-opacity hover:opacity-90">
+                  <button className="ticker rounded-sm bg-signal px-3.5 py-1.5 text-[10px] uppercase tracking-[0.12em] text-chipink transition-opacity hover:opacity-90">
                     Approve → publish
                   </button>
                 </form>

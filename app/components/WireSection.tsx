@@ -24,7 +24,7 @@ export function WireSection({
       <SectionHeader accent="bg-urgent" title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {featured && <Featured a={featured} tiers={tiers} />}
-        <div className="divide-y divide-line rounded-xl border border-line bg-surface/40 lg:col-span-7">
+        <div className="divide-y divide-line rounded-lg border border-line bg-surface/40 lg:col-span-7">
           {list.map((a) => <ListRow key={a.id} a={a} tiers={tiers} />)}
         </div>
       </div>
@@ -39,8 +39,7 @@ function Featured({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
   const img = a.imageUrl && a.imageUrl.trim() !== "" ? a.imageUrl : null;
   return (
     <TrackedLink href={href} event="alert_open" params={trackParams(a)}
-      className="group overflow-hidden rounded-xl border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-5"
-      style={{ borderTop: `3px solid ${u.rail}` }}
+      className="card-scan group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-5"
     >
       {img && (
         <div className="aspect-[16/10] bg-surface2">
@@ -57,7 +56,7 @@ function Featured({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
           {a.regions[0] && <span className="text-muted">{REGION_LABEL[a.regions[0]] ?? a.regions[0]}</span>}
           {src && <span className="ml-auto text-faint">{src}</span>}
         </div>
-        <div className="font-display text-[19px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{a.title}</div>
+        <div className="font-display text-[19px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{a.title}</div>
         {a.summary && <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-muted">{a.summary}</p>}
       </div>
     </TrackedLink>
@@ -80,7 +79,7 @@ function ListRow({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
           {a.regions[0] && <span className="text-muted">{REGION_LABEL[a.regions[0]] ?? a.regions[0]}</span>}
           <span className="ml-auto text-faint">{src ? `${src} · ` : ""}{hhmm(a.publishedAt ?? a.createdAt)}</span>
         </div>
-        <div className="font-display text-[16px] font-medium leading-snug text-paper transition-colors group-hover:text-signal">{a.title}</div>
+        <div className="font-display text-[16px] font-medium leading-snug text-ink transition-colors group-hover:text-signal">{a.title}</div>
       </div>
       {img && (
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-surface2">

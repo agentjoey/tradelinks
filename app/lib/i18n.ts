@@ -7,7 +7,10 @@ export interface Dict {
   nav: { home: string; wire: string; radar: string; daily: string; more: string; desk: string; sources: string };
   navUpgrade: string;
   navAlerts: string;
-  account: { profile: string; billing: string; settings: string; signout: string };
+  navSubscribe: string;
+  navTelegram: string;
+  navRss: string;
+  themeToggle: string;
   eyebrow: string;
   live: string;
   dispatches: string;
@@ -25,6 +28,7 @@ export interface Dict {
   last4h: string;
   last8h: string;
   empty: string;
+  emptyReset: string;
   loadEarlier: string;
   footer: string;
   // urgency tiers
@@ -40,6 +44,8 @@ export interface Dict {
   radarSub: string;
   diffusionSignals: string;
   risingNow: string;
+  movers: string;
+  moversSub: string;
   bestsellers: string;
   bestsellersSub: string;
   bestsellersEmpty: string;
@@ -98,7 +104,10 @@ const en: Dict = {
   nav: { home: "Home", wire: "Wire", radar: "Radar", daily: "Daily Insight", more: "More", desk: "Desk", sources: "Sources" },
   navUpgrade: "Upgrade",
   navAlerts: "Alerts",
-  account: { profile: "Profile", billing: "Billing", settings: "Settings", signout: "Sign out" },
+  navSubscribe: "Subscribe",
+  navTelegram: "Telegram alerts",
+  navRss: "RSS feed",
+  themeToggle: "Toggle color theme",
   eyebrow: "◆ Intelligence Wire",
   live: "live",
   dispatches: "dispatches",
@@ -116,6 +125,7 @@ const en: Dict = {
   last4h: "Last 4 hours",
   last8h: "Last 8 hours",
   empty: "no dispatches match this filter",
+  emptyReset: "Reset filters",
   loadEarlier: "load earlier ↓",
   footer: "TradeLinks · 6-region cross-border intelligence · alerts are summaries — verify at source",
   tierAct: "Act now",
@@ -129,6 +139,8 @@ const en: Dict = {
   radarSub: "Where a product is already hot in mature markets but still lagging elsewhere — an early window before it spreads. Signal, not prophecy.",
   diffusionSignals: "diffusion signals",
   risingNow: "rising now",
+  movers: "the movers",
+  moversSub: "Products on the move on Amazon — what changed, why now, and what it means for sellers.",
   bestsellers: "bestsellers board",
   bestsellersSub: "Top products surfacing in Amazon best-seller grids across regions — raw hot-product signal, by category.",
   bestsellersEmpty: "No bestseller data yet — run the Amazon scraper.",
@@ -185,7 +197,10 @@ const zh: Dict = {
   nav: { home: "首页", wire: "情报流", radar: "趋势雷达", daily: "每日洞察", more: "更多", desk: "审核台", sources: "信息源" },
   navUpgrade: "升级",
   navAlerts: "订阅",
-  account: { profile: "个人", billing: "账单", settings: "设置", signout: "退出" },
+  navSubscribe: "订阅",
+  navTelegram: "Telegram 推送",
+  navRss: "RSS 订阅",
+  themeToggle: "切换明暗主题",
   eyebrow: "◆ 跨境情报电台",
   live: "实时",
   dispatches: "条情报",
@@ -203,6 +218,7 @@ const zh: Dict = {
   last4h: "最近 4 小时",
   last8h: "最近 8 小时",
   empty: "没有符合该筛选的情报",
+  emptyReset: "重置筛选",
   loadEarlier: "加载更早 ↓",
   footer: "TradeLinks · 六大区跨境情报 · 预警为摘要 —— 请以原文为准",
   tierAct: "立即行动",
@@ -216,6 +232,8 @@ const zh: Dict = {
   radarSub: "某品类在成熟市场已起量、在其他区域仍滞后 —— 扩散前的早期窗口。是信号，不是预言。",
   diffusionSignals: "扩散信号",
   risingNow: "正在上升",
+  movers: "异动榜",
+  moversSub: "亚马逊上正在异动的产品 —— 变了什么、为什么是现在、对卖家意味着什么。",
   bestsellers: "热销榜",
   bestsellersSub: "各区域亚马逊畅销榜中正在涌现的热门产品 —— 按品类划分的原始爆品信号。",
   bestsellersEmpty: "暂无热销数据 —— 请运行亚马逊采集。",

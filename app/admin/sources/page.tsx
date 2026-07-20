@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 const TIER_ORDER: HealthTier[] = ["silent", "unhealthy", "degraded", "healthy", "disabled"];
 const TIER_BAR: Record<HealthTier, string> = {
-  silent: "bg-urgent", unhealthy: "bg-urgent", degraded: "bg-signal", healthy: "bg-calm", disabled: "bg-paper/20",
+  silent: "bg-urgent", unhealthy: "bg-urgent", degraded: "bg-signal", healthy: "bg-calm", disabled: "bg-muted",
 };
 
 function ago(d: Date | null): string {
@@ -21,8 +21,8 @@ function Sub({ label, v, max }: { label: string; v: number; max: number }) {
   return (
     <div className="flex items-center gap-1.5" title={`${label}: ${v}/${max}`}>
       <span className="ticker w-3 text-[9px] text-faint">{label}</span>
-      <div className="h-1 w-8 overflow-hidden rounded-full bg-paper/[0.07]">
-        <div className="h-full bg-paper/50" style={{ width: `${(v / max) * 100}%` }} />
+      <div className="h-1 w-8 overflow-hidden rounded-full bg-surface2">
+        <div className="h-full bg-muted" style={{ width: `${(v / max) * 100}%` }} />
       </div>
     </div>
   );
@@ -48,11 +48,11 @@ function Row({ h, spark }: { h: SourceHealth; spark: number[] }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-display text-[16px] text-paper truncate">{h.name}</span>
+            <span className="font-display text-[16px] text-ink truncate">{h.name}</span>
             <span className="ticker text-[10px] text-faint">{h.id}</span>
           </div>
           <div className="ticker mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.1em] text-faint">
-            {h.category && <span className="rounded-sm bg-paper/[0.06] px-1.5 py-0.5">{h.category}</span>}
+            {h.category && <span className="rounded-sm bg-surface2 px-1.5 py-0.5">{h.category}</span>}
             <span>{h.adapter}</span>
             <span>· every {h.expectedIntervalMin >= 60 ? `${(h.expectedIntervalMin / 60).toFixed(0)}h` : `${h.expectedIntervalMin}m`}</span>
             <span>· crawl {ago(h.lastCrawledAt)} ago</span>
@@ -60,14 +60,14 @@ function Row({ h, spark }: { h: SourceHealth; spark: number[] }) {
             {h.consecutiveFailures > 0 && <span className="text-urgent">· {h.consecutiveFailures} fails</span>}
           </div>
           <div className="ticker mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-            <span>24h <span className="text-paper">{h.items24h}</span></span>
-            <span>7d <span className="text-paper">{h.items7d}</span></span>
+            <span>24h <span className="text-ink">{h.items24h}</span></span>
+            <span>7d <span className="text-ink">{h.items7d}</span></span>
             {h.isBestseller ? (
               <span className="text-faint">Radar source · no AI scoring (pass/urg n/a)</span>
             ) : (
               <>
-                {passRate !== null && <span>pass <span className="text-paper">{passRate}%</span></span>}
-                {h.avgUrgency != null && <span>urg <span className="text-paper">{h.avgUrgency.toFixed(1)}</span></span>}
+                {passRate !== null && <span>pass <span className="text-ink">{passRate}%</span></span>}
+                {h.avgUrgency != null && <span>urg <span className="text-ink">{h.avgUrgency.toFixed(1)}</span></span>}
               </>
             )}
           </div>
@@ -77,7 +77,7 @@ function Row({ h, spark }: { h: SourceHealth; spark: number[] }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="ticker text-[10px] uppercase tracking-[0.1em] text-muted">{TIER_BADGE[h.tier]}</div>
-          <div className="font-display text-2xl leading-none text-paper">{h.score}<span className="text-[12px] text-faint">/100</span></div>
+          <div className="font-display text-2xl leading-none text-ink">{h.score}<span className="text-[12px] text-faint">/100</span></div>
           <Spark days={spark} />
           {h.tier !== "disabled" && (
             <div className="mt-0.5 flex flex-col gap-1">
@@ -126,7 +126,7 @@ export default async function SourcesHealthPage() {
         </p>
         <div className="ticker mt-3 flex flex-wrap gap-3 text-[11px] uppercase tracking-[0.12em]">
           {TIER_ORDER.filter((t) => counts[t]).map((t) => (
-            <span key={t}>{TIER_BADGE[t]} <span className="text-paper">{counts[t]}</span></span>
+            <span key={t}>{TIER_BADGE[t]} <span className="text-ink">{counts[t]}</span></span>
           ))}
         </div>
       </div>

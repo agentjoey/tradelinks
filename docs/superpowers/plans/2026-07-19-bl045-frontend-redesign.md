@@ -80,7 +80,7 @@
   --c-calm: 79 209 197;
   --c-chip-bg: 232 180 74;
   --c-chip-ink: 8 9 12;
-  --c-eyebrow: 232 180 74 / 0.8;
+  --c-eyebrow: rgba(232, 180, 74, 0.8);
   --halo: radial-gradient(120% 80% at 50% -10%, rgba(232, 180, 74, 0.06), transparent 60%);
   --grid-line: rgba(233, 228, 217, 0.025);
   --grain-opacity: 0.04;
@@ -101,7 +101,7 @@
   --c-calm: 14 117 104;
   --c-chip-bg: 138 90 11;
   --c-chip-ink: 255 248 234;
-  --c-eyebrow: 138 90 11;
+  --c-eyebrow: #8A5A0B;
   --halo: radial-gradient(120% 80% at 50% -10%, rgba(138, 90, 11, 0.05), transparent 60%);
   --grid-line: rgba(27, 26, 22, 0.03);
   --grain-opacity: 0.025;
@@ -572,7 +572,7 @@ export function MainNav({
         </Link>
       ))}
       <DropdownMenu.Root modal={false}>
-        <DropdownMenu.Trigger className="text-faint outline-none transition-colors hover:text-ink data-[state=open]:text-ink">
+        <DropdownMenu.Trigger className="text-faint transition-colors hover:text-ink focus-visible:text-ink data-[state=open]:text-ink">
           {moreLabel} ▾
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -645,7 +645,7 @@ git commit -m "feat(BL-045): real More menu via Radix DropdownMenu + nav dict ke
 
 **Interfaces:**
 - Consumes: token classes from Task 1.
-- Produces: subscribe surfaces correct in both themes; form states `idle | loading | done | already | error`.
+- Produces: subscribe surfaces correct in both themes; form states `idle | loading | done | already | error` (`already` is defensive/dead today — API returns 200 by anti-enumeration design).
 
 - [ ] **Step 1: Rewrite `app/subscribe/page.tsx` body classes**
 
@@ -868,6 +868,8 @@ export function SignalCard({
   dek?: string;
   imageUrl?: string | null;
   foot?: ReactNode;
+  track?: { event: string; params?: Record<string, string | number | boolean | undefined | null> }; // GA event on click — renders via TrackedLink (new tab)
+  imageLayout?: "thumb" | "top"; // "top" = full-width 16:10 image block above the body (wire/radar variants)
 }) {
   const inner = (
     <>
@@ -1078,6 +1080,10 @@ export default function Loading() {
   );
 }
 ```
+
+Note: app/daily/loading.tsx was removed in a follow-up fix — with a loading boundary, dead /daily/[slug] URLs stream HTTP 200 (soft-404) instead of a true 404 status; true 404 wins over a list skeleton for the SEO asset.
+Note: app/loading.tsx (root) was removed in the same fix — the root boundary wraps /daily/[slug] too, so deleting only the daily file still soft-404s (verified on a production build). Consequence: the home page loses its loading skeleton; a route-group restructure (e.g. app/(home)/{page,loading}.tsx) could restore it without re-introducing the boundary above /daily.
+Note: Home skeleton restored via route group: app/page.tsx → app/(home)/page.tsx + app/(home)/loading.tsx (group does not wrap /daily).
 
 - [ ] **Step 3: Create the `error.tsx` files**
 
@@ -1421,6 +1427,8 @@ git add app/globals.css app/components/{UtcClock,WireTape,RadarGlyph,DiffusionAr
 git commit -m "feat(BL-045): Instrument Panel motion system (tape/clock/glyph/arc/entrance) + hero text fallback"
 ```
 
+Follow-up (owner walkthrough): restored spec-mandated sub-line rise @500ms + top-cluster stagger @450ms/70ms, RadarGlyph on home Radar section header, card-scan extended to home interactive cards. The mockup's 6s rail rotation was a demo — production animates only genuinely fresh (<15min) rows server-side; fake rotation of stale items is a non-goal.
+
 ### Task 15: Wire page polish
 
 **Files:**
@@ -1500,6 +1508,8 @@ git commit -m "feat(BL-045): radar page polish (glyph, mover diffusion arcs, boa
 - [ ] **Step 1: List page**
 
 PageHeader is already applied (Task 10). Align the date-bucket sticky headers with the Wire bucket style (read `app/wire/page.tsx` bucket header classes; apply the same `ticker text-label uppercase text-faint` + sticky classes). Replace any remaining arbitrary `text-[Npx]` with `text-label/meta/body/title`.
+
+Bucket-header idiom unified on BOTH pages: ticker text-label uppercase text-faint (wire's text-[11px] font-semibold text-ink converged to the same).
 
 - [ ] **Step 2: Detail page typography**
 

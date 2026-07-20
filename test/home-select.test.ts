@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cardMode, pickBreaking, topAlerts, pickHero, buildLatest } from "../app/lib/home";
+import { cardMode, pickBreaking, topAlerts, pickHero, buildLatest, isFresh } from "../app/lib/home";
 import type { AlertRow } from "../app/lib/alerts";
 
 const H = 3_600_000;
@@ -82,5 +82,20 @@ describe("buildLatest", () => {
   it("respects take n and handles empty inputs", () => {
     expect(buildLatest(alerts, viral, topics, 2).length).toBe(2);
     expect(buildLatest([], [], [], 8)).toEqual([]);
+  });
+});
+
+describe("isFresh", () => {
+  const now = 1_800_000_000_000;
+  it("true within the window", () => {
+    expect(isFresh(now - 5 * 60_000, now)).toBe(true);
+    expect(isFresh(now, now)).toBe(true);
+  });
+  it("false outside the window or in the future", () => {
+    expect(isFresh(now - 16 * 60_000, now)).toBe(false);
+    expect(isFresh(now + 60_000, now)).toBe(false);
+  });
+  it("respects a custom window", () => {
+    expect(isFresh(now - 2 * 3_600_000, now, 3_600_000)).toBe(false);
   });
 });
