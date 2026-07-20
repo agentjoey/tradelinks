@@ -51,6 +51,15 @@ Railway scraper（内网）◄───────┘ worker HTTP 调用
 - **组合 B（成本最优云方案）**：Fly worker ~$3.2 + HF scraper $0 + **Supabase $0（DB+Auth，见 §4）** ≈ **$3.2/月**。
 - **结论**：**推荐路径**。scraper 迁 HF 是无风险面的纯收益（无状态、Docker 就绪）；DB 是否迁 Supabase 取决于 §0 账单。
 
+#### 附：worker 能去 Supabase 或 HF 吗？（2026-07-19 补，结论：都不能，除非重写）
+
+| 平台 | 现状部署 | 重构适配 | 判定 |
+|---|---|---|---|
+| HF Spaces | ❌ 出站白名单（80/443/8080）挡死任何 PG `:5432`（Neon/Supabase 一样）；免费档无入站流量必睡眠；该网络策略对付费档同样生效 | 队列层改成全 HTTP（PostgREST/RPC）才可谈——那是重写 | **不适合，永远**（对无状态 HTTP 的 scraper 才合适） |
+| Supabase | ❌ 无常驻 Node 运行时；Edge Functions 是 **Deno**，免费档 **150s 墙钟 / 2s CPU / 256MB**（[limits](https://supabase.com/docs/guides/functions/limits)）——分钟级 LLM 管线（daily-note/x-tick）装不下，pg-boss/Prisma 的 Node 语义也不兼容 | 理论路径：`pg_cron + pg_net → Edge Functions + pgmq`（[Supabase Queues](https://supabase.com/docs/guides/queues) 存在），把常驻 worker 拆成定时短函数；代价 = 队列层重写（push→poll 语义）+ Deno 移植 + 长任务分段，收益仅省 Railway $5/月 | **MVP 阶段不划算** |
+
+worker 的现实归宿：**Railway（现状 $5）/ Fly（~$3.2）/ 本机常开（$0）** 三选一。
+
 ### 方向 4：本地方案
 
 #### 4a. 半本地（worker+scraper 本地，DB 留云）
