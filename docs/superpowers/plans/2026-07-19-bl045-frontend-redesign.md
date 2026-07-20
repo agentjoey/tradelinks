@@ -1081,6 +1081,9 @@ export default function Loading() {
 }
 ```
 
+Note: app/daily/loading.tsx was removed in a follow-up fix — with a loading boundary, dead /daily/[slug] URLs stream HTTP 200 (soft-404) instead of a true 404 status; true 404 wins over a list skeleton for the SEO asset.
+Note: app/loading.tsx (root) was removed in the same fix — the root boundary wraps /daily/[slug] too, so deleting only the daily file still soft-404s (verified on a production build). Consequence: the home page loses its loading skeleton; a route-group restructure (e.g. app/(home)/{page,loading}.tsx) could restore it without re-introducing the boundary above /daily.
+
 - [ ] **Step 3: Create the `error.tsx` files**
 
 `app/error.tsx` (and identically-shaped per-segment files with adjusted copy only if the segment warrants it — otherwise copy this file to `wire/`, `trends/`, `daily/`):
