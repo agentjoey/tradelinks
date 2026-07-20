@@ -35,7 +35,7 @@ export function MainNav({
         </Link>
       ))}
       <DropdownMenu.Root modal={false}>
-        <DropdownMenu.Trigger className="text-faint outline-none transition-colors hover:text-ink data-[state=open]:text-ink">
+        <DropdownMenu.Trigger className="text-faint transition-colors hover:text-ink focus-visible:text-ink data-[state=open]:text-ink">
           {moreLabel} ▾
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
