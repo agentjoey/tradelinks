@@ -2,7 +2,7 @@
 
 Change: BL-045 Frontend Redesign (systematic quality pass, 5 public surfaces)
 Surface Brief ID / revision / link: BL-045 Rev 1 — docs/superpowers/specs/2026-07-19-bl045-frontend-redesign-design.md
-Target commit / build: feat/frontend-redesign @ 6a91bfb
+Target commit / build: feat/frontend-redesign @ b8a3d5c
 Environment: local dev (prod DB, read-only) + headless Chrome evidence
 Tier and rationale: Tier 3 — core navigation (new mobile tab bar), main brand entry (home), site-wide visual layer (theming)
 
@@ -27,7 +27,7 @@ Branch / worktree: feat/frontend-redesign @ .worktrees/feat-frontend-redesign
 | Rollback plan / path | Ready | git revert + Vercel instant rollback; zero schema/data changes | |
 | Post-deploy smoke plan / result | Plan ready | T18 brief Step 6 checklist | |
 
-Review findings and disposition: per-task minors (see progress ledger .superpowers/sdd/progress.md). T18 dark-matrix findings: (1) raw hex `#4FD1C5` inline top-border in app/components/HeroLead.tsx:33 (no token equivalent in globals.css); (2) tierStyle `rail` hexes (#FF5A4D/#E8B44A/#5a5f6b) in app/components/alert-style.ts:17-19 still consumed for card top-stripes by HeroLead.tsx:68 and WireSection.tsx:43 — the brief's "should be gone after Task 9" exception is still present; both are token-discipline items, no visual defect in dark theme evidence.
+Review findings and disposition: per-task minors (see progress ledger .superpowers/sdd/progress.md). T18 dark-matrix findings — both token-discipline items are RESOLVED at HEAD (`b8a3d5c`): (1) raw hex `#4FD1C5` inline top-border in app/components/HeroLead.tsx and (2) tierStyle `rail` hexes (#FF5A4D/#E8B44A/#5a5f6b) in app/components/alert-style.ts were removed; raw-hex grep in app/**/*.tsx is now CLEAN. Final whole-branch review (agent-49): Ready to merge with fixes — skip-link added, SignalCard lazy-loading restored, record refreshed.
 Exceptions / deferrals: EN-only error.tsx copy (sanctioned); subscribe page EN-only (sanctioned); light-theme screenshots at walkthrough; mover arcs unverified on live data (all current prod movers spreadingTo:[]); trends stat tiles show 0 PRODUCTS TRACKED / 0 REGIONS (prod data state, not a layout defect)
 Human decisions: (walkthrough pending)
 Post-deploy result: (pending)

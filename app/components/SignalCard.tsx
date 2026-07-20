@@ -55,12 +55,12 @@ export function SignalCard({
         imageLayout === "top" ? (
           <span className="block aspect-[16/10] w-full overflow-hidden rounded-sm bg-surface2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
           </span>
         ) : (
           <span className="block h-[72px] w-[72px] shrink-0 overflow-hidden rounded-sm">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
           </span>
         )
       ) : null}
