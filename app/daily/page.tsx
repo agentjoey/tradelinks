@@ -44,8 +44,8 @@ export default async function DailyIndex() {
         <div className="space-y-8">
           {groups.map((g) => (
             <section key={g.key}>
-              <div className="ticker sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-canvas/85 px-1 py-1 backdrop-blur">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink">{fmtDate(g.date, lang)}</h2>
+              <div className="sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-canvas/85 px-1 py-1 backdrop-blur">
+                <h2 className="ticker text-label uppercase text-faint">{fmtDate(g.date, lang)}</h2>
                 <div className="h-px flex-1 bg-line" />
               </div>
               <div className="space-y-3">
@@ -53,13 +53,13 @@ export default async function DailyIndex() {
                   <Link
                     key={n.slug}
                     href={addLocale(`/daily/${n.slug}`, lang)}
-                    className={`block rounded-lg border border-line bg-surface/60 p-5 transition-colors hover:border-signal/40 border-l-2 ${n.kind === "roundup" ? "border-l-calm" : "border-l-signal"}`}
+                    className="block rounded-lg border border-line bg-surface/60 p-5 transition-colors hover:border-signal/40"
                   >
-                    <div className="ticker mb-1.5 text-[10px] uppercase tracking-[0.14em]">
+                    <div className="ticker mb-1.5 text-label uppercase">
                       <span className={n.kind === "roundup" ? "text-calm" : "text-signal"}>{n.kind === "roundup" ? t.kindRoundup : t.kindBrief}</span>
                     </div>
                     <h3 className="font-display text-xl leading-snug tracking-tight text-ink">{n.title}</h3>
-                    {n.dek && <p className="mt-1.5 text-[14px] leading-6 text-muted">{n.dek}</p>}
+                    {n.dek && <p className="mt-1.5 text-meta text-muted">{n.dek}</p>}
                   </Link>
                 ))}
               </div>

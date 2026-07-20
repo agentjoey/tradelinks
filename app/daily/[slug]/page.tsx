@@ -68,17 +68,17 @@ export default async function DailyNotePage({ params }: { params: Promise<{ slug
     <article className="mx-auto max-w-[42rem]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <Link href={addLocale("/daily", lang)} className="ticker text-[10px] uppercase tracking-[0.18em] text-faint hover:text-signal transition-colors">{t.dailyBackToAll}</Link>
+      <Link href={addLocale("/daily", lang)} className="ticker text-label uppercase text-faint hover:text-signal transition-colors">{t.dailyBackToAll}</Link>
 
-      <div className="mt-4 ticker flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-faint">
+      <div className="mt-4 ticker flex items-center gap-2 text-label uppercase text-faint">
         <span>{fmtDate(n.date, lang)}</span>
         <span className="text-line">·</span>
         <span className={n.kind === "roundup" ? "text-calm" : "text-signal"}>{n.kind === "roundup" ? t.kindRoundup : t.kindBrief}</span>
       </div>
 
-      <h1 className="mt-2 font-display text-[2.1rem] leading-[1.12] tracking-tight text-ink">{n.title}</h1>
-      {n.dek && <p className="mt-3 text-[17px] italic leading-7 text-muted">{n.dek}</p>}
-      <p className="mt-3 ticker text-[11px] uppercase tracking-[0.14em] text-faint">{t.dailyBy}</p>
+      <h1 className="mt-2 font-display text-headline text-ink">{n.title}</h1>
+      {n.dek && <p className="mt-3 text-lede italic text-muted">{n.dek}</p>}
+      <p className="mt-3 ticker text-label uppercase text-faint">{t.dailyBy}</p>
 
       <div className="mt-7 border-t border-line pt-2">
         <Markdown source={n.bodyMarkdown} />
@@ -86,19 +86,19 @@ export default async function DailyNotePage({ params }: { params: Promise<{ slug
 
       {n.keyTakeaways.length > 0 && (
         <div className="mt-8 rounded-lg border border-line bg-surface/60 p-5">
-          <div className="ticker mb-2 text-[10px] uppercase tracking-[0.16em] text-signal/80">{t.dailyTakeaways}</div>
-          <ul className="list-disc pl-5 text-[14.5px] text-muted marker:text-faint">
-            {n.keyTakeaways.map((k, i) => <li key={i} className="my-1 leading-6">{k}</li>)}
+          <div className="ticker mb-2 text-label uppercase text-signal/80">{t.dailyTakeaways}</div>
+          <ul className="list-disc pl-5 text-meta text-muted marker:text-faint">
+            {n.keyTakeaways.map((k, i) => <li key={i} className="my-1">{k}</li>)}
           </ul>
         </div>
       )}
 
       {n.citations.length > 0 && (
         <div className="mt-7">
-          <div className="ticker mb-2 text-[10px] uppercase tracking-[0.16em] text-faint">{t.dailySources}</div>
+          <div className="ticker mb-2 text-label uppercase text-faint">{t.dailySources}</div>
           <ul className="space-y-1.5">
             {n.citations.map((c, i) => (
-              <li key={i} className="text-[13.5px] leading-6">
+              <li key={i} className="text-meta">
                 <a href={c.url} target="_blank" rel="noopener nofollow" className="text-calm hover:text-signal transition-colors">{c.title} ↗</a>
               </li>
             ))}

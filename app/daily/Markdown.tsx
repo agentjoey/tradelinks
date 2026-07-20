@@ -24,17 +24,17 @@ export function Markdown({ source }: { source: string }) {
 
   const flushPara = () => {
     if (para.length) {
-      blocks.push(<p key={`p${blocks.length}`} className="my-4 leading-7 text-[15.5px] text-muted">{inline(para.join(" "), `p${blocks.length}`)}</p>);
+      blocks.push(<p key={`p${blocks.length}`} className="my-4 text-body text-muted">{inline(para.join(" "), `p${blocks.length}`)}</p>);
       para = [];
     }
   };
   const flushList = () => {
     if (list) {
-      const items = list.items.map((it, i) => <li key={i} className="my-1.5 leading-7">{inline(it, `li${blocks.length}-${i}`)}</li>);
+      const items = list.items.map((it, i) => <li key={i} className="my-1.5">{inline(it, `li${blocks.length}-${i}`)}</li>);
       blocks.push(
         list.ordered
-          ? <ol key={`l${blocks.length}`} className="my-4 list-decimal pl-5 text-[15.5px] text-muted marker:text-faint">{items}</ol>
-          : <ul key={`l${blocks.length}`} className="my-4 list-disc pl-5 text-[15.5px] text-muted marker:text-faint">{items}</ul>,
+          ? <ol key={`l${blocks.length}`} className="my-4 list-decimal pl-5 text-body text-muted marker:text-faint">{items}</ol>
+          : <ul key={`l${blocks.length}`} className="my-4 list-disc pl-5 text-body text-muted marker:text-faint">{items}</ul>,
       );
       list = null;
     }
@@ -50,8 +50,8 @@ export function Markdown({ source }: { source: string }) {
       const txt = h[2]!;
       blocks.push(
         h[1]!.length <= 2
-          ? <h2 key={`h${blocks.length}`} className="mt-8 mb-2 font-display text-2xl tracking-tight text-ink">{inline(txt, `h${blocks.length}`)}</h2>
-          : <h3 key={`h${blocks.length}`} className="mt-6 mb-2 font-display text-xl tracking-tight text-ink">{inline(txt, `h${blocks.length}`)}</h3>,
+          ? <h2 key={`h${blocks.length}`} className="mt-8 mb-2 font-display text-title text-ink">{inline(txt, `h${blocks.length}`)}</h2>
+          : <h3 key={`h${blocks.length}`} className="mt-6 mb-2 font-display text-lede font-semibold text-ink">{inline(txt, `h${blocks.length}`)}</h3>,
       );
       continue;
     }
