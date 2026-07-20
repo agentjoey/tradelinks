@@ -1507,6 +1507,8 @@ git commit -m "feat(BL-045): radar page polish (glyph, mover diffusion arcs, boa
 
 PageHeader is already applied (Task 10). Align the date-bucket sticky headers with the Wire bucket style (read `app/wire/page.tsx` bucket header classes; apply the same `ticker text-label uppercase text-faint` + sticky classes). Replace any remaining arbitrary `text-[Npx]` with `text-label/meta/body/title`.
 
+Bucket-header idiom unified on BOTH pages: ticker text-label uppercase text-faint (wire's text-[11px] font-semibold text-ink converged to the same).
+
 - [ ] **Step 2: Detail page typography**
 
 In `app/daily/[slug]/page.tsx`: replace arbitrary sizes with named steps (title→`text-headline`, meta→`text-meta`/`text-label`, body stays `text-body`). Keep JSON-LD/hreflang/takeaways/citations untouched. Keep `max-w-[42rem]` measure.

@@ -96,7 +96,7 @@ export default async function Wire({
           </div>
           <Link
             href={addLocale("/trends", lang)}
-            className="ticker inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
+            className="ticker inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-label uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
           >
             🔥 {t.bestsellersTeaser} →
           </Link>
@@ -122,7 +122,7 @@ export default async function Wire({
           {buckets.map((b) => (
             <section key={b.key}>
               <div className="sticky top-16 z-[5] -mx-1 mb-3 flex items-center gap-3 bg-canvas/85 px-1 py-1 backdrop-blur">
-                <h2 className="ticker text-[11px] font-semibold uppercase tracking-[0.22em] text-ink">{b.label}</h2>
+                <h2 className="ticker text-label uppercase text-faint">{b.label}</h2>
                 <span className="ticker text-[10px] text-faint">{b.rows.length}</span>
                 <div className="h-px flex-1 bg-line" />
               </div>
