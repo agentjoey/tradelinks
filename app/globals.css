@@ -68,6 +68,12 @@
   ::selection {
     background: rgba(232, 180, 74, 0.28);
   }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-signal));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
 }
 
 @layer utilities {

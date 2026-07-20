@@ -2,6 +2,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 const KEY = "tl_sub_dismissed";
+// Same key the cookie-consent banner (Analytics.tsx) writes. While consent is
+// undecided (key absent), this bar stays hidden so the two fixed bars never collide.
+const CONSENT_KEY = "tl_consent";
 
 /** Floating, dismissible bottom bar for non-subscribed visitors. Wired to the
  * BL-043 email subscribe endpoint (double opt-in). */
@@ -12,6 +15,8 @@ export function SubscribeBar({ title, sub, cta }: { title: string; sub: string; 
 
   useEffect(() => {
     try {
+      const consent = localStorage.getItem(CONSENT_KEY);
+      if (consent !== "granted" && consent !== "denied") return; // banner up: yield
       if (localStorage.getItem(KEY) !== "1") setShow(true);
     } catch {
       setShow(true);
