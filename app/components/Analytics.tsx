@@ -57,7 +57,7 @@ export function Analytics() {
   if (decided !== false) return null;
   const c = COPY[lang];
   return (
-    <div className="fixed inset-x-3 bottom-3 z-40 mx-auto flex max-w-[44rem] flex-col gap-3 rounded-lg border border-line bg-surface/95 p-3.5 shadow-lg backdrop-blur sm:flex-row sm:items-center">
+    <div className="fixed inset-x-3 bottom-16 md:bottom-3 z-40 mx-auto flex max-w-[44rem] flex-col gap-3 rounded-lg border border-line bg-surface/95 p-3.5 shadow-lg backdrop-blur sm:flex-row sm:items-center">
       <p className="flex-1 text-[12px] leading-relaxed text-muted">{c.msg}</p>
       <div className="flex shrink-0 gap-2">
         <button onClick={decline} className="ticker rounded-md border border-line px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:border-ink/30 hover:text-ink">{c.decline}</button>

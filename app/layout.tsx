@@ -4,6 +4,7 @@ import { Fraunces, Schibsted_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { getDict } from "./lib/i18n";
 import { Analytics } from "./components/Analytics";
 import { MainNav } from "./components/MainNav";
+import { MobileTabBar } from "./components/MobileTabBar";
 import { AccountNav } from "./components/AccountNav";
 import { ThemeToggle } from "./components/ThemeToggle";
 import "./globals.css";
@@ -109,12 +110,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
 
-          <main className="mx-auto max-w-[88rem] px-5 sm:px-8 py-8">{children}</main>
+          <main className="mx-auto max-w-[88rem] px-5 sm:px-8 py-8 pb-24 md:pb-8">{children}</main>
 
           <footer className="mx-auto max-w-[88rem] px-5 sm:px-8 py-10 mt-6 border-t border-line flex flex-wrap items-center justify-between gap-3">
             <p className="ticker text-[10px] uppercase tracking-[0.2em] text-faint">{t.footer}</p>
             <a href="/feed.xml" className="ticker text-[10px] uppercase tracking-[0.2em] text-faint transition-colors hover:text-signal">RSS</a>
           </footer>
+          <MobileTabBar lang={lang} labels={{ home: t.nav.home, wire: t.nav.wire, radar: t.nav.radar, daily: t.nav.daily }} />
         </div>
         <Analytics />
       </body>

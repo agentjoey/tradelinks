@@ -49,7 +49,7 @@ export function SubscribeBar({ title, sub, cta }: { title: string; sub: string; 
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40">
+    <div className="fixed inset-x-0 bottom-0 z-40 hidden md:block">
       <div className="relative mx-auto m-3 max-w-3xl rounded-lg border border-signal/40 bg-surface2/95 px-4 py-3 shadow-2xl shadow-black/50 backdrop-blur sm:m-4">
         <button
           onClick={dismiss}
