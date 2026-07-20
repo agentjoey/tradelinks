@@ -87,7 +87,7 @@ export default async function TrendsPage() {
                   foot={
                     <>
                       <span className="block text-meta leading-relaxed text-muted">{m.whyNow}</span>
-                      <span className="block text-meta leading-relaxed text-ink/90">{m.soWhat}</span>
+                      <span className="mt-1.5 block text-meta leading-relaxed text-ink/90">{m.soWhat}</span>
                     </>
                   }
                 />

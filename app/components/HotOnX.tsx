@@ -24,7 +24,8 @@ export function HotOnX({
           {topics.map((x, i) => (
             <SignalCard
               key={x.link + i}
-              href={x.link} external tone="calm"
+              href={x.link} tone="calm"
+              track={{ event: "hot_topic_open", params: { topic: x.headline, category: x.category, author: x.author } }}
               tierLabel={x.category}
               meta={`${x.author ? `@${x.author.replace(/^@/, "")} · ` : ""}♥ ${x.likes.toLocaleString()}`}
               title={x.headline}

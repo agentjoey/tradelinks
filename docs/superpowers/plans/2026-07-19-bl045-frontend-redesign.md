@@ -868,6 +868,8 @@ export function SignalCard({
   dek?: string;
   imageUrl?: string | null;
   foot?: ReactNode;
+  track?: { event: string; params?: Record<string, string | number | boolean | undefined | null> }; // GA event on click — renders via TrackedLink (new tab)
+  imageLayout?: "thumb" | "top"; // "top" = full-width 16:10 image block above the body (wire/radar variants)
 }) {
   const inner = (
     <>

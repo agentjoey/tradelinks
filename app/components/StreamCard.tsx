@@ -10,19 +10,23 @@ const proxied = (u: string) => `/api/img-proxy?u=${encodeURIComponent(u)}`;
 const toneOf = (score: number): SignalTone => (score >= 4 ? "urgent" : score >= 2 ? "signal" : "neutral");
 
 /** Wire alert card (top-of-band). Same props as before; markup now lives in
- * SignalCard — tier chip + meta + title + thumbnail. */
+ * SignalCard — tier chip + meta + title + image-forward top block (16:10,
+ * as the pre-unification card). */
 export function WireCard({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
   const u = tierStyle(a.urgencyScore, tiers);
   const href = a.sourceUrls[0] ?? "#";
+  const src = domainOf(href);
   const meta = [
     CAT_LABEL[a.category] ?? a.category,
     ...a.regions.map((r) => REGION_LABEL[r] ?? r),
-    domainOf(href),
+    src,
     hhmm(a.publishedAt ?? a.createdAt),
   ].filter((s): s is string => !!s).join(" · ");
   return (
     <SignalCard
-      href={href} external
+      href={href}
+      track={{ event: "alert_open", params: { alert_title: a.title, alert_category: a.category, alert_region: a.regions[0], source: src } }}
+      imageLayout="top"
       tierLabel={u.label} tone={toneOf(a.urgencyScore)}
       meta={meta} title={a.title}
       imageUrl={a.imageUrl ? proxied(a.imageUrl) : null}
@@ -30,11 +34,13 @@ export function WireCard({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
   );
 }
 
-/** Radar product card: rank chip + platform/metric meta. */
+/** Radar product card: rank chip + platform/metric meta, image-forward top block. */
 export function RadarCard({ p }: { p: ProductCard }) {
   return (
     <SignalCard
-      href={p.url} external
+      href={p.url}
+      track={{ event: "bestseller_open", params: { product_title: p.title, product_platform: p.platform, product_region: p.region } }}
+      imageLayout="top"
       tierLabel={p.rank != null ? `#${p.rank}` : undefined}
       meta={`${p.platform} · ${p.metric}${p.region ? ` · ${REGION_LABEL[p.region] ?? p.region}` : ""}`}
       title={p.title}
