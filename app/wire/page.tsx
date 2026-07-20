@@ -6,6 +6,7 @@ import { localizeAlerts } from "../lib/i18n-content";
 import { bucketAlerts } from "../lib/buckets";
 import { AlertCard } from "../components/AlertCard";
 import { Filters } from "../components/Filters";
+import { PageHeader } from "../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -28,26 +29,28 @@ export default async function Wire({
   let idx = 0;
   return (
     <div>
-      <div className="mb-7">
-        <div className="ticker flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-faint mb-3">
-          <span className="inline-flex items-center gap-1.5 text-calm">
-            <span className="h-1.5 w-1.5 rounded-full bg-calm animate-pulse-bar" /> {t.live}
-          </span>
-          <span>·</span>
-          <span>{items.length} {t.dispatches}</span>
-          {live > 0 && <><span>·</span><span className="text-urgent">{live} {t.actNow}</span></>}
+      <PageHeader
+        eyebrow={t.eyebrow}
+        title={<>{t.heroPre}<span className="italic text-signal">{t.heroEm}</span>{t.heroPost}</>}
+        sub={t.heroSub}
+      >
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="ticker flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-faint">
+            <span className="inline-flex items-center gap-1.5 text-calm">
+              <span className="h-1.5 w-1.5 rounded-full bg-calm animate-pulse-bar" /> {t.live}
+            </span>
+            <span>·</span>
+            <span>{items.length} {t.dispatches}</span>
+            {live > 0 && <><span>·</span><span className="text-urgent">{live} {t.actNow}</span></>}
+          </div>
+          <Link
+            href={addLocale("/trends", lang)}
+            className="ticker inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
+          >
+            🔥 {t.bestsellersTeaser} →
+          </Link>
         </div>
-        <h1 className="font-display text-4xl sm:text-5xl leading-[1.05] tracking-tight max-w-2xl">
-          {t.heroPre}<span className="italic text-signal">{t.heroEm}</span>{t.heroPost}
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted">{t.heroSub}</p>
-        <Link
-          href={addLocale("/trends", lang)}
-          className="ticker mt-4 inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/[0.06] px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-signal transition-colors hover:border-signal/60 hover:bg-signal/10"
-        >
-          🔥 {t.bestsellersTeaser} →
-        </Link>
-      </div>
+      </PageHeader>
 
       <Filters region={sp.region} category={sp.category} t={t} />
 

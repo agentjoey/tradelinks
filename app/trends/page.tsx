@@ -5,6 +5,7 @@ import { getDict } from "../lib/i18n";
 import { CAT_LABEL, REGION_LABEL } from "../lib/labels";
 import { BestsellersBoard } from "./BestsellersBoard";
 import { SignalCard } from "../components/SignalCard";
+import { PageHeader } from "../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,13 +48,11 @@ export default async function TrendsPage() {
 
   return (
     <div>
-      <div className="mb-7">
-        <div className="ticker text-[10px] uppercase tracking-[0.2em] text-signal/80 mb-2">{t.radarEyebrow}</div>
-        <h1 className="font-display text-4xl leading-[1.05] tracking-tight">
-          {t.radarPre}<span className="italic text-signal">{t.radarEm}</span>.
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] text-muted">{t.radarSub}</p>
-      </div>
+      <PageHeader
+        eyebrow={t.radarEyebrow}
+        title={<>{t.radarPre}<span className="italic text-signal">{t.radarEm}</span>.</>}
+        sub={t.radarSub}
+      />
 
       {/* KPI strip */}
       <div className="mb-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
