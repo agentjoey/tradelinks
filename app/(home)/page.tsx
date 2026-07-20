@@ -1,15 +1,15 @@
-import { getDict } from "./lib/i18n";
-import { addLocale } from "./lib/locale";
-import { getHomeData } from "./lib/home-data";
-import { HeroLead } from "./components/HeroLead";
-import { SecondaryHighlights } from "./components/SecondaryHighlights";
-import { LatestRail } from "./components/LatestRail";
-import { WireSection } from "./components/WireSection";
-import { RadarSection } from "./components/RadarSection";
-import { HotOnX } from "./components/HotOnX";
-import { DailyCard } from "./components/StreamCard";
-import { SectionHeader } from "./components/SectionHeader";
-import { SubscribeBar } from "./components/SubscribeBar";
+import { getDict } from "../lib/i18n";
+import { addLocale } from "../lib/locale";
+import { getHomeData } from "../lib/home-data";
+import { HeroLead } from "../components/HeroLead";
+import { SecondaryHighlights } from "../components/SecondaryHighlights";
+import { LatestRail } from "../components/LatestRail";
+import { WireSection } from "../components/WireSection";
+import { RadarSection } from "../components/RadarSection";
+import { HotOnX } from "../components/HotOnX";
+import { DailyCard } from "../components/StreamCard";
+import { SectionHeader } from "../components/SectionHeader";
+import { SubscribeBar } from "../components/SubscribeBar";
 
 export const dynamic = "force-dynamic";
 
