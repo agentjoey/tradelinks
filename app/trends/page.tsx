@@ -6,6 +6,7 @@ import { CAT_LABEL, REGION_LABEL } from "../lib/labels";
 import { BestsellersBoard } from "./BestsellersBoard";
 import { SignalCard } from "../components/SignalCard";
 import { PageHeader } from "../components/PageHeader";
+import { EmptyState } from "../components/EmptyState";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -101,7 +102,7 @@ export default async function TrendsPage() {
         <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.bestsellers}</h2>
         <p className="mb-4 max-w-xl text-[13px] text-muted">{t.bestsellersSub}</p>
         {bestsellers.length === 0 ? (
-          <p className="text-sm text-muted">{t.bestsellersEmpty}</p>
+          <EmptyState title={t.bestsellersEmpty} />
         ) : (
           <BestsellersBoard items={bestsellers} />
         )}
@@ -112,7 +113,7 @@ export default async function TrendsPage() {
         <h2 className="ticker mb-1 text-[10px] uppercase tracking-[0.2em] text-signal/80">{t.viralX}</h2>
         <p className="mb-4 max-w-xl text-[13px] text-muted">{t.viralXSub}</p>
         {viralX.length === 0 ? (
-          <p className="text-sm text-muted">{t.viralXEmpty}</p>
+          <EmptyState title={t.viralXEmpty} />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {viralX.map((x, i) => (

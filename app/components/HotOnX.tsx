@@ -1,5 +1,6 @@
 import type { HotTopicXRow } from "../../src/social/db.js";
 import { SectionHeader } from "./SectionHeader";
+import { EmptyState } from "./EmptyState";
 import { SignalCard } from "./SignalCard";
 
 /** Hot on X = text-forward discussion cards giving the X hot-topics track a home
@@ -18,7 +19,7 @@ export function HotOnX({
     <section className="mb-12">
       <SectionHeader accent="bg-calm" title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
       {topics.length === 0 ? (
-        <p className="rounded-lg border border-line bg-surface/60 px-5 py-8 text-center text-sm text-muted">{emptyLabel}</p>
+        <EmptyState title={emptyLabel} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topics.map((x, i) => (

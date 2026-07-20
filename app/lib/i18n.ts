@@ -28,6 +28,7 @@ export interface Dict {
   last4h: string;
   last8h: string;
   empty: string;
+  emptyReset: string;
   loadEarlier: string;
   footer: string;
   // urgency tiers
@@ -122,6 +123,7 @@ const en: Dict = {
   last4h: "Last 4 hours",
   last8h: "Last 8 hours",
   empty: "no dispatches match this filter",
+  emptyReset: "Reset filters",
   loadEarlier: "load earlier ↓",
   footer: "TradeLinks · 6-region cross-border intelligence · alerts are summaries — verify at source",
   tierAct: "Act now",
@@ -212,6 +214,7 @@ const zh: Dict = {
   last4h: "最近 4 小时",
   last8h: "最近 8 小时",
   empty: "没有符合该筛选的情报",
+  emptyReset: "重置筛选",
   loadEarlier: "加载更早 ↓",
   footer: "TradeLinks · 六大区跨境情报 · 预警为摘要 —— 请以原文为准",
   tierAct: "立即行动",

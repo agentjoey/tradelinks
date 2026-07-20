@@ -7,6 +7,7 @@ import { bucketAlerts } from "../lib/buckets";
 import { AlertCard } from "../components/AlertCard";
 import { Filters } from "../components/Filters";
 import { PageHeader } from "../components/PageHeader";
+import { EmptyState } from "../components/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +56,17 @@ export default async function Wire({
       <Filters region={sp.region} category={sp.category} t={t} />
 
       {items.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="ticker text-[11px] uppercase tracking-[0.2em] text-faint">{t.empty}</p>
-        </div>
+        <EmptyState
+          title={t.empty}
+          action={
+            <Link
+              className="ticker rounded-full border border-linestrong px-3 py-1.5 text-label uppercase text-muted hover:border-signal hover:text-signal"
+              href={addLocale("/wire", lang)}
+            >
+              {t.emptyReset}
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-8">
           {buckets.map((b) => (

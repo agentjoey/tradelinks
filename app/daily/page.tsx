@@ -3,6 +3,7 @@ import { getPublishedNotes } from "../../src/daily/db.js";
 import { getDict } from "../lib/i18n";
 import { addLocale } from "../lib/locale";
 import { PageHeader } from "../components/PageHeader";
+import { EmptyState } from "../components/EmptyState";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export default async function DailyIndex() {
       />
 
       {notes.length === 0 ? (
-        <p className="rounded-lg border border-line bg-surface/60 px-5 py-8 text-center text-sm text-faint">{t.dailyEmpty}</p>
+        <EmptyState title={t.dailyEmpty} />
       ) : (
         <div className="space-y-8">
           {groups.map((g) => (
