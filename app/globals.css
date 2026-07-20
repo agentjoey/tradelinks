@@ -98,6 +98,8 @@
   .li { display: inline-block; white-space: pre-wrap; /* keep locale fragment edge spaces (EN pre ends with one) */ animation: line-up 0.7s cubic-bezier(0.16,1,0.3,1) both; }
   .li-d2 { animation-delay: 0.09s; }
   .focus-in { animation: focus-in 0.9s cubic-bezier(0.25,1,0.5,1) 0.38s both; }
+  .masthead .sub { animation: rise 0.55s cubic-bezier(0.16,1,0.3,1) 0.5s both; }
+  .top-cluster > * { animation: rise 0.55s cubic-bezier(0.16,1,0.3,1) both; animation-delay: calc(0.45s + var(--i, 0) * 70ms); }
 
   /* ② wire tape */
   .tape { border-top: 1px solid var(--c-line); border-bottom: 1px solid var(--c-line); background: color-mix(in srgb, rgb(var(--c-surface)) 72%, transparent); }

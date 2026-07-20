@@ -35,12 +35,12 @@ export default async function Home() {
         <WireTape items={latest} liveLabel={t.live} />
       </div>
 
-      <div className="mb-7">
+      <div className="masthead mb-7">
         <h1 className="font-display text-[26px] leading-tight tracking-tight text-ink sm:text-[31px]">
           <span className="lm"><span className="li">{t.homeMastheadPre}</span></span>
           <span className="lm"><span className="li li-d2"><em className="focus-in italic text-signal">{t.homeMastheadEm}</em>{t.homeMastheadPost}</span></span>
         </h1>
-        <p className="mt-2 max-w-2xl text-[14.5px] text-muted">{t.homeMastheadSub}</p>
+        <p className="sub mt-2 max-w-2xl text-[14.5px] text-muted">{t.homeMastheadSub}</p>
       </div>
 
       <div className="ticker mb-4 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-faint">
@@ -49,7 +49,7 @@ export default async function Home() {
       </div>
 
       {/* top cluster: hero + 2 secondary highlights + live Latest rail */}
-      <section className="mb-12 grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <section className="top-cluster mb-12 grid grid-cols-1 gap-5 lg:grid-cols-12">
         <HeroLead
           hero={hero} tiers={tiers} topStoryLabel={t.topStory}
           briefLabel={t.kindBrief} roundupLabel={t.kindRoundup} byLabel={t.dailyBy} lang={lang}

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { AlertRow } from "../lib/alerts";
 import { TrackedLink } from "./TrackedLink";
 import { tierStyle, CAT_LABEL, REGION_LABEL, domainOf, type Tiers } from "./alert-style";
@@ -8,7 +9,7 @@ const proxied = (u: string) => `/api/img-proxy?u=${encodeURIComponent(u)}`;
  * headline, stretched (flex-1) to match the hero height. */
 export function SecondaryHighlights({ alerts, tiers }: { alerts: AlertRow[]; tiers: Tiers }) {
   return (
-    <div className="flex flex-col gap-4 lg:col-span-3">
+    <div className="flex flex-col gap-4 lg:col-span-3" style={{ "--i": 1 } as CSSProperties}>
       {alerts.map((a) => {
         const u = tierStyle(a.urgencyScore, tiers);
         const href = a.sourceUrls[0] ?? "#";
@@ -18,7 +19,7 @@ export function SecondaryHighlights({ alerts, tiers }: { alerts: AlertRow[]; tie
           <TrackedLink
             key={a.id} href={href} event="alert_open"
             params={{ alert_title: a.title, alert_category: a.category, alert_region: a.regions[0], source: src }}
-            className="group flex flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40"
+            className="card-scan group flex flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40"
           >
             {img && (
               <div className="aspect-[16/9] shrink-0 bg-surface2">

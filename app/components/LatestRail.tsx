@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { LatestItem, LatestKind } from "../lib/home";
 import { isFresh } from "../lib/home";
 import { hhmm } from "./alert-style";
@@ -19,7 +20,7 @@ export function LatestRail({
   kindLabels: Record<LatestKind, string>;
 }) {
   return (
-    <aside className="flex flex-col rounded-lg border border-line bg-surface/40 lg:col-span-3">
+    <aside className="flex flex-col rounded-lg border border-line bg-surface/40 lg:col-span-3" style={{ "--i": 2 } as CSSProperties}>
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="ticker flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-ink">
           <span className="relative flex h-2 w-2">

@@ -1427,6 +1427,8 @@ git add app/globals.css app/components/{UtcClock,WireTape,RadarGlyph,DiffusionAr
 git commit -m "feat(BL-045): Instrument Panel motion system (tape/clock/glyph/arc/entrance) + hero text fallback"
 ```
 
+Follow-up (owner walkthrough): restored spec-mandated sub-line rise @500ms + top-cluster stagger @450ms/70ms, RadarGlyph on home Radar section header, card-scan extended to home interactive cards. The mockup's 6s rail rotation was a demo — production animates only genuinely fresh (<15min) rows server-side; fake rotation of stale items is a non-goal.
+
 ### Task 15: Wire page polish
 
 **Files:**

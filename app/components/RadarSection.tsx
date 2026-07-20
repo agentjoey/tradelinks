@@ -1,5 +1,6 @@
 import type { ProductCard } from "../lib/home-data";
 import { SectionHeader } from "./SectionHeader";
+import { RadarGlyph } from "./RadarGlyph";
 import { RadarCard } from "./StreamCard";
 import { TrackedLink } from "./TrackedLink";
 import { REGION_LABEL } from "./alert-style";
@@ -20,7 +21,7 @@ export function RadarSection({
 }) {
   return (
     <section className="mb-12">
-      <SectionHeader accent="bg-signal" title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
+      <SectionHeader accent="bg-signal" tick={<RadarGlyph />} title={title} sublabel={sublabel} href={href} seeAllLabel={seeAllLabel} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         {leader && <Leader p={leader} />}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-8">
@@ -35,7 +36,7 @@ function Leader({ p }: { p: ProductCard }) {
   return (
     <TrackedLink href={p.url} event="bestseller_open"
       params={{ product_title: p.title, product_platform: p.platform, product_region: p.region }}
-      className="group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-4"
+      className="card-scan group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-4"
     >
       <div className="relative aspect-square bg-surface2">
         {p.imageUrl ? (

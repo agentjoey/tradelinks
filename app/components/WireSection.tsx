@@ -39,7 +39,7 @@ function Featured({ a, tiers }: { a: AlertRow; tiers: Tiers }) {
   const img = a.imageUrl && a.imageUrl.trim() !== "" ? a.imageUrl : null;
   return (
     <TrackedLink href={href} event="alert_open" params={trackParams(a)}
-      className="group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-5"
+      className="card-scan group overflow-hidden rounded-lg border border-line bg-surface/70 transition-colors hover:border-signal/40 lg:col-span-5"
     >
       {img && (
         <div className="aspect-[16/10] bg-surface2">
