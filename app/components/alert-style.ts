@@ -6,14 +6,7 @@ export function domainOf(url?: string): string | undefined {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return undefined; }
 }
 
-export const CAT_LABEL: Record<string, string> = {
-  regulatory: "REGULATORY", platform_policy: "PLATFORM", logistics: "LOGISTICS",
-  trend: "TREND", industry: "INDUSTRY", tip: "TIP",
-};
-export const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
+export { CAT_LABEL, REGION_LABEL } from "../lib/labels";
 
 export interface Tiers { act: string; watch: string; fyi: string }
 export interface TierStyle { label: string; pill: string; dot: string; rail: string; accent: string }

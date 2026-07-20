@@ -1,13 +1,9 @@
 import { listPending } from "../../../src/alerts/review.js";
 import { approve, reject } from "./actions";
+import { REGION_LABEL } from "../../lib/labels";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
 
 export default async function ReviewPage() {
   const pending = await listPending();

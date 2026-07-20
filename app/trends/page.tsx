@@ -2,15 +2,12 @@ import { getTrendsView, getBestsellers, getRadarKpis, getMovers } from "../../sr
 import { getViralX, getHotTopicsX } from "../../src/social/db.js";
 import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
 import { getDict } from "../lib/i18n";
+import { REGION_LABEL } from "../lib/labels";
 import { BestsellersBoard } from "./BestsellersBoard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
 const REGION_ORDER = ["north_america", "europe", "middle_east", "australia_nz", "southeast_asia", "latin_america"];
 
 function Kpi({ n, label, spark }: { n: number; label: string; spark?: number[] }) {

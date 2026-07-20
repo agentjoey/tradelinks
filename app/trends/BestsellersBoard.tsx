@@ -2,11 +2,8 @@
 import { useMemo, useState } from "react";
 import type { BestsellerRow } from "../../src/trends/db";
 import { track } from "../lib/track";
+import { REGION_LABEL } from "../lib/labels";
 
-const REGION_LABEL: Record<string, string> = {
-  north_america: "NA", europe: "EU", southeast_asia: "SEA",
-  middle_east: "ME", latin_america: "LATAM", australia_nz: "ANZ",
-};
 const REGION_FULL: Record<string, string> = {
   north_america: "North America", europe: "Europe", southeast_asia: "SE Asia",
   middle_east: "Middle East", latin_america: "Latin America", australia_nz: "Australia / NZ",
