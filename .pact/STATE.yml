@@ -52,3 +52,10 @@ features:
         spec: .pact/tasks/phase1-foundation-immutable-publication.md
         evidence: null
         deps: [canonicalization]
+      - id: coverage-readiness
+        owner: kimi
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-foundation-coverage-readiness.md
+        evidence: null
+        deps: [immutable-publication]
