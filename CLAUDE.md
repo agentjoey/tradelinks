@@ -45,21 +45,28 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 - Neon needs TWO urls (ADR-003): `DATABASE_URL` (pooled, runtime) + `DIRECT_URL` (direct, migrations). Migrations can't run over the transaction pooler.
 - pg-boss (queue) also uses `DIRECT_URL`, not the pooled url (ADR-004). It creates a `pgboss` schema on first start.
 - Scheduling: pg-boss schedule is one-cron-per-queue, so a per-minute `scheduler-tick` fans out crawl jobs via cron-parser `isDue()` per source (not 25 separate schedules).
-- **Single environment (MVP):** "dev" = the local repo only; GitHub/Vercel/Railway/Neon are **production only**. The Neon project has a single `production` branch, and local `.env` `DATABASE_URL`/`DIRECT_URL` point **straight at production** — so local scripts that write (translations, backfills) write to prod. Unit tests stay DB-free. A multi-env split comes only if/when this graduates from MVP.
+- **Environments:**
+  - **Neon `dev` branch** is the local default; `.env` now points `DATABASE_URL`/`DIRECT_URL` to `dev`. Local `pnpm dev`, `pnpm worker`, and scripts write to dev by default.
+  - **Neon `production` branch** is used by Vercel Production and Railway workers. Connecting to prod is a deliberate action via `.env.production`.
+  - **Vercel Preview** (PR/branch deployments) should point to the Neon `dev` branch; set Preview-scope env vars in the Vercel Dashboard.
+  - **Railway** remains production-only; there is no hosted dev worker/scraper (run them locally on demand).
+  - Dev defaults have destructive switches OFF: `X_ENABLED=false`, `CHANNEL_PUSH_ENABLED=false`, `TRANSLATE_ENABLED=false`, `DAILY_NOTE_AUTOPUBLISH=false`. Enable individually when testing the full pipeline.
+  - Production operations: `pnpm db:migrate:prod` or `dotenv -e .env.production -- pnpm tsx scripts/xxx.ts`.
 - Sources with login walls (Amazon SC, Temu) captured via secondary media sources only — never scrape authenticated sessions
 
 ## Dev Commands
 ```bash
-pnpm dev          # start Next.js dev server (port 3000)
-pnpm worker       # start pg-boss worker process (scheduler+crawl+ingest+process)
-pnpm db:migrate   # run Prisma migrations
-pnpm db:studio    # open Prisma Studio
-pnpm test         # vitest
+pnpm dev              # start Next.js dev server (port 3000)
+pnpm worker           # start pg-boss worker process (scheduler+crawl+ingest+process)
+pnpm db:migrate       # run Prisma migrations against Neon dev (uses .env)
+pnpm db:migrate:prod  # run Prisma migrations against Neon production (uses .env.production)
+pnpm db:studio        # open Prisma Studio
+pnpm test             # vitest
 ./scripts/release.sh patch|minor|major
 ```
 
 ## 前端变更工作流（BL-045 起）
-前端用户可见变更一律走 `/Users/xtation/Playground/frontend-harness-workflow.md`（v3.1）：
+前端用户可见变更一律先调用 `frontend-harness` Skill（原 `frontend-harness-workflow.md` 现由该 Skill 内部管理，不再作为运行时直接引用来源）；本项目在通用流程基础上的补充约定：
 - **分级**：T1 小改 / T2 功能 / T3 新页面或高风险（核心导航、品牌入口、全站视觉层 → 必为 T3）；命中多级取最高
 - **流程**：brainstorm → spec（`docs/superpowers/specs/`）→ HTML mockup（`design/`，Chrome headless 截图迭代）→ plan（`docs/superpowers/plans/`）→ SDD 执行 → 验证记录（`docs/superpowers/verification/`）
 - **SDD 执行惯例**：`.worktrees/<branch>` 隔离（`cp .env` + `pnpm install` + `pnpm db:gen` + 基线测试先行）；每任务 = 实现子代理 + spec/质量双审子代理；finding → 修复波 + 复审；全部任务后跑全分支终审；进度账本 `.superpowers/sdd/progress.md`（gitignored）

@@ -1,6 +1,6 @@
 # TradeLinks — Deployment Guide
 
-> Last updated: 2026-06-04 v0.5.x | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
+> Last updated: 2026-07-21 v0.12.x | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
 
 ## Stack Overview
 
@@ -18,9 +18,13 @@ share Neon. Deploying Vercel does NOT deploy the worker (separate `railway up`).
 1. Import `agentjoey/tradelinks-mvp` into Vercel (framework auto-detected: Next.js).
 2. Build command is pinned in `vercel.json`: `prisma generate && next build`
    (Prisma client must be generated at build — verified locally).
-3. Set Environment Variables (Production):
-   - `DATABASE_URL` — Neon **pooled** url; append `&connection_limit=1` for
-     serverless functions (each lambda holds its own tiny pool).
+3. Set Environment Variables by Vercel scope:
+   - **Production:** `DATABASE_URL` → Neon **production** branch pooled URL;
+     append `&connection_limit=1` for serverless functions.
+   - **Preview:** `DATABASE_URL` → Neon **dev** branch pooled URL, so PR/branch
+     previews are isolated from production data.
+   - **Development:** `DATABASE_URL` → Neon **dev** branch pooled URL (for
+     `vercel dev`).
    - `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`/`SLACK_WEBHOOK_URL` — only if you
      want approve-on-Desk to push (server action calls dispatchPush). Optional.
    - (The app does NOT need AI keys — classification/scoring run on the worker.)
@@ -35,8 +39,10 @@ share Neon. Deploying Vercel does NOT deploy the worker (separate `railway up`).
 
 ```bash
 # Postgres (Neon) — TWO urls required
-DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/tradelinks?sslmode=require&pgbouncer=true
-DIRECT_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/tradelinks?sslmode=require  # also used by pg-boss
+#   DATABASE_URL = pooled (host contains "-pooler"), used by Next.js + worker runtime
+#   DIRECT_URL   = direct (no "-pooler"), used by Prisma migrations + pg-boss
+DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/tradelinks?sslmode=require&pgbouncer=true&connection_limit=1
+DIRECT_URL=postgresql://user:pass@ep-xxx.region.aws.neon.tech/tradelinks?sslmode=require
 
 # AI
 DEEPSEEK_API_KEY=...
@@ -48,9 +54,16 @@ SCRAPER_SERVICE_URL=https://tradelinks-scraper.up.railway.app
 # (Sprint 003+) Email / Push / Auth / Stripe
 RESEND_API_KEY=...
 TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
 SLACK_SIGNING_SECRET=...
 NEXTAUTH_SECRET=...
 STRIPE_SECRET_KEY=...
+
+# Dev-only safety switches (default OFF in .env, ON in .env.production)
+X_ENABLED=false
+CHANNEL_PUSH_ENABLED=false
+TRANSLATE_ENABLED=false
+DAILY_NOTE_AUTOPUBLISH=false
 ```
 
 ## Neon Setup
@@ -58,22 +71,47 @@ STRIPE_SECRET_KEY=...
 1. Create Neon project → DB `tradelinks`.
 2. Copy **pooled** connection string (host has `-pooler`) → `DATABASE_URL`.
 3. Copy **direct** connection string (no `-pooler`) → `DIRECT_URL`.
-4. Create a `dev` branch for local development / integration tests.
+4. Create a `dev` branch from `production` for local development / Vercel previews.
+   After branching, immediately truncate the copied pg-boss state so a local dev worker
+   doesn't replay production cron schedules:
+   ```sql
+   TRUNCATE pgboss.schedule; TRUNCATE pgboss.job; TRUNCATE pgboss.archive;
+   ```
 5. `pg_trgm` is enabled by migration `0002_trgm` (Neon allows the extension).
+
+## Migration workflow (two-stage)
+
+1. **Develop against dev:**
+   ```bash
+   pnpm db:migrate:dev   # create/apply migrations on Neon dev branch
+   pnpm dev              # smoke-test the app
+   pnpm worker           # smoke-test the worker (dev switches default OFF)
+   ```
+2. **Deploy to production:**
+   ```bash
+   pnpm db:migrate:prod  # applies pending migrations to Neon production
+   ```
+   This command loads `.env.production` so there is no risk of accidentally
+   pointing at the dev branch.
+3. **Vercel production deploy** (git push) and **Railway worker deploy** (`railway up`)
+   follow after migrations complete.
 
 ## Deploy Steps
 
 ```bash
-# 1. Migrations (uses DIRECT_URL)
-pnpm db:migrate            # prisma migrate deploy
+# 1. Migrations against dev (development / PR verification)
+pnpm db:migrate:dev
 
-# 2. Seed sources
+# 2. Migrations against production (deliberate production operation)
+pnpm db:migrate:prod
+
+# 3. Seed sources
 pnpm db:seed:sources       # (to be added) loads src/config/sources.ts
 
-# 3. Frontend (auto via Vercel git integration)
+# 4. Frontend (auto via Vercel git integration)
 git push origin main
 
-# 4. Workers (Railway)
+# 5. Workers (Railway)
 railway up                 # Node worker service
 # Python scraper service deploys from scraper-py/ (Sprint 001 T6)
 ```

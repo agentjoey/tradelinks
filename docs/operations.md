@@ -1,6 +1,19 @@
 # TradeLinks — Operations Manual
 
-> Last updated: 2026-06-11 v0.12.0
+> Last updated: 2026-07-21 v0.12.x
+
+## Environment matrix
+
+| Component | Dev (local default) | Production (Vercel / Railway) |
+|-----------|---------------------|-------------------------------|
+| Neon DB branch | `dev` (`ep-super-mountain-aoh4zjj9`) | `production` (`ep-mute-base-aotkza3n`) |
+| Next.js app | `pnpm dev` | Vercel Production |
+| Vercel Preview | Neon `dev` branch (set in Dashboard) | — |
+| Node worker | `pnpm worker` (on demand, Ctrl-C) | Railway worker service |
+| Python scraper | `http://localhost:8000` (optional) | Railway scraper service |
+| pg-boss queue | dev branch (DIRECT_URL, no cron copied) | production branch |
+
+Local `.env` points to dev; production requires `.env.production` and an explicit command (`pnpm db:migrate:prod` or `dotenv -e .env.production -- ...`).
 
 ## Source health dashboard
 
@@ -48,7 +61,7 @@ The script and skill live in git; the only thing not in git is `.env` (secrets).
 git clone https://github.com/agentjoey/tradelinks-mvp.git && cd tradelinks-mvp
 pnpm install                       # Node ≥20 + pnpm
 cp .env.example .env               # then set DATABASE_URL (+ DIRECT_URL) — patrol only hard-needs DATABASE_URL.
-                                   # Single-env MVP: same production Neon URLs as the main machine.
+                                   # Use the Neon `dev` branch URLs by default.
 pnpm db:gen                        # prisma generate — a fresh clone has no generated client
 pnpm patrol 2026-06-10             # verify against a known day
 
@@ -58,9 +71,11 @@ git pull && pnpm patrol            # pull first to pick up script/skill changes
 
 Notes:
 - `.env` is gitignored — copy it securely (`scp .env user@box:~/tradelinks-mvp/.env`),
-  never commit. It carries **production** credentials.
-- patrol is read-only and safe, but don't run write scripts (translations/backfills)
-  on that machine — single-env MVP means local writes hit prod.
+  never commit. It now carries **dev** credentials by default; production credentials
+  live in `.env.production` (also gitignored).
+- patrol is read-only and safe. Write scripts (translations/backfills) hit the branch
+  that `.env` points to — dev by default. For deliberate production writes, use
+  `dotenv -e .env.production -- pnpm tsx scripts/xxx.ts`.
 - Every env var except `DATABASE_URL` is optional with a default, so a minimal
   `.env` is enough for patrol.
 
