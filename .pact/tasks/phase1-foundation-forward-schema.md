@@ -48,7 +48,24 @@ Record that the old schema may validate but the canonical schema test fails beca
 
 ### GREEN
 
-The plan explicitly authorizes a protected, isolated Neon branch for this task. Create `phase1-foundation-pre-migration` from production using a project-scoped `NEON_PROJECT_ID`, never print connection strings, point both Prisma URLs only at the isolated branch, run `pnpm db:gen`, and generate the additive migration.
+The plan originally required a protected, isolated Neon branch. On 2026-07-23,
+Neon rejected branch protection because this account has zero protected-branch
+quota. The user explicitly approved a controlled unprotected-branch exception.
+Use only the already-created branch with this non-secret identity:
+
+- project: `steep-bird-11404641` (`tradelinks`)
+- parent: `br-autumn-smoke-aof5n7pe` (`production`)
+- branch: `br-plain-shadow-aoknpdf3` (`phase1-foundation-pre-migration`)
+- expiry: `2026-07-30T12:00:00Z`
+
+Before every migration or database-backed test, assert the project, parent,
+branch name, branch ID, `protected: false`, non-default status, and expiry from
+Neon metadata. Neon also rejected an explicit suspend interval on this account;
+the branch therefore uses the account default (`suspend_timeout_seconds: 0` in
+Neon metadata). Do not create another branch, print connection strings, or write
+credentials to a repository or report. Point both Prisma URLs only at this
+isolated branch through process-scoped environment variables, run `pnpm db:gen`,
+and generate the additive migration.
 
 Then run the plan's exact GREEN commands, combined as the machine gate:
 
@@ -66,12 +83,22 @@ Before checkpointing, Kimi must review the diff for exact model/type names, rela
 
 ## 安全边界 / Safety
 
-No deployment or production database mutation is authorized. The only cloud mutation allowed is creating and using the explicitly authorized isolated Neon branch. Never run a down migration, `migrate reset`, a destructive SQL statement, or overwrite production. If the database target cannot be proven isolated, stop before any migration/write and report the blocker.
+No deployment or production database mutation is authorized. The user-approved
+cloud scope is limited to using the exact unprotected isolated branch identified
+above; its creation is already complete. Never run a down migration,
+`migrate reset`, a destructive SQL statement, overwrite production, or persist
+database credentials. If the exact project, parent, branch ID, name, non-default
+status, and expiry cannot be proven, stop before any migration/write and report
+the blocker.
 
 ## 验收 / Acceptance
 
 Review dimension: **correctness**.
 
-In a new reviewer session, Claude independently inspects Prisma versus SQL, verifies the isolated target, reruns the machine gate, confirms the migration is additive and forward-only, and checks the rollback documentation preserves additive tables and restores only into a new investigation branch.
+In a new reviewer session, Claude independently inspects Prisma versus SQL,
+verifies the exact controlled-exception branch identity and expiry, reruns the
+machine gate, confirms the migration is additive and forward-only, and checks
+the rollback documentation preserves additive tables and restores only into a
+new investigation branch.
 
 verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts
