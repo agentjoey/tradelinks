@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>Shopify Changelog</title>
+  <link>https://changelog.shopify.com</link>
+  <item>
+    <title>Shopify updates Markets duty calculation API</title>
+    <link>https://changelog.shopify.com/posts/markets-duty-calculation-api</link>
+    <pubDate>Thu, 04 Jun 2026 12:00:00 GMT</pubDate>
+    <description>Merchants can now retrieve landed-cost estimates at checkout.</description>
+  </item>
+  <item>
+    <title>New payout scheduling controls for Shopify Payments</title>
+    <link>https://changelog.shopify.com/posts/payout-scheduling-controls</link>
+    <pubDate>Wed, 03 Jun 2026 12:00:00 GMT</pubDate>
+    <description>Sellers can choose weekly or monthly payout cadence.</description>
+  </item>
+</channel></rss>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>FTC Press Releases</title>
+  <link>https://www.ftc.gov</link>
+  <item>
+    <title>FTC Announces Agenda for Privacy Enforcement Workshop</title>
+    <link>https://www.ftc.gov/news-events/news/press-releases/2026/06/privacy-workshop</link>
+    <pubDate>Thu, 04 Jun 2026 16:00:00 GMT</pubDate>
+    <description>Workshop covers data practices of online marketplaces.</description>
+  </item>
+  <item>
+    <title>FTC Returns Money to Consumers in Subscription Case</title>
+    <link>https://www.ftc.gov/news-events/news/press-releases/2026/06/subscription-refunds</link>
+    <pubDate>Mon, 01 Jun 2026 16:00:00 GMT</pubDate>
+    <description>Refunds stem from negative-option billing settlement.</description>
+  </item>
+</channel></rss>

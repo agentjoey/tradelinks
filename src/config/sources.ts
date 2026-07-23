@@ -5,6 +5,7 @@
 // fully-working path.
 
 import type { FetchParseConfig } from "../adapters/types.js";
+import { PHASE1_SOURCES_BY_ID } from "./phase1-sources.js";
 
 export type Region =
   | "north_america"
@@ -666,6 +667,23 @@ export const SOURCES: SourceConfig[] = [
 ];
 
 export const SOURCES_BY_ID = new Map(SOURCES.map((s) => [s.id, s]));
+
+// Phase 1: the explicit source contracts (config/phase1-sources.ts) are the
+// single source of truth for scope/readiness/enabled state. Every legacy
+// crawler entry must have a contract, and a contract-disabled source can
+// never stay schedulable here.
+for (const source of SOURCES) {
+  const contract = PHASE1_SOURCES_BY_ID.get(source.id);
+  if (!contract) {
+    throw new Error(`legacy source ${source.id} has no Phase 1 source contract`);
+  }
+  if (!contract.enabled && source.enabled !== false) {
+    source.enabled = false;
+    source.note = [source.note, `disabled by Phase 1 contract (${contract.id}: ${contract.readiness})`]
+      .filter(Boolean)
+      .join(" — ");
+  }
+}
 
 /** The single X (Twitter) viral-products source id (Radar-only, see workers/x.ts). */
 export const X_SOURCE_ID = "X01";

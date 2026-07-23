@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
+
 import type { SourceConfig } from "../config/sources.js";
-import type { SourceAdapter } from "./types.js";
+import type { CrawlResult, FetchOutcome, SourceAdapter } from "./types.js";
 import { RssAdapter } from "./rss.js";
 import { FetchAdapter } from "./fetch.js";
 import { JsonAdapter } from "./json.js";
@@ -23,4 +25,40 @@ export function buildAdapter(source: SourceConfig): SourceAdapter | null {
     return new FetchAdapter(source.fetchConfig, source.language);
   }
   return null;
+}
+
+/**
+ * Convert a legacy CrawlResult into the structured Phase 1 FetchOutcome.
+ * A successful crawl keeps its items plus the response status and a content
+ * hash (of the raw body when given, else of the normalized items); a bot
+ * wall becomes a non-retryable `blocked`; HTTP/network errors become
+ * `failed` and stay retryable for 5xx/429 and transport errors only.
+ */
+export function toFetchOutcome(
+  result: CrawlResult,
+  ctx: { httpStatus?: number; body?: string } = {},
+): FetchOutcome {
+  if (result.ok) {
+    return {
+      kind: "success",
+      items: result.items,
+      httpStatus: ctx.httpStatus ?? 200,
+      contentHash: createHash("sha256")
+        .update(ctx.body ?? JSON.stringify(result.items))
+        .digest("hex"),
+    };
+  }
+  if (result.blocked) {
+    return { kind: "blocked", code: "BOT_WALL", retryable: false, httpStatus: ctx.httpStatus };
+  }
+  const status = ctx.httpStatus ?? Number(result.error?.match(/HTTP (\d{3})/)?.[1]);
+  if (Number.isInteger(status)) {
+    return {
+      kind: "failed",
+      code: `HTTP_${status}`,
+      retryable: status === 429 || status >= 500,
+      httpStatus: status,
+    };
+  }
+  return { kind: "failed", code: "FETCH_ERROR", retryable: true };
 }

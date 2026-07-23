@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>CPSC Recalls</title>
+  <link>https://www.cpsc.gov/Recalls</link>
+  <item>
+    <title>BrandX Recalls Portable Chargers Due to Fire Hazard</title>
+    <link>https://www.cpsc.gov/Recalls/2026/brandx-recalls-portable-chargers</link>
+    <pubDate>Thu, 04 Jun 2026 13:00:00 GMT</pubDate>
+    <description>The lithium-ion batteries can overheat, posing a fire hazard.</description>
+  </item>
+  <item>
+    <title>PlayCo Recalls Wooden Toy Sets Due to Choking Hazard</title>
+    <link>https://www.cpsc.gov/Recalls/2026/playco-recalls-wooden-toy-sets</link>
+    <pubDate>Wed, 03 Jun 2026 13:00:00 GMT</pubDate>
+    <description>Small parts can detach, posing a choking hazard to children.</description>
+  </item>
+</channel></rss>

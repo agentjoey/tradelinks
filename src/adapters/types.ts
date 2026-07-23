@@ -1,5 +1,9 @@
 import type { CrawlJob, RawItem } from "../queue/schemas.js";
 
+// The structured fetch outcome contract lives with the source contracts;
+// re-exported here so adapter consumers import it from the adapter layer.
+export type { FetchOutcome } from "../domain/intelligence/source-contract.js";
+
 export interface CrawlResult {
   ok: boolean;
   blocked: boolean;

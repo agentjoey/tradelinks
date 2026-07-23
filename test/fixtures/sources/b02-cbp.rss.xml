@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+  <title>US CBP Trade Blog</title>
+  <link>https://www.cbp.gov</link>
+  <item>
+    <title>CBP Updates De Minimis Entry Guidance</title>
+    <link>https://www.cbp.gov/trade/blog/2026/de-minimis-guidance</link>
+    <pubDate>Wed, 03 Jun 2026 09:00:00 GMT</pubDate>
+    <description>New instructions for Section 321 entries.</description>
+  </item>
+  <item>
+    <title>CBP Publishes Forced Labor Enforcement Statistics</title>
+    <link>https://www.cbp.gov/trade/blog/2026/forced-labor-stats</link>
+    <pubDate>Tue, 02 Jun 2026 09:00:00 GMT</pubDate>
+    <description>Monthly UFLPA enforcement dashboard.</description>
+  </item>
+</channel></rss>
