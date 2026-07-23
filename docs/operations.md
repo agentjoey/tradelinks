@@ -4,16 +4,17 @@
 
 ## Environment matrix
 
-| Component | Dev (local default) | Production (Vercel / Railway) |
-|-----------|---------------------|-------------------------------|
-| Neon DB branch | `dev` (`ep-super-mountain-aoh4zjj9`) | `production` (`ep-mute-base-aotkza3n`) |
-| Next.js app | `pnpm dev` | Vercel Production |
-| Vercel Preview | Neon `dev` branch (set in Dashboard) | — |
-| Node worker | `pnpm worker` (on demand, Ctrl-C) | Railway worker service |
-| Python scraper | `http://localhost:8000` (optional) | Railway scraper service |
-| pg-boss queue | dev branch (DIRECT_URL, no cron copied) | production branch |
+| Component | Dev (local / PR) | Staging | Production |
+|-----------|------------------|---------|------------|
+| Git branch | `main` (PRs) | `staging` | `production` |
+| Neon DB branch | `dev` (`ep-super-mountain-aoh4zjj9`) | `staging` (`ep-odd-violet-ao98q1jy`) | `production` (`ep-mute-base-aotkza3n`) |
+| Next.js app | `pnpm dev` / Vercel Preview | Vercel staging project | Vercel production project |
+| Node worker | `pnpm worker` (on demand) | local only (no hosted staging worker) | Railway worker service |
+| Python scraper | `http://localhost:8000` | `http://scraper.railway.internal:8000` (shared prod scraper) | Railway scraper service |
+| pg-boss queue | dev branch | staging branch | production branch |
+| Promotion | push to `main` | auto from `main` via GitHub Action | PR/merge from `staging` |
 
-Local `.env` points to dev; production requires `.env.production` and an explicit command (`pnpm db:migrate:prod` or `dotenv -e .env.production -- ...`).
+Local `.env` points to dev; staging/production require explicit commands (`pnpm db:migrate:staging` / `pnpm db:migrate:prod`).
 
 ## Source health dashboard
 

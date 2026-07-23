@@ -45,23 +45,30 @@ TradeLinks 是全球跨境电商情报平台，聚焦**预警**（法规/平台�
 - Neon needs TWO urls (ADR-003): `DATABASE_URL` (pooled, runtime) + `DIRECT_URL` (direct, migrations). Migrations can't run over the transaction pooler.
 - pg-boss (queue) also uses `DIRECT_URL`, not the pooled url (ADR-004). It creates a `pgboss` schema on first start.
 - Scheduling: pg-boss schedule is one-cron-per-queue, so a per-minute `scheduler-tick` fans out crawl jobs via cron-parser `isDue()` per source (not 25 separate schedules).
-- **Environments:**
-  - **Neon `dev` branch** is the local default; `.env` now points `DATABASE_URL`/`DIRECT_URL` to `dev`. Local `pnpm dev`, `pnpm worker`, and scripts write to dev by default.
-  - **Neon `production` branch** is used by Vercel Production and Railway workers. Connecting to prod is a deliberate action via `.env.production`.
-  - **Vercel Preview** (PR/branch deployments) should point to the Neon `dev` branch; set Preview-scope env vars in the Vercel Dashboard.
-  - **Railway** remains production-only; there is no hosted dev worker/scraper (run them locally on demand).
-  - Dev defaults have destructive switches OFF: `X_ENABLED=false`, `CHANNEL_PUSH_ENABLED=false`, `TRANSLATE_ENABLED=false`, `DAILY_NOTE_AUTOPUBLISH=false`. Enable individually when testing the full pipeline.
-  - Production operations: `pnpm db:migrate:prod` or `dotenv -e .env.production -- pnpm tsx scripts/xxx.ts`.
+- **Environments (dev / staging / production):**
+  | Git branch | Vercel | Neon branch | Purpose |
+  |------------|--------|-------------|---------|
+  | `main` | Preview / local dev | `dev` | integration; local `pnpm dev` / scripts |
+  | `staging` | staging project | `staging` | pre-prod verification; auto-promoted from `main` |
+  | `production` | production project | `production` | live site; promoted from `staging` via PR |
+  - **Local default:** `.env` points to Neon `dev`. `pnpm dev`, `pnpm worker`, and scripts are safe by default.
+  - **Deliberate operations:**
+    - Staging: `pnpm db:migrate:staging` or `dotenv -e .env.staging -- ...`
+    - Production: `pnpm db:migrate:prod` or `dotenv -e .env.production -- ...`
+  - **Railway** remains production-only; there is no hosted dev/staging worker/scraper (run locally on demand).
+  - **Dev defaults** have destructive switches OFF: `X_ENABLED=false`, `CHANNEL_PUSH_ENABLED=false`, `TRANSLATE_ENABLED=false`, `DAILY_NOTE_AUTOPUBLISH=false`. Enable individually when testing the full pipeline.
+  - **Workflow:** push to `main` → GitHub Action fast-forwards `staging` → Vercel staging project deploys → verify → PR/merge `staging` into `production` → Vercel production project deploys.
 - Sources with login walls (Amazon SC, Temu) captured via secondary media sources only — never scrape authenticated sessions
 
 ## Dev Commands
 ```bash
-pnpm dev              # start Next.js dev server (port 3000)
-pnpm worker           # start pg-boss worker process (scheduler+crawl+ingest+process)
-pnpm db:migrate       # run Prisma migrations against Neon dev (uses .env)
-pnpm db:migrate:prod  # run Prisma migrations against Neon production (uses .env.production)
-pnpm db:studio        # open Prisma Studio
-pnpm test             # vitest
+pnpm dev                 # start Next.js dev server (port 3000)
+pnpm worker              # start pg-boss worker process (scheduler+crawl+ingest+process)
+pnpm db:migrate          # run Prisma migrations against Neon dev (uses .env)
+pnpm db:migrate:staging  # run Prisma migrations against Neon staging (uses .env.staging)
+pnpm db:migrate:prod     # run Prisma migrations against Neon production (uses .env.production)
+pnpm db:studio           # open Prisma Studio
+pnpm test                # vitest
 ./scripts/release.sh patch|minor|major
 ```
 

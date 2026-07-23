@@ -1,0 +1,30 @@
+name: Promote main to staging
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: promote-main-to-staging
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fast-forward staging to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout staging
+          git merge --ff-only origin/main || (git merge -m "Promote main to staging" origin/main)
+          git push origin staging

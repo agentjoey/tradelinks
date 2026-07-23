@@ -2,6 +2,7 @@ node_modules/
 .next/
 .env
 .env.production
+.env.staging
 .env.local
 .env*.local
 *.bak
