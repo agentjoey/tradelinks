@@ -21,6 +21,7 @@ Only these files are in scope:
 - Modify `src/alerts/review.ts`
 - Modify `app/admin/review/actions.ts`
 - Modify `app/admin/review/page.tsx`
+- Create `app/admin/review/review-controls.tsx`
 - Create or modify `test/canonical-publish.test.ts` only for publication behavior owned by this task
 - Create root `PRODUCT.md` as the Human Owner-approved Impeccable product-context bootstrap for this task
 - Modify `docs/architecture.md` only to document the two additive review fields and rollback checkpoint
@@ -84,6 +85,18 @@ implementation to this exact revision:
 - Deliberate design choice: place immutable version history and `PRIMARY_OFFICIAL` evidence adjacent to the publication action so the editor sees the basis and consequences before acting.
 - Scope/fidelity: one existing authenticated page, production-ready behavior, responsive mobile/intermediate/desktop layouts, and both existing themes; no new route.
 - Data contract: show only persisted `classificationConfidence`; require and persist an explicit `rejectionReason`. Older null values render as clearly unavailable, never as an invented score or reason.
+
+Pre-implementation inspection then confirmed that the existing server
+`page.tsx` and `"use server"` actions module cannot implement in-flight feedback
+and duplicate-submit prevention without a client boundary, and the repository
+has no reusable form-status primitive. The orchestrator again stopped the worker
+before any product-code edit. The Human Owner explicitly approved reopened
+`Task6-T3-r3` and one new file,
+`app/admin/review/review-controls.tsx`, on 2026-07-23. This client component is
+limited to accessible form state, pending/duplicate-submit prevention,
+validation errors, and recovery feedback. Data loading remains in the protected
+server page and authorization remains in the server layout/actions. It may not
+add a route, dependency, auth bypass, or global style.
 
 Kimi must still run the required Impeccable shape command and record how its output conforms to this approved revision before writing product code. It must create `PRODUCT.md` first from the confirmed strategic context above because the Impeccable context check reported `NO_PRODUCT_MD`. The final-build Human Owner walkthrough and rollback confirmation remain pending and cannot be satisfied by this approval.
 

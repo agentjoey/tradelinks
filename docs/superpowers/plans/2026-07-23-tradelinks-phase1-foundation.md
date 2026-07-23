@@ -808,6 +808,7 @@ git commit -m "feat: canonicalize intelligence evidence"
 - Modify: `src/alerts/review.ts`
 - Modify: `app/admin/review/actions.ts`
 - Modify: `app/admin/review/page.tsx`
+- Create: `app/admin/review/review-controls.tsx`
 - Test: `test/canonical-publish.test.ts`
 - Modify: `docs/architecture.md`
 
