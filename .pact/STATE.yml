@@ -13,10 +13,10 @@ features:
     tasks:
       - id: taxonomy-readiness
         owner: kimi
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-taxonomy-readiness.md
-        evidence: null
+        evidence: RED: pnpm vitest run test/intelligence-taxonomy.test.ts test/readiness-policy.test.ts -> 2 failed suites, 'Failed to load url ../src/domain/intelligence/taxonomy.js / readiness.js ... Does the file exist?' (missing domain modules). GREEN: same command -> Test Files 2 passed (2), Tests 16 passed (16); pnpm lint (tsc --noEmit) exit 0. REFACTOR: no behavior change needed (exhaustive satisfies Record<> maps, pure gates, no duplication); reran exact GREEN command unchanged -> 2 files passed, 16 tests passed, tsc exit 0. Scope: only src/domain/intelligence/taxonomy.ts, src/domain/intelligence/readiness.ts, test/intelligence-taxonomy.test.ts, test/readiness-policy.test.ts created; git status shows no other changes.
       - id: forward-schema
         owner: kimi
         status: assigned
