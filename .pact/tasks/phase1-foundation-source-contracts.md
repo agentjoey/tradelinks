@@ -64,6 +64,10 @@ Before checkpointing, Kimi must compare every registry entry against the source 
 ## 安全边界 / Safety
 
 No deployment, production schedule enablement, cloud configuration, live scraper execution, database migration, or production database mutation is authorized.
+Do not make network requests to any allowlisted source while implementing or
+testing this task. Build immutable fixtures from the repository's existing
+parser contracts and publicly documented response shapes; all parser tests must
+remain offline and deterministic.
 
 ## 验收 / Acceptance
 
