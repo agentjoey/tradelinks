@@ -26,7 +26,7 @@ features:
         deps: [taxonomy-readiness]
       - id: source-contracts
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-source-contracts.md
         evidence: null
