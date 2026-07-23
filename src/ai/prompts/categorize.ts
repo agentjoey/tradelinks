@@ -1,8 +1,15 @@
 // v1 — 2026-06-03 — Stage 1.3 categorize + region/platform tagging
 // See docs/specs/ai-pipeline.md. MUST return >=1 region (98% coverage rule).
 import { z } from "zod";
+import { MarketCode, OperatingStage, PlatformCode } from "@prisma/client";
 import type { LlmCompleteOpts } from "../client.js";
 import { extractJson } from "../json.js";
+import {
+  POLICY_TOPICS,
+  PRODUCT_CATEGORIES,
+  RISK_ATTRIBUTES,
+  SIGNAL_TYPES,
+} from "../../domain/intelligence/taxonomy.js";
 
 export const REGIONS = [
   "north_america",
@@ -69,4 +76,69 @@ export function parseCategorize(
   parsed.regions = [...new Set(parsed.regions)];
   parsed.platforms = [...new Set(parsed.platforms.map((p) => p.toLowerCase()))];
   return parsed;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 canonical classification prompt (taxonomy-aligned).
+// The parsed result feeds classifyChange (src/canonicalize/classify.ts);
+// the two shapes must stay in agreement.
+// ---------------------------------------------------------------------------
+
+export interface CanonicalClassifyInput {
+  title: string;
+  summary?: string;
+  market: (typeof MarketCode)[keyof typeof MarketCode];
+  platforms: readonly (typeof PlatformCode)[keyof typeof PlatformCode][];
+}
+
+const CANONICAL_SYSTEM = `You classify one canonical cross-border e-commerce change
+for US-market sellers, backed by official evidence.
+Return JSON {"signalType","productCategories","riskAttributes","policyTopics",
+"market","platforms","operatingStages","confidence"}.
+- signalType: one of ${SIGNAL_TYPES.join(" | ")}
+- productCategories: 1..N of ${PRODUCT_CATEGORIES.join(" | ")};
+  use ALL_PRODUCTS alone when the change truly applies to every category,
+  never mix it with specific categories.
+- riskAttributes: 0..N of ${RISK_ATTRIBUTES.join(" | ")}, or []
+- policyTopics: 0..N of ${POLICY_TOPICS.join(" | ")}, or []
+- market: ${Object.keys(MarketCode).join(" | ")}
+- platforms: 0..N of ${Object.keys(PlatformCode).join(" | ")}, or []
+- operatingStages: 1..N of ${Object.keys(OperatingStage).join(" | ")};
+  return [] only when the impacted stages are genuinely ambiguous.
+- confidence: number 0..1 — your calibrated confidence in the whole
+  classification. Below 0.80 the change is routed to human review.`;
+
+export function buildCanonicalClassifyPrompt(input: CanonicalClassifyInput): LlmCompleteOpts {
+  const summary = input.summary ? `\nSummary: ${input.summary}` : "";
+  return {
+    system: CANONICAL_SYSTEM,
+    user: `Market: ${input.market}\nPlatforms: ${input.platforms.join(", ") || "any"}\nTitle: ${input.title}${summary}`,
+    json: true,
+    maxTokens: 300,
+  };
+}
+
+export const CanonicalClassifyResultSchema = z.object({
+  signalType: z.enum(SIGNAL_TYPES),
+  productCategories: z.array(z.enum(PRODUCT_CATEGORIES)).min(1),
+  riskAttributes: z.array(z.enum(RISK_ATTRIBUTES)),
+  policyTopics: z.array(z.enum(POLICY_TOPICS)),
+  market: z.nativeEnum(MarketCode),
+  platforms: z.array(z.nativeEnum(PlatformCode)),
+  operatingStages: z.array(z.nativeEnum(OperatingStage)),
+  confidence: z.number().min(0).max(1),
+});
+export type CanonicalClassifyResult = z.infer<typeof CanonicalClassifyResultSchema>;
+
+/** Parse + validate the model's canonical classification against the taxonomy. */
+export function parseCanonicalClassify(text: string): CanonicalClassifyResult {
+  const parsed = CanonicalClassifyResultSchema.parse(extractJson(text));
+  return {
+    ...parsed,
+    productCategories: [...new Set(parsed.productCategories)],
+    riskAttributes: [...new Set(parsed.riskAttributes)],
+    policyTopics: [...new Set(parsed.policyTopics)],
+    platforms: [...new Set(parsed.platforms)],
+    operatingStages: [...new Set(parsed.operatingStages)],
+  };
 }

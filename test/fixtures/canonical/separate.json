@@ -1,0 +1,128 @@
+[
+  {
+    "name": "different-official-recall-ids-similar-wording",
+    "left": {
+      "id": "item-101",
+      "title": "CPSC recalls Acme blender due to laceration hazard",
+      "market": "US",
+      "platforms": [],
+      "authorityEventId": "CPSC-2026-014",
+      "effectiveAt": "2026-07-01",
+      "publishedAt": "2026-07-01T10:00:00Z"
+    },
+    "right": {
+      "id": "item-102",
+      "title": "CPSC recalls Acme blender due to fire hazard",
+      "market": "US",
+      "platforms": [],
+      "authorityEventId": "CPSC-2026-027",
+      "effectiveAt": "2026-07-01",
+      "publishedAt": "2026-07-01T12:00:00Z"
+    }
+  },
+  {
+    "name": "different-markets",
+    "left": {
+      "id": "item-103",
+      "title": "Amazon announces FBA storage fee increase for 2026",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-104",
+      "title": "Amazon announces FBA storage fee increase for 2026",
+      "market": "EU",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T13:00:00Z"
+    }
+  },
+  {
+    "name": "disjoint-platforms",
+    "left": {
+      "id": "item-105",
+      "title": "Marketplace updates seller payout schedule for Q4",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-106",
+      "title": "Marketplace updates seller payout schedule for Q4",
+      "market": "US",
+      "platforms": ["SHOPIFY"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T15:00:00Z"
+    }
+  },
+  {
+    "name": "effective-dates-outside-window",
+    "left": {
+      "id": "item-107",
+      "title": "Amazon announces FBA storage fee increase for 2026",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": "2026-01-01",
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-108",
+      "title": "Amazon announces FBA storage fee increase for 2026",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": "2026-07-01",
+      "publishedAt": "2026-07-06T12:00:00Z"
+    }
+  },
+  {
+    "name": "unrelated-topics",
+    "left": {
+      "id": "item-109",
+      "title": "Amazon payout schedule change for sellers",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-110",
+      "title": "Totally unrelated shipping news from carriers",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T13:00:00Z"
+    }
+  },
+  {
+    "name": "grey-zone-similarity-without-model-assist",
+    "left": {
+      "id": "item-111",
+      "title": "New GPSR compliance deadline approaches for EU sellers",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-112",
+      "title": "GPSR compliance deadline for EU sellers",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T14:00:00Z"
+    }
+  }
+]

@@ -1,0 +1,86 @@
+[
+  {
+    "name": "same-official-recall-id-different-wording-and-case",
+    "left": {
+      "id": "item-1",
+      "title": "CPSC recalls Acme blender due to laceration hazard",
+      "market": "US",
+      "platforms": [],
+      "authorityEventId": "CPSC-2026-014",
+      "effectiveAt": "2026-07-01",
+      "publishedAt": "2026-07-01T10:00:00Z"
+    },
+    "right": {
+      "id": "item-2",
+      "title": "Acme blender recall: laceration risk announced",
+      "market": "US",
+      "platforms": [],
+      "authorityEventId": "cpsc-2026-014",
+      "effectiveAt": "2026-07-01",
+      "publishedAt": "2026-07-02T08:00:00Z"
+    }
+  },
+  {
+    "name": "same-official-rule-id-across-platforms",
+    "left": {
+      "id": "item-3",
+      "title": "FTC updates Made in USA labeling rule",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": "FTC-R611009",
+      "effectiveAt": "2026-08-15",
+      "publishedAt": "2026-07-10T09:00:00Z"
+    },
+    "right": {
+      "id": "item-4",
+      "title": "New FTC labeling requirements for US-made claims",
+      "market": "US",
+      "platforms": ["SHOPIFY"],
+      "authorityEventId": "FTC-R611009",
+      "effectiveAt": "2026-08-15",
+      "publishedAt": "2026-07-11T14:30:00Z"
+    }
+  },
+  {
+    "name": "near-identical-titles-no-official-id",
+    "left": {
+      "id": "item-5",
+      "title": "Amazon announces FBA storage fee increase for 2026",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-05T12:00:00Z"
+    },
+    "right": {
+      "id": "item-6",
+      "title": "Amazon announces FBA storage fee increase for 2026 sellers",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-06T07:00:00Z"
+    }
+  },
+  {
+    "name": "one-sided-official-id-strong-title-match-same-week",
+    "left": {
+      "id": "item-7",
+      "title": "Amazon raises referral fees for apparel category in October",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": "AMZ-FEE-2026-Q4",
+      "effectiveAt": "2026-10-01",
+      "publishedAt": "2026-07-08T09:00:00Z"
+    },
+    "right": {
+      "id": "item-8",
+      "title": "Amazon raises referral fees for apparel category in October 2026",
+      "market": "US",
+      "platforms": ["AMAZON"],
+      "authorityEventId": null,
+      "effectiveAt": null,
+      "publishedAt": "2026-07-09T11:00:00Z"
+    }
+  }
+]

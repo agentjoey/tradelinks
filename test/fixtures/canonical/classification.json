@@ -1,0 +1,246 @@
+{
+  "autoPublishable": [
+    {
+      "name": "high-confidence-recall-classification",
+      "input": {
+        "items": [
+          {
+            "id": "item-1",
+            "title": "CPSC recalls Acme blender due to laceration hazard",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "CPSC-2026-014",
+            "effectiveAt": "2026-07-01",
+            "publishedAt": "2026-07-01T10:00:00Z",
+            "productCategories": ["HOME_KITCHEN"]
+          },
+          {
+            "id": "item-2",
+            "title": "Acme blender recall: laceration risk announced",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "cpsc-2026-014",
+            "effectiveAt": "2026-07-01",
+            "publishedAt": "2026-07-02T08:00:00Z",
+            "productCategories": ["HOME_KITCHEN"]
+          }
+        ],
+        "suggestion": {
+          "signalType": "REGULATORY",
+          "productCategories": ["HOME_KITCHEN"],
+          "riskAttributes": [],
+          "policyTopics": ["PRODUCT_SAFETY_RECALLS"],
+          "market": "US",
+          "platforms": [],
+          "operatingStages": ["ALREADY_SELLING", "PREPARING_TO_LAUNCH"],
+          "confidence": 0.93
+        }
+      },
+      "expect": {
+        "signalType": "REGULATORY",
+        "market": "US",
+        "confidence": 0.93,
+        "requiresReview": false,
+        "evidenceItemIds": ["item-1", "item-2"]
+      }
+    },
+    {
+      "name": "boundary-confidence-exactly-0.80",
+      "input": {
+        "items": [
+          {
+            "id": "item-3",
+            "title": "Amazon raises referral fees for apparel category in October",
+            "market": "US",
+            "platforms": ["AMAZON"],
+            "authorityEventId": "AMZ-FEE-2026-Q4",
+            "effectiveAt": "2026-10-01",
+            "publishedAt": "2026-07-08T09:00:00Z"
+          }
+        ],
+        "suggestion": {
+          "signalType": "PLATFORM_POLICY",
+          "productCategories": ["APPAREL_ACCESSORIES"],
+          "riskAttributes": [],
+          "policyTopics": ["FEES_PAYMENTS"],
+          "market": "US",
+          "platforms": ["AMAZON"],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.8
+        }
+      },
+      "expect": {
+        "signalType": "PLATFORM_POLICY",
+        "market": "US",
+        "confidence": 0.8,
+        "requiresReview": false,
+        "evidenceItemIds": ["item-3"]
+      }
+    }
+  ],
+  "mustReview": [
+    {
+      "name": "low-confidence-below-threshold",
+      "input": {
+        "items": [
+          {
+            "id": "item-201",
+            "title": "Some marketplace policy update mentions batteries",
+            "market": "US",
+            "platforms": ["AMAZON"],
+            "authorityEventId": null,
+            "effectiveAt": null,
+            "publishedAt": "2026-07-05T12:00:00Z"
+          }
+        ],
+        "suggestion": {
+          "signalType": "PLATFORM_POLICY",
+          "productCategories": ["CONSUMER_ELECTRONICS"],
+          "riskAttributes": ["BATTERY"],
+          "policyTopics": ["LISTING_ACCOUNT_HEALTH"],
+          "market": "US",
+          "platforms": ["AMAZON"],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.79
+        }
+      },
+      "expectReasons": ["LOW_CONFIDENCE"]
+    },
+    {
+      "name": "ambiguous-operating-stage-impact",
+      "input": {
+        "items": [
+          {
+            "id": "item-202",
+            "title": "Customs bond requirements updated for importers",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "CBP-2026-88",
+            "effectiveAt": "2026-09-01",
+            "publishedAt": "2026-07-05T12:00:00Z"
+          }
+        ],
+        "suggestion": {
+          "signalType": "REGULATORY",
+          "productCategories": ["ALL_PRODUCTS"],
+          "riskAttributes": [],
+          "policyTopics": ["IMPORT_CUSTOMS"],
+          "market": "US",
+          "platforms": [],
+          "operatingStages": [],
+          "confidence": 0.91
+        }
+      },
+      "expectReasons": ["AMBIGUOUS_OPERATING_STAGES"]
+    },
+    {
+      "name": "incompatible-categories-all-products-plus-specific",
+      "input": {
+        "items": [
+          {
+            "id": "item-203",
+            "title": "New labeling rule affects toys and possibly everything",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "FTC-2026-11",
+            "effectiveAt": "2026-08-01",
+            "publishedAt": "2026-07-05T12:00:00Z"
+          }
+        ],
+        "suggestion": {
+          "signalType": "REGULATORY",
+          "productCategories": ["ALL_PRODUCTS", "TOYS_CHILDRENS_PRODUCTS"],
+          "riskAttributes": ["CHILDREN"],
+          "policyTopics": ["LABELING_CLAIMS"],
+          "market": "US",
+          "platforms": [],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.88
+        }
+      },
+      "expectReasons": ["INCOMPATIBLE_CATEGORIES"]
+    },
+    {
+      "name": "incompatible-categories-evidence-disagrees",
+      "input": {
+        "items": [
+          {
+            "id": "item-204",
+            "title": "Recall notice for blender and dog chew toy bundle",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "CPSC-2026-099",
+            "effectiveAt": "2026-07-01",
+            "publishedAt": "2026-07-01T10:00:00Z",
+            "productCategories": ["HOME_KITCHEN"]
+          },
+          {
+            "id": "item-205",
+            "title": "Same bundle recalled, pet product focus",
+            "market": "US",
+            "platforms": [],
+            "authorityEventId": "CPSC-2026-099",
+            "effectiveAt": "2026-07-01",
+            "publishedAt": "2026-07-01T11:00:00Z",
+            "productCategories": ["PET_SUPPLIES"]
+          }
+        ],
+        "suggestion": {
+          "signalType": "REGULATORY",
+          "productCategories": ["HOME_KITCHEN", "PET_SUPPLIES"],
+          "riskAttributes": [],
+          "policyTopics": ["PRODUCT_SAFETY_RECALLS"],
+          "market": "US",
+          "platforms": [],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.9
+        }
+      },
+      "expectReasons": ["INCOMPATIBLE_CATEGORIES"]
+    },
+    {
+      "name": "unsupported-effective-date",
+      "input": {
+        "items": [
+          {
+            "id": "item-206",
+            "title": "Platform hints fee change coming next quarter",
+            "market": "US",
+            "platforms": ["SHOPIFY"],
+            "authorityEventId": null,
+            "effectiveAt": "next quarter",
+            "publishedAt": "2026-07-05T12:00:00Z"
+          }
+        ],
+        "suggestion": {
+          "signalType": "PLATFORM_POLICY",
+          "productCategories": ["ALL_PRODUCTS"],
+          "riskAttributes": [],
+          "policyTopics": ["FEES_PAYMENTS"],
+          "market": "US",
+          "platforms": ["SHOPIFY"],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.95
+        }
+      },
+      "expectReasons": ["UNSUPPORTED_DATES"]
+    },
+    {
+      "name": "missing-evidence-item-ids",
+      "input": {
+        "items": [],
+        "suggestion": {
+          "signalType": "REGULATORY",
+          "productCategories": ["ALL_PRODUCTS"],
+          "riskAttributes": [],
+          "policyTopics": ["IMPORT_CUSTOMS"],
+          "market": "US",
+          "platforms": [],
+          "operatingStages": ["ALREADY_SELLING"],
+          "confidence": 0.99
+        }
+      },
+      "expectReasons": ["MISSING_EVIDENCE_ITEM_IDS"]
+    }
+  ]
+}
