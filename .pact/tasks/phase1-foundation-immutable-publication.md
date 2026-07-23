@@ -13,6 +13,8 @@ Publish reviewed canonical drafts through one invariant-checked transaction, pre
 
 Only these files are in scope:
 
+- Modify `prisma/schema.prisma`
+- Create `prisma/migrations/0012_phase1_publication_review_fields/migration.sql`
 - Create `src/domain/intelligence/canonical-change.ts`
 - Create `src/domain/intelligence/evidence.ts`
 - Create `src/canonicalize/publish.ts`
@@ -21,6 +23,7 @@ Only these files are in scope:
 - Modify `app/admin/review/page.tsx`
 - Create or modify `test/canonical-publish.test.ts` only for publication behavior owned by this task
 - Create root `PRODUCT.md` as the Human Owner-approved Impeccable product-context bootstrap for this task
+- Modify `docs/architecture.md` only to document the two additive review fields and rollback checkpoint
 
 Do not create `DESIGN.md` or Impeccable live-mode configuration in this task. Do not add routes, alter auth middleware, change global design tokens, edit translation registries, deploy, or touch production data. If correct implementation requires another file, stop and request a scope revision.
 
@@ -30,9 +33,30 @@ Produce:
 
 - `publishCanonicalDraft(draftId: string, reviewerId: string): Promise<CanonicalChangeVersion>`
 - `correctCanonicalChange(input: CorrectionInput): Promise<CanonicalChangeVersion>`
+- `rejectCanonicalDraft(draftId: string, reviewerId: string, reason: string): Promise<CanonicalChangeVersion>`
+- `reviewCanonicalActionTemplate(draftId: string, reviewerId: string): Promise<CanonicalChangeVersion>`
 - `assertPublishableVersion(input: VersionWithEvidence): void`
 
 Before the transaction, `assertPublishableVersion` must enforce that Verified publication has reviewed `PRIMARY_OFFICIAL` evidence from a government/platform official source and that action recommendations have a reviewed action template. Publication clears the previous current version and publishes exactly one current version. Corrections require a non-empty `correctionReason` and preserve all older versions. Evidence preserves source ID, original URL, role, authority, access, license note, normalized summary, content hash, fetch time, and review time.
+
+The accepted `0011` migration cannot represent two required review facts. Add a
+new forward-only `0012` migration; never edit or replay `0011`:
+
+- `CanonicalChangeVersion.classificationConfidence Float?`
+- `CanonicalChangeVersion.rejectionReason String?`
+
+New classification-created drafts must persist their real classifier confidence;
+never infer it from readiness or synthesize a display value. Rejecting a draft
+requires a non-blank reason and persists it on that immutable version together
+with `reviewedAt` and `reviewedBy`. The fields are nullable only so the additive
+migration does not rewrite or invalidate pre-existing rows on the isolated
+branch.
+
+Rejecting a draft sets `editorialStatus: REJECTED`, records the trimmed reason
+and reviewer metadata, and never makes that version current. Reviewing an action
+template requires a non-blank template and records
+`actionTemplateReviewedAt/actionTemplateReviewedBy`; it does not publish the
+draft.
 
 The UI must show version diff, source readiness, evidence role/authority/access, primary-source link, effective-date provenance, classification confidence, action-template review control, and explicit rejection reason while remaining protected by existing Neon Auth.
 
@@ -42,7 +66,15 @@ The task spec itself is the canonical T3 Brief. Before implementation, Kimi must
 
 ### Human Owner-approved Brief revision
 
-`Task6-T3-r1` was explicitly approved by the Human Owner on 2026-07-23 before implementation. The same approval authorizes root `PRODUCT.md` and declines `DESIGN.md` and Impeccable live-mode configuration for this task. Bind implementation to this exact revision:
+`Task6-T3-r1` was explicitly approved by the Human Owner on 2026-07-23 before implementation. The same approval authorizes root `PRODUCT.md` and declines `DESIGN.md` and Impeccable live-mode configuration for this task.
+
+During pre-implementation inspection, the approved UI requirements exposed that
+the accepted `0011` schema had no persisted classification-confidence or
+rejection-reason fields. The orchestrator stopped the worker before any
+product-code edit. The Human Owner explicitly approved the reopened
+`Task6-T3-r2` and its forward-only
+`0012_phase1_publication_review_fields` migration on 2026-07-23. Bind
+implementation to this exact revision:
 
 - Register/platform: product UI on responsive web.
 - Primary user: an authenticated TradeLinks administrator/editor reviewing canonical intelligence before publication.
@@ -51,6 +83,7 @@ The task spec itself is the canonical T3 Brief. Before implementation, Kimi must
 - Visual direction: preserve the existing TradeLinks intelligence-desk tokens and use a restrained, high-density product interface. Reference qualities are GitHub Review's inspectable diffs/history, Stripe Dashboard's risk/action clarity, and Linear's focused information density.
 - Deliberate design choice: place immutable version history and `PRIMARY_OFFICIAL` evidence adjacent to the publication action so the editor sees the basis and consequences before acting.
 - Scope/fidelity: one existing authenticated page, production-ready behavior, responsive mobile/intermediate/desktop layouts, and both existing themes; no new route.
+- Data contract: show only persisted `classificationConfidence`; require and persist an explicit `rejectionReason`. Older null values render as clearly unavailable, never as an invented score or reason.
 
 Kimi must still run the required Impeccable shape command and record how its output conforms to this approved revision before writing product code. It must create `PRODUCT.md` first from the confirmed strategic context above because the Impeccable context check reported `NO_PRODUCT_MD`. The final-build Human Owner walkthrough and rollback confirmation remain pending and cannot be satisfied by this approval.
 
@@ -82,15 +115,26 @@ Record the expected failure on the missing publication API/invariant.
 
 ### GREEN
 
-Implement the smallest invariant-safe publication/UI flow and run the plan's exact GREEN command:
+Implement the smallest invariant-safe publication/UI flow.
 
-`pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint`
+Before applying `0012`, prove with Neon metadata that the target is exactly
+project `steep-bird-11404641`, branch `br-plain-shadow-aoknpdf3`
+(`phase1-foundation-pre-migration`), parent `br-autumn-smoke-aof5n7pe`,
+non-default, unprotected under the approved exception, and expiring
+`2026-07-30T12:00:00Z`. Keep both database URLs process-scoped and secret.
+Run `pnpm db:gen`, then `pnpm exec prisma migrate deploy` only on that branch.
 
-Record publication, correction, old-Alert rejection, server-action typing, and auth-related coverage passing.
+Run the exact GREEN machine gate:
+
+`pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint`
+
+Record migration identity/status, confidence persistence, required rejection
+reason, publication, correction, old-Alert rejection, server-action typing, and
+auth-related coverage passing.
 
 ### REFACTOR
 
-Simplify transaction/invariant/UI composition without weakening evidence fields or states, rerun the exact GREEN command unchanged, and record stable behavior.
+Simplify transaction/invariant/UI composition without weakening evidence fields or states, rerun the exact GREEN machine gate unchanged, and record stable behavior.
 
 ## 最终 build 浏览器验证 / Final-build browser verification
 
@@ -104,7 +148,7 @@ Before checkpointing, Kimi must review invariant ordering, transaction atomicity
 
 ## 安全边界 / Safety
 
-No deployment, production publication, production database mutation, auth reconfiguration, or cloud configuration is authorized. Browser actions must target non-production fixture/test data. Rollback is application traffic/read-path rollback plus forward correction; never mutate a published historical version.
+No deployment, production publication, production database mutation, auth reconfiguration, or cloud configuration is authorized. Browser actions must target non-production fixture/test data. Migration rollback is a code/read-path rollback that leaves the nullable additive columns in place; never run a down migration. Published-content rollback is application traffic/read-path rollback plus forward correction; never mutate a published historical version.
 
 ## 验收 / Acceptance
 
@@ -112,4 +156,4 @@ Review dimension: **ux**.
 
 Claude confirms the reviewer can understand evidence and consequences before acting, every action/state is accessible and unambiguous, final-build browser evidence matches the target commit, and all T3 gates above are present. Missing fresh-context review, Owner walkthrough, final-build screenshots, keyboard/permission checks, or a release-blocking finding blocks acceptance.
 
-verify: pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint
+verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint

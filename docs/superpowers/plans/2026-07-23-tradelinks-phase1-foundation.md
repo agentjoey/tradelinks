@@ -298,6 +298,7 @@ model CanonicalChangeVersion {
   productCategories     ProductCategory[]
   riskAttributes        RiskAttribute[]
   policyTopics          PolicyTopic[]
+  classificationConfidence Float?
   sourcePublishedAt     DateTime
   effectiveAt           DateTime?
   urgency               Int
@@ -308,6 +309,7 @@ model CanonicalChangeVersion {
   actionTemplateReviewedBy String?
   editorialStatus       EditorialStatus   @default(DRAFT)
   correctionReason      String?
+  rejectionReason       String?
   reviewedAt            DateTime?
   reviewedBy            String?
   createdAt             DateTime          @default(now())
@@ -798,6 +800,8 @@ git commit -m "feat: canonicalize intelligence evidence"
 
 **Files:**
 
+- Modify: `prisma/schema.prisma`
+- Create: `prisma/migrations/0012_phase1_publication_review_fields/migration.sql`
 - Create: `src/domain/intelligence/canonical-change.ts`
 - Create: `src/domain/intelligence/evidence.ts`
 - Create: `src/canonicalize/publish.ts`
@@ -805,10 +809,11 @@ git commit -m "feat: canonicalize intelligence evidence"
 - Modify: `app/admin/review/actions.ts`
 - Modify: `app/admin/review/page.tsx`
 - Test: `test/canonical-publish.test.ts`
+- Modify: `docs/architecture.md`
 
 **Interfaces:**
 
-- Produces: `publishCanonicalDraft(draftId: string, reviewerId: string): Promise<CanonicalChangeVersion>`, `correctCanonicalChange(input: CorrectionInput): Promise<CanonicalChangeVersion>`, `assertPublishableVersion(input: VersionWithEvidence): void`.
+- Produces: `publishCanonicalDraft(draftId: string, reviewerId: string): Promise<CanonicalChangeVersion>`, `correctCanonicalChange(input: CorrectionInput): Promise<CanonicalChangeVersion>`, `rejectCanonicalDraft(draftId: string, reviewerId: string, reason: string): Promise<CanonicalChangeVersion>`, `reviewCanonicalActionTemplate(draftId: string, reviewerId: string): Promise<CanonicalChangeVersion>`, `assertPublishableVersion(input: VersionWithEvidence): void`.
 - Consumes: readiness policy, classification decision, evidence records, current admin auth.
 
 - [ ] **Step 1: Add publication and correction failures**
@@ -824,6 +829,11 @@ it("creates version 2 and preserves version 1 on correction", async () => {
   expect(corrected.version).toBe(2);
   expect(await loadVersion(change.id, 1)).toMatchObject({ isCurrent: false });
 });
+
+it("requires and persists an explicit canonical rejection reason", async () => {
+  await expect(rejectCanonicalDraft(draft.id, "reviewer-1", " "))
+    .rejects.toThrow("REJECTION_REASON_REQUIRED");
+});
 ```
 
 - [ ] **Step 2: Confirm unsafe legacy approval still fails the new contract**
@@ -833,6 +843,12 @@ Run: `pnpm vitest run test/canonical-publish.test.ts`
 Expected: FAIL on missing publication API.
 
 - [ ] **Step 3: Implement one publication transaction**
+
+Add a forward-only `0012_phase1_publication_review_fields` migration with
+nullable `classificationConfidence Float?` and `rejectionReason String?`. Do
+not edit the already-applied `0011` migration. Apply and verify `0012` only on
+the approved isolated Neon branch after checking its exact project, parent,
+branch identity, non-default status, and expiry.
 
 ```ts
 await tx.canonicalChangeVersion.updateMany({
@@ -856,14 +872,14 @@ Call `assertPublishableVersion` before the transaction. Evidence must preserve s
 
 Render a version diff, the source readiness, evidence role/authority/access, primary-source link, effective-date provenance, classification confidence, action-template review control, and explicit rejection reason. The admin route remains protected by existing Neon Auth.
 
-Run: `pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint`
+Run: `pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint`
 
 Expected: PASS; TypeScript verifies the server actions, and no old Alert can be approved through the updated action.
 
 - [ ] **Step 5: Commit publication and review**
 
 ```bash
-git add src/domain/intelligence src/canonicalize/publish.ts src/alerts/review.ts app/admin/review test/canonical-publish.test.ts
+git add prisma/schema.prisma prisma/migrations/0012_phase1_publication_review_fields src/domain/intelligence src/canonicalize/publish.ts src/alerts/review.ts app/admin/review test/canonical-publish.test.ts docs/architecture.md PRODUCT.md
 git commit -m "feat: publish reviewed canonical versions"
 ```
 
