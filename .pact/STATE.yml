@@ -45,3 +45,10 @@ features:
         spec: .pact/tasks/phase1-foundation-canonicalization.md
         evidence: null
         deps: [collection-runs]
+      - id: immutable-publication
+        owner: kimi
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-foundation-immutable-publication.md
+        evidence: null
+        deps: [canonicalization]
