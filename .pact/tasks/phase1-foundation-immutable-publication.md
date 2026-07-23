@@ -20,8 +20,9 @@ Only these files are in scope:
 - Modify `app/admin/review/actions.ts`
 - Modify `app/admin/review/page.tsx`
 - Create or modify `test/canonical-publish.test.ts` only for publication behavior owned by this task
+- Create root `PRODUCT.md` as the Human Owner-approved Impeccable product-context bootstrap for this task
 
-Do not add routes, alter auth middleware, change global design tokens, edit translation registries, deploy, or touch production data. If correct implementation requires another file, stop and request a scope revision.
+Do not create `DESIGN.md` or Impeccable live-mode configuration in this task. Do not add routes, alter auth middleware, change global design tokens, edit translation registries, deploy, or touch production data. If correct implementation requires another file, stop and request a scope revision.
 
 ## 契约 / Contract
 
@@ -38,6 +39,20 @@ The UI must show version diff, source readiness, evidence role/authority/access,
 ## T3 frontend workflow
 
 The task spec itself is the canonical T3 Brief. Before implementation, Kimi must use `/skill:impeccable shape app/admin/review/page.tsx`, document the intended information hierarchy and one deliberate design choice, and obtain Human Owner confirmation of this Brief/revision. Preserve the existing TradeLinks tokens and admin product register; do not introduce prohibited side rails over 1px, gradient text, decorative glass, or decorative motion.
+
+### Human Owner-approved Brief revision
+
+`Task6-T3-r1` was explicitly approved by the Human Owner on 2026-07-23 before implementation. The same approval authorizes root `PRODUCT.md` and declines `DESIGN.md` and Impeccable live-mode configuration for this task. Bind implementation to this exact revision:
+
+- Register/platform: product UI on responsive web.
+- Primary user: an authenticated TradeLinks administrator/editor reviewing canonical intelligence before publication.
+- Primary task: inspect version differences, source readiness, structured evidence, effective-date provenance, classification confidence, and the action template before safely publishing, correcting, or rejecting a canonical change.
+- Information hierarchy: publication constraints first; then version diff; primary evidence and source properties; effective-date/classification details; action-template review; and finally publish/correct/reject controls with consequences.
+- Visual direction: preserve the existing TradeLinks intelligence-desk tokens and use a restrained, high-density product interface. Reference qualities are GitHub Review's inspectable diffs/history, Stripe Dashboard's risk/action clarity, and Linear's focused information density.
+- Deliberate design choice: place immutable version history and `PRIMARY_OFFICIAL` evidence adjacent to the publication action so the editor sees the basis and consequences before acting.
+- Scope/fidelity: one existing authenticated page, production-ready behavior, responsive mobile/intermediate/desktop layouts, and both existing themes; no new route.
+
+Kimi must still run the required Impeccable shape command and record how its output conforms to this approved revision before writing product code. It must create `PRODUCT.md` first from the confirmed strategic context above because the Impeccable context check reported `NO_PRODUCT_MD`. The final-build Human Owner walkthrough and rollback confirmation remain pending and cannot be satisfied by this approval.
 
 Cover this state matrix with the specified files and tests:
 
