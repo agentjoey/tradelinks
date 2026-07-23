@@ -26,10 +26,10 @@ features:
         deps: [taxonomy-readiness]
       - id: source-contracts
         owner: kimi
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-source-contracts.md
-        evidence: null
+        evidence: RED: pnpm vitest run test/source-registry.test.ts -> 1 failed suite, 'Failed to load url ../src/config/phase1-sources.js ... Does the file exist?' (missing PHASE1_SOURCES / FetchOutcome), 0 tests collected. GREEN: implemented src/domain/intelligence/source-contract.ts (SourceContractSchema + FetchOutcomeSchema + canSatisfyPrimaryEvidence; runtime MarketCode/PlatformCode/AuthorityLevel/EvidenceAccess from @prisma/client, ProductCategory/ReadinessLevel lists from taxonomy.ts), src/config/phase1-sources.ts (PHASE1_SOURCES: every Source Readiness Matrix row + exact 13-entry official allowlist + all 34 out-of-scope IDs explicitly disabled/UNAVAILABLE; enabled sources require SLA/cron/fixture via superRefine), src/adapters/types.ts (FetchOutcome re-export), src/adapters/index.ts (toFetchOutcome: success keeps items+httpStatus+sha256 contentHash; blocked=BOT_WALL non-retryable; failed preserves HTTP_<status> code, retryable only for 5xx/429/transport), src/config/sources.ts (legacy registry validated against contracts; contract-disabled IDs force-enabled=false), 20 immutable offline fixtures under test/fixtures/sources/. Exact gate 'pnpm vitest run test/source-registry.test.ts test/adapters.test.ts test/json-adapter.test.ts test/blocked.test.ts' -> Test Files 4 passed (4), Tests 32 passed (32): parser normalization per enabled source fixture, B03 empty.json stays success with items [], blocked/failed retryability. REFACTOR: dedup via shared bsrSource/outOfScope helpers + shared license/selector constants (per-source promises untouched); reran exact GREEN command unchanged -> 4 files passed, 32 tests passed, no drift. Extras: pnpm lint (tsc --noEmit) exit 0; full suite pnpm vitest run -> 47 files passed, 330 tests passed. Scope: git status shows only the 7 spec-listed files + fixtures; no network, no DB, no scheduler/deployment changes.
         deps: [forward-schema]
       - id: collection-runs
         owner: kimi
