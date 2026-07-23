@@ -5,6 +5,11 @@ Reviewer: `claude`
 Orchestrator: `codex` (coordination only; no implementation or task acceptance)  
 Plan source: Task 6 in `docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md`
 
+Kimi K3 is the Human Owner-designated sole implementation worker for this task.
+It must perform the implementation and worker verification directly and may not
+delegate any portion to subagents or alternate models. Claude Opus 4.8 remains
+the independent reviewer only.
+
 ## 目标 / Goal
 
 Publish reviewed canonical drafts through one invariant-checked transaction, preserve structured evidence, create immutable correction versions, and replace legacy Alert approval on the authenticated admin review surface. The admin UI work is fixed at repository **Tier 3** because it crosses authentication and publication/data-integrity boundaries; it may not be downgraded by an agent.
