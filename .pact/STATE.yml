@@ -13,7 +13,7 @@ features:
     tasks:
       - id: taxonomy-readiness
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-taxonomy-readiness.md
         evidence: null
