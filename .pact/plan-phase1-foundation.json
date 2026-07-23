@@ -1,0 +1,92 @@
+{
+  "feature": "phase1-foundation",
+  "branch": "feat-phase1-foundation",
+  "tasks": [
+    {
+      "id": "taxonomy-readiness",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-taxonomy-readiness.md",
+      "verify": "pnpm vitest run test/intelligence-taxonomy.test.ts test/readiness-policy.test.ts && pnpm lint",
+      "deps": [],
+      "dimension": "maintainability"
+    },
+    {
+      "id": "forward-schema",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-forward-schema.md",
+      "verify": "pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts",
+      "deps": [
+        "taxonomy-readiness"
+      ],
+      "dimension": "correctness"
+    },
+    {
+      "id": "source-contracts",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-source-contracts.md",
+      "verify": "pnpm vitest run test/source-registry.test.ts test/adapters.test.ts test/json-adapter.test.ts test/blocked.test.ts",
+      "deps": [
+        "forward-schema"
+      ],
+      "dimension": "maintainability"
+    },
+    {
+      "id": "collection-runs",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-collection-runs.md",
+      "verify": "pnpm vitest run test/collection-run.test.ts test/source-hash.test.ts test/gnews.test.ts",
+      "deps": [
+        "source-contracts"
+      ],
+      "dimension": "correctness"
+    },
+    {
+      "id": "canonicalization",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-canonicalization.md",
+      "verify": "pnpm vitest run test/canonical-cluster.test.ts test/canonical-classify.test.ts test/dedup.test.ts",
+      "deps": [
+        "collection-runs"
+      ],
+      "dimension": "correctness"
+    },
+    {
+      "id": "immutable-publication",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-immutable-publication.md",
+      "verify": "pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint",
+      "deps": [
+        "canonicalization"
+      ],
+      "dimension": "ux"
+    },
+    {
+      "id": "coverage-readiness",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-coverage-readiness.md",
+      "verify": "pnpm vitest run test/coverage-readiness.test.ts test/health.test.ts && pnpm lint",
+      "deps": [
+        "immutable-publication"
+      ],
+      "dimension": "correctness"
+    },
+    {
+      "id": "legacy-backfill",
+      "owner": "kimi",
+      "reviewer": "claude",
+      "spec": ".pact/tasks/phase1-foundation-legacy-backfill.md",
+      "verify": "pnpm tsx scripts/backfill-phase1-foundation.ts --dry-run --output /tmp/tradelinks-foundation-backfill.json && pnpm tsx scripts/backfill-phase1-foundation.ts --apply --fingerprint \"$(jq -r .fingerprint /tmp/tradelinks-foundation-backfill.json)\" && pnpm vitest run test/foundation-backfill.test.ts",
+      "deps": [
+        "coverage-readiness"
+      ],
+      "dimension": "correctness"
+    }
+  ]
+}
