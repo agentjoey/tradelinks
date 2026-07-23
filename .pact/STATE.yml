@@ -6,6 +6,7 @@ agents:
   - { id: gemini, roles: [worker] }
   - { id: kimi, roles: [worker, reviewer] }
   - { id: opencode, roles: [worker] }
+  - { id: ${PACT_AGENT_ID:-}, roles: [worker, reviewer] }
 features:
   - id: phase1-foundation
     branch: feat-phase1-foundation
