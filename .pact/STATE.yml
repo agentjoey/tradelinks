@@ -38,3 +38,10 @@ features:
         spec: .pact/tasks/phase1-foundation-collection-runs.md
         evidence: null
         deps: [source-contracts]
+      - id: canonicalization
+        owner: kimi
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-foundation-canonicalization.md
+        evidence: null
+        deps: [collection-runs]
