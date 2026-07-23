@@ -186,3 +186,32 @@ Review dimension: **ux**.
 Claude confirms the reviewer can understand evidence and consequences before acting, every action/state is accessible and unambiguous, final-build browser evidence matches the target commit, and all T3 gates above are present. Missing fresh-context review, Owner walkthrough, final-build screenshots, keyboard/permission checks, or a release-blocking finding blocks acceptance.
 
 verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint
+
+## Handoff Record — Kimi session restart 2026-07-23
+
+- Task / Brief / revision: `immutable-publication` / `Task6-T3-r3`.
+- Agent role / harness / session: Kimi K3 sole worker; prior Kimi session was
+  interrupted by Codex after the first TypeScript check produced actionable
+  test-fixture errors and the session then emitted no progress for more than
+  five minutes. No agent-role change or implementation delegation occurred.
+- Branch / base / current commit: `feat-phase1-foundation`; uncommitted work is
+  based on `b4ffca0`.
+- Files changed: `PRODUCT.md`, the approved Prisma schema/0012 migration,
+  canonical domain/publication modules, canonical queue read, admin
+  actions/page/client controls, publication tests, and the bounded architecture
+  note listed in this task's scope.
+- Decisions and assumptions: Shape is bound to approved `Task6-T3-r3`;
+  legacy Telegram/CLI Alert review remains unchanged; database URLs are
+  process-scoped to the approved isolated branch.
+- Commands/evidence: the original two schema tests passed as a baseline; after
+  new publication tests were added, the exact RED command failed on missing
+  `canonical-change.js` as expected; Neon metadata and endpoint ownership were
+  proven; `0012_phase1_publication_review_fields` was applied only to
+  `br-plain-shadow-aoknpdf3`; `pnpm db:validate` and `pnpm db:gen` passed.
+- Known failures / uncommitted state: `pnpm lint` currently reports five
+  TypeScript errors only in `test/canonical-publish.test.ts`: four optional
+  spread values in pure invariant fixtures and two possibly-undefined evidence
+  array elements. No GREEN gate, Impeccable critique/audit/polish, build, or
+  browser verification has been claimed.
+- Next safe action: verify `b4ffca0` and the uncommitted file list, fix only the
+  five test type errors, rerun `pnpm lint`, then continue the exact GREEN gate.
