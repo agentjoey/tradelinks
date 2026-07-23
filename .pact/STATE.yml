@@ -24,3 +24,10 @@ features:
         spec: .pact/tasks/phase1-foundation-forward-schema.md
         evidence: null
         deps: [taxonomy-readiness]
+      - id: source-contracts
+        owner: kimi
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-foundation-source-contracts.md
+        evidence: null
+        deps: [forward-schema]
