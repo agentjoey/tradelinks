@@ -62,9 +62,18 @@ export function getBoss(): PgBoss {
       throw new Error("pg-boss needs DIRECT_URL (or DATABASE_URL). See .env.example");
     }
     const cs = pinSslMode(raw);
-    // Maintenance every 5min + delete finished jobs after 30min so the job
-    // tables can't bloat storage again (see QUEUE_POLICY).
-    _boss = new PgBoss({ connectionString: cs, maintenanceIntervalMinutes: 5, deleteAfterMinutes: 30 });
+    // Maintenance every 15min (was 5min) + polling capped at 300s: without these
+    // caps pg-boss's own housekeeping pings Neon too often to ever let it
+    // auto-suspend (~5min idle threshold), burning the 100 CU-h/month free
+    // allowance on an always-warm compute. Job pickup still wakes instantly via
+    // LISTEN/NOTIFY; 300s is only the fallback poll (P1 of docs/hf-hybrid-design.md).
+    // deleteAfterMinutes: 30 keeps finished jobs from bloating storage (QUEUE_POLICY).
+    _boss = new PgBoss({
+      connectionString: cs,
+      maintenanceIntervalMinutes: 15,
+      pollingIntervalSeconds: 300,
+      deleteAfterMinutes: 30,
+    });
   }
   return _boss;
 }

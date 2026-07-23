@@ -9,8 +9,12 @@ import { logger } from "../lib/logger.js";
 /**
  * pg-boss schedule is keyed by queue name (one cron per queue), so we cannot
  * give 25 sources individual crons directly (ADR-004). Instead a single
- * per-minute `scheduler-tick` fans out: for each active source, if its cron's
+ * 15-minute `scheduler-tick` fans out: for each active source, if its cron's
  * most recent fire time is newer than lastCrawledAt, enqueue a crawl job.
+ *
+ * 15min cadence (was 1min): every source runs at 4–12h frequency, so a 15min
+ * granularity costs nothing in freshness — and lets Neon scale to zero between
+ * ticks instead of staying warm 24/7 (P1 of docs/hf-hybrid-design.md).
  */
 
 /** Pure due-check, unit-tested. */
@@ -25,8 +29,8 @@ export function isDue(cron: string, lastCrawledAt: Date | null, now: Date): bool
 }
 
 export async function registerScheduler(boss: PgBoss) {
-  // fire the tick every minute
-  await boss.schedule(QUEUES.scheduler, "* * * * *");
+  // fire the tick every 15 minutes (see module docstring)
+  await boss.schedule(QUEUES.scheduler, "*/15 * * * *");
 
   await boss.work(QUEUES.scheduler, async () => {
     const now = new Date();

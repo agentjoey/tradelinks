@@ -115,3 +115,18 @@ Incidents on 2026-06-04/05 and their root causes — keep these in mind:
 | AI 429 / empty MiniMax response | rate limit / reasoning token exhaustion | widen retry delay; floor max_tokens |
 | Telegram push not firing | Bot token / chat ID wrong | re-check `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` |
 | pg SSL warning in logs | `sslmode=require` v9 deprecation | pinned to `verify-full` in queues.ts (shipped) |
+
+## Neon CU 验证（P1 节奏修正后必做）
+
+P1（`scheduler-tick` 1min→15min、`maintenanceIntervalMinutes` 5→15、`pollingIntervalSeconds: 300`）的目标是让 Neon 大部分时段 scale-to-zero（免费帽 100 CU-h/月）。
+
+1. 部署后 24h 看 Neon Console → 目标 compute 的 **CU 曲线**：应出现大段 0 CU 区间；月化估算 < 100 CU-h。
+2. 若仍不睡眠：用 `pg_stat_activity` 抓残余活跃源——
+   ```sql
+   SELECT application_name, state, count(*)
+   FROM pg_stat_activity WHERE datname = current_database()
+   GROUP BY 1, 2 ORDER BY 3 DESC;
+   ```
+   常见残余：某 worker 的 polling 未生效、pg-boss LISTEN 连接（idle 属正常，不计活跃）。
+3. 功能验收：30–60min 内 `items` 表应有新抓取（源频率 4–12h，等不到属正常，看 `lastCrawledAt` 是否在 15min 粒度推进即可）；9 个 cron 由 `pgboss.schedule` 驱动，不受本改动影响。
+4. 若 Neon Console 的 **autosuspend 被禁用**，先开回（默认 ~5min），否则 P1 无效。
