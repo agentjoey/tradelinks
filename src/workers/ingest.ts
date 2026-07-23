@@ -1,8 +1,8 @@
 import type PgBoss from "pg-boss";
 import { QUEUES, sendOpts } from "../queue/queues.js";
-import { IngestJobSchema } from "../queue/schemas.js";
+import { IngestJobSchema, type RawItem } from "../queue/schemas.js";
 import { prisma } from "../db/client.js";
-import { urlHash, normalizeUrl } from "../lib/hash.js";
+import { insertItemsDeduped } from "../collection/run.js";
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from "../lib/gnews.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
@@ -64,61 +64,59 @@ export async function registerIngestWorker(boss: PgBoss) {
       // are skipped by url-hash anyway, so steady-state only new items flow.
       // Bestseller crawls are storage-only (no AI), so keep the full grid.
       const capped = isBestseller ? items : items.slice(0, env.MAX_ITEMS_PER_CRAWL);
+
+      // Google News items link to a redirect page — resolve to the real
+      // publisher first so url/urlHash (dedup) and the stored URL are canonical
+      // (tap target + og:image come from the article, not Google). Graceful:
+      // a failed resolve keeps the GN link.
+      const resolved: RawItem[] = [];
       for (const raw of capped) {
-        // Google News items link to a redirect page — resolve to the real
-        // publisher first so url/urlHash (dedup) and the stored URL are canonical
-        // (tap target + og:image come from the article, not Google). Graceful:
-        // a failed resolve keeps the GN link.
         let rawUrl = raw.url;
         if (!isBestseller && isGoogleNewsUrl(rawUrl)) {
           const real = await resolveGoogleNewsUrl(rawUrl);
           if (real) rawUrl = real;
         }
-        const url = normalizeUrl(rawUrl); // canonical (e.g. amazon → /dp/<ASIN>)
-        const hash = urlHash(rawUrl); // == sha256(normalizeUrl(rawUrl))
-        const bsImage = (raw.rawContent as { image?: string } | null)?.image ?? null;
-        const existing = await prisma.item.findUnique({ where: { urlHash: hash } });
-        if (existing) {
+        resolved.push(rawUrl === raw.url ? raw : { ...raw, url: rawUrl });
+      }
+
+      // Shared URL/hash dedup insert (level 1); replay-safe by urlHash unique.
+      const results = await insertItemsDeduped(sourceId, resolved, {
+        extraCreate: isBestseller
+          ? (raw) => ({
+              status: "processed",
+              regions: (src?.regions ?? []) as never[],
+              platforms: src?.platforms ?? [],
+              category: (src?.categoryHint ?? "trend") as never,
+              imageUrl: (raw.rawContent as { image?: string } | null)?.image ?? null,
+            })
+          : undefined,
+      });
+
+      for (const r of results) {
+        const bsImage = (r.raw.rawContent as { image?: string } | null)?.image ?? null;
+        if (!r.created) {
           // Bestsellers are one-row-per-product (deduped); refresh image/rank/
           // title on re-crawl so the board stays current without re-bloating.
           if (isBestseller) {
             await prisma.item.update({
-              where: { urlHash: hash },
+              where: { urlHash: r.hash },
               data: {
-                title: raw.title,
-                rawContent: (raw.rawContent ?? undefined) as object | undefined,
+                title: r.raw.title,
+                rawContent: (r.raw.rawContent ?? undefined) as object | undefined,
                 ...(bsImage ? { imageUrl: bsImage } : {}),
                 crawledAt: new Date(),
               },
             });
-            await recordValidationSnapshot(sourceId, url, raw.title, raw.rawContent ?? null, bsImage);
+            await recordValidationSnapshot(sourceId, r.url, r.raw.title, r.raw.rawContent ?? null, bsImage);
           }
           continue;
         }
-
-        const item = await prisma.item.create({
-          data: {
-            sourceId,
-            url,
-            urlHash: hash,
-            title: raw.title,
-            lang: raw.lang ?? "en",
-            publishedAt: raw.publishedAt ? new Date(raw.publishedAt) : new Date(),
-            rawContent: (raw.rawContent ?? undefined) as object | undefined,
-            ...(isBestseller
-              ? {
-                  status: "processed" as const,
-                  regions: (src?.regions ?? []) as never[],
-                  platforms: src?.platforms ?? [],
-                  category: (src?.categoryHint ?? "trend") as never,
-                  imageUrl: bsImage,
-                }
-              : {}),
-          },
-        });
         created++;
-        if (isBestseller) await recordValidationSnapshot(sourceId, url, raw.title, raw.rawContent ?? null, bsImage);
-        if (!isBestseller) await boss.send(QUEUES.process, { itemId: item.id }, sendOpts);
+        if (isBestseller) {
+          await recordValidationSnapshot(sourceId, r.url, r.raw.title, r.raw.rawContent ?? null, bsImage);
+        } else {
+          await boss.send(QUEUES.process, { itemId: r.itemId }, sendOpts);
+        }
       }
 
       logger.info(
