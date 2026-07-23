@@ -877,6 +877,11 @@ Run: `pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run tes
 
 Expected: PASS; TypeScript verifies the server actions, and no old Alert can be approved through the updated action.
 
+Preserve the existing Telegram/CLI `approveAlert`, `rejectAlert`, `listPending`,
+and `getAlertBrief` runtime contracts. The retirement applies only to the admin
+web actions: they accept canonical draft/version IDs and must leave a legacy
+Alert unchanged when given its ID.
+
 - [ ] **Step 5: Commit publication and review**
 
 ```bash

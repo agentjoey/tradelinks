@@ -59,6 +59,17 @@ template requires a non-blank template and records
 `actionTemplateReviewedAt/actionTemplateReviewedBy`; it does not publish the
 draft.
 
+The legacy functions in `src/alerts/review.ts` are still consumed by the
+out-of-scope Telegram webhook and CLI. Preserve the runtime behavior and public
+signatures of `listPending`, `approveAlert`, `rejectAlert`, and `getAlertBrief`.
+Replacing legacy approval is limited to the authenticated admin web surface:
+`app/admin/review/actions.ts` must stop importing/calling legacy Alert approval
+or rejection and operate only on canonical draft/version IDs.
+`src/alerts/review.ts` may add canonical review-queue reads for the page. A
+legacy Alert ID passed to canonical publication must fail as
+`CANONICAL_DRAFT_NOT_FOUND` (or an equivalently explicit canonical-not-found
+error), and the Alert row must remain unchanged.
+
 The UI must show version diff, source readiness, evidence role/authority/access, primary-source link, effective-date provenance, classification confidence, action-template review control, and explicit rejection reason while remaining protected by existing Neon Auth.
 
 ## T3 frontend workflow
