@@ -40,7 +40,7 @@ features:
         deps: [source-contracts]
       - id: canonicalization
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-canonicalization.md
         evidence: null
