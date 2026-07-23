@@ -183,3 +183,38 @@ reachability(40) + cadence(20) + productivity(20) + quality(20), mapped to a tie
 `normalizeUrl()` (used by `urlHash` and the stored `item.url`) drops tracking params and
 **canonicalizes Amazon `/dp/<ASIN>`** (any TLD) — the per-crawl `/ref=…/<session-id>`
 suffix otherwise defeats dedup and re-stores the same products every crawl.
+
+## Phase 1 Intelligence Foundation (additive, 2026-07-23)
+
+Migration `0011_phase1_intelligence_foundation` adds the forward-only canonical
+content chain alongside the legacy tables above (nothing dropped or renamed).
+During the cutover both chains coexist; legacy writers/readers are untouched.
+
+```
+Source → Item → EvidenceCluster → CanonicalChange → CanonicalChangeVersion
+                                           └────→ EvidenceRecord
+SourceCheck and PipelineRun record checks independently from new-item volume.
+```
+
+- `CanonicalChangeVersion` rows are immutable versions; publication advances by
+  creating a new current version, never by editing in place. The partial unique
+  index `"CanonicalChangeVersion_one_current"` on
+  `"CanonicalChangeVersion"("canonicalChangeId") WHERE "isCurrent" = true`
+  guarantees a canonical change has **at most one current version** (enforced in
+  `test/canonical-publish.test.ts`; raw SQL, like 0002's trigram indexes, because
+  the Prisma datamodel cannot express partial indexes).
+- `Source` gains additive contract fields (`authorityLevel`, `readiness`,
+  `freshnessSlaMinutes`, `fetchMethod`, `degradationPolicy`, `userPromise`,
+  `readinessReason`, `lastReviewedAt`) — all nullable so legacy rows are
+  untouched. `adapter` and `frequencyCron` stay until the operations cutover
+  because the existing worker still consumes them.
+- `CoverageCapability`/`CapabilitySource` record what TradeLinks can truthfully
+  promise per market/platform/category, and which sources back each promise.
+
+**Rollback checkpoint (forward-only).** Pre-migration checkpoint branch:
+`phase1-foundation-pre-migration` (`br-plain-shadow-aoknpdf3`, project
+`steep-bird-11404641`, parent `production`, expires 2026-07-30T12:00:00Z).
+Procedure: stop new writers, route readers back to the pre-cutover public
+release, **retain the additive tables**, compare row counts/content hashes, and
+ship a **forward corrective migration**. Restore the checkpoint branch only into
+a **new branch** for investigation; never overwrite production in place.

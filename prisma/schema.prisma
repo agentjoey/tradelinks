@@ -63,6 +63,125 @@ enum PushChannel {
   slack
 }
 
+// ---------- Phase 1 intelligence enums (additive; see
+// docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md
+// "Data Model Contract") ----------
+
+enum MarketCode {
+  US
+}
+
+enum PlatformCode {
+  AMAZON
+  SHOPIFY
+}
+
+enum OperatingStage {
+  EXPLORING_US
+  PREPARING_TO_LAUNCH
+  ALREADY_SELLING
+}
+
+enum SignalType {
+  REGULATORY
+  PLATFORM_POLICY
+  LOGISTICS
+  DEMAND
+  INDUSTRY
+  PRACTICAL_GUIDANCE
+}
+
+enum ProductCategory {
+  ALL_PRODUCTS
+  CONSUMER_ELECTRONICS
+  PET_SUPPLIES
+  BEAUTY_PERSONAL_CARE
+  TOYS_CHILDRENS_PRODUCTS
+  HOME_KITCHEN
+  APPAREL_ACCESSORIES
+  HEALTH_SUPPLEMENTS
+  FOOD_BEVERAGE
+  SPORTS_OUTDOORS
+  AUTOMOTIVE_TOOLS
+}
+
+enum RiskAttribute {
+  BATTERY
+  WIRELESS_RADIO
+  CHILDREN
+  INGESTIBLE
+  TOPICAL_COSMETIC
+  FOOD_CONTACT
+  MEDICAL_CLAIM
+  ANIMAL_HEALTH
+  CHEMICAL_HAZMAT
+  TEXTILE_LABELING
+  ELECTRICAL_SAFETY
+}
+
+enum PolicyTopic {
+  IMPORT_CUSTOMS
+  PRODUCT_SAFETY_RECALLS
+  LABELING_CLAIMS
+  FEES_PAYMENTS
+  PRIVACY_CONSUMER_PROTECTION
+  LISTING_ACCOUNT_HEALTH
+}
+
+enum ReadinessLevel {
+  UNAVAILABLE
+  EXPERIMENTAL
+  MONITORED
+  VERIFIED
+  STALE
+}
+
+enum EvidenceRole {
+  PRIMARY_OFFICIAL
+  SUPPORTING_OFFICIAL
+  SECONDARY_CONTEXT
+}
+
+enum AuthorityLevel {
+  GOVERNMENT_OFFICIAL
+  PLATFORM_OFFICIAL
+  INDUSTRY_OFFICIAL
+  REPUTABLE_SECONDARY
+  COMMUNITY
+}
+
+enum EvidenceAccess {
+  PUBLIC
+  RESTRICTED
+  UNAVAILABLE
+}
+
+enum EditorialStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  REJECTED
+  RETRACTED
+}
+
+enum RunStatus {
+  RUNNING
+  SUCCEEDED_EMPTY
+  SUCCEEDED_ITEMS
+  PARTIAL
+  FAILED
+  BLOCKED
+}
+
+enum PipelineJobType {
+  COLLECT
+  CANONICALIZE
+  PUBLISH
+  BRIEFING
+  EMAIL
+  HEALTH
+}
+
 // ---------- Tables ----------
 
 model Source {
@@ -82,7 +201,23 @@ model Source {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  // Phase 1 additive contract fields (nullable so legacy rows are untouched;
+  // populated by the source-contract cutover). `adapter` and `frequencyCron`
+  // stay until the operations cutover because the existing worker consumes them.
+  authorityLevel      AuthorityLevel?
+  readiness           ReadinessLevel?
+  freshnessSlaMinutes Int?
+  fetchMethod         String?
+  degradationPolicy   String?
+  userPromise         String?
+  readinessReason     String?
+  lastReviewedAt      DateTime?
+
   items Item[]
+
+  sourceChecks    SourceCheck[]
+  evidenceRecords EvidenceRecord[]
+  capabilities    CapabilitySource[]
 
   @@map("sources")
 }
@@ -112,6 +247,9 @@ model Item {
 
   source  Source   @relation(fields: [sourceId], references: [id])
   cluster Cluster? @relation(fields: [clusterId], references: [id])
+
+  evidenceClusterMembers EvidenceClusterMember[]
+  evidenceRecords        EvidenceRecord[]
 
   @@index([sourceId, crawledAt])
   @@index([status])
@@ -355,4 +493,172 @@ model Subscriber {
 
   @@index([status])
   @@map("subscribers")
+}
+
+// ---------- Phase 1 intelligence models (additive; default table names) ----------
+
+// One scheduled job execution. Idempotent per (jobType, scopeKey, scheduledFor).
+model PipelineRun {
+  id                String          @id @default(cuid())
+  jobType           PipelineJobType
+  scopeKey          String
+  scheduledFor      DateTime
+  startedAt         DateTime        @default(now())
+  finishedAt        DateTime?
+  status            RunStatus
+  itemCount         Int             @default(0)
+  outputFingerprint String?
+  metadata          Json?
+  errorCode         String?
+  errorMessage      String?
+  runnerVersion     String
+
+  sourceChecks SourceCheck[]
+
+  @@unique([jobType, scopeKey, scheduledFor])
+}
+
+// One source check within a run — recorded independently from new-item volume.
+model SourceCheck {
+  id          String    @id @default(cuid())
+  runId       String
+  sourceId    String
+  status      RunStatus
+  itemCount   Int       @default(0)
+  httpStatus  Int?
+  contentHash String?
+  failureCode String?
+  error       String?
+  checkedAt   DateTime  @default(now())
+
+  run    PipelineRun @relation(fields: [runId], references: [id])
+  source Source      @relation(fields: [sourceId], references: [id])
+
+  @@unique([runId, sourceId])
+}
+
+// Cluster of items that evidence a single canonical change.
+model EvidenceCluster {
+  id          String                  @id @default(cuid())
+  fingerprint String                  @unique
+  status      EditorialStatus         @default(DRAFT)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  members         EvidenceClusterMember[]
+  canonicalChange CanonicalChange?
+}
+
+model EvidenceClusterMember {
+  clusterId String
+  itemId    String
+  role      EvidenceRole
+
+  cluster EvidenceCluster @relation(fields: [clusterId], references: [id])
+  item    Item            @relation(fields: [itemId], references: [id])
+
+  @@id([clusterId, itemId])
+}
+
+// The canonical, deduplicated representation of a real-world change.
+model CanonicalChange {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  clusterId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cluster  EvidenceCluster          @relation(fields: [clusterId], references: [id])
+  versions CanonicalChangeVersion[]
+}
+
+// Immutable version of a canonical change. The partial unique index
+// "CanonicalChangeVersion_one_current" (added in migration
+// 0011_phase1_intelligence_foundation) guarantees at most one current
+// version per canonical change.
+model CanonicalChangeVersion {
+  id                         String            @id @default(cuid())
+  canonicalChangeId          String
+  version                    Int
+  isCurrent                  Boolean           @default(false)
+  title                      String
+  summary                    String
+  signalType                 SignalType
+  market                     MarketCode        @default(US)
+  regions                    String[]
+  platforms                  PlatformCode[]
+  operatingStages            OperatingStage[]
+  productCategories          ProductCategory[]
+  riskAttributes             RiskAttribute[]
+  policyTopics               PolicyTopic[]
+  sourcePublishedAt          DateTime
+  effectiveAt                DateTime?
+  urgency                    Int
+  readiness                  ReadinessLevel
+  generalImpact              String
+  generalActionTemplate      String?
+  actionTemplateReviewedAt   DateTime?
+  actionTemplateReviewedBy   String?
+  editorialStatus            EditorialStatus   @default(DRAFT)
+  correctionReason           String?
+  reviewedAt                 DateTime?
+  reviewedBy                 String?
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+
+  canonicalChange CanonicalChange  @relation(fields: [canonicalChangeId], references: [id])
+  evidence        EvidenceRecord[]
+
+  @@unique([canonicalChangeId, version])
+}
+
+// One piece of evidence attached to a canonical change version.
+model EvidenceRecord {
+  id                String          @id @default(cuid())
+  changeVersionId   String
+  sourceId          String
+  sourceItemId      String?
+  url               String
+  role              EvidenceRole
+  authorityLevel    AuthorityLevel
+  publishedAt       DateTime?
+  access            EvidenceAccess
+  licenseNote       String
+  excerpt           String?
+  normalizedSummary String
+  contentHash       String
+  fetchedAt         DateTime
+  reviewedAt        DateTime?
+  retractedAt       DateTime?
+
+  changeVersion CanonicalChangeVersion @relation(fields: [changeVersionId], references: [id])
+  source        Source                 @relation(fields: [sourceId], references: [id])
+  sourceItem    Item?                  @relation(fields: [sourceItemId], references: [id])
+
+  @@unique([changeVersionId, url])
+}
+
+// What TradeLinks can truthfully promise per market/platform/category.
+model CoverageCapability {
+  id             String            @id @default(cuid())
+  key            String            @unique
+  market         MarketCode
+  platform       PlatformCode?
+  category       ProductCategory?
+  readiness      ReadinessLevel
+  summary        String
+  knownGaps      String[]
+  lastReviewedAt DateTime
+
+  sources CapabilitySource[]
+}
+
+model CapabilitySource {
+  capabilityId String
+  sourceId     String
+
+  capability CoverageCapability @relation(fields: [capabilityId], references: [id])
+  source     Source             @relation(fields: [sourceId], references: [id])
+
+  @@id([capabilityId, sourceId])
 }
