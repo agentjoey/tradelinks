@@ -47,7 +47,7 @@ features:
         deps: [collection-runs]
       - id: immutable-publication
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-immutable-publication.md
         evidence: null
