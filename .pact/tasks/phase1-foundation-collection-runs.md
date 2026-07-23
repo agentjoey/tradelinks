@@ -29,6 +29,12 @@ Produce:
 
 Consume `FetchOutcome`, the Task 2 run/check Prisma models, and existing URL/hash item deduplication. `beginRun` upserts on `[jobType, scopeKey, scheduledFor]`; `recordSourceOutcome` upserts on `[runId, sourceId]`; `Source.lastOk` advances on `SUCCEEDED_EMPTY` and `SUCCEEDED_ITEMS` only; inserted counts change only after item transaction success.
 
+For an existing `[runId, sourceId]` check, atomically increment `itemCount`
+only by the number of items newly inserted in the current transaction. Do not
+replace it with the current attempt's count: an identical replay inserts zero
+and leaves the count stable, while a failed/blocked attempt followed by a
+successful retry adds the successful insertion count.
+
 ## RED-GREEN-REFACTOR evidence
 
 The Pact checkpoint must include commands, exit codes, and replay/count evidence for all three phases.
