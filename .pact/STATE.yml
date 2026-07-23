@@ -7,3 +7,13 @@ agents:
   - { id: kimi, roles: [worker, reviewer] }
   - { id: opencode, roles: [worker] }
 features:
+  - id: phase1-foundation
+    branch: feat-phase1-foundation
+    status: in_progress
+    tasks:
+      - id: taxonomy-readiness
+        owner: kimi
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-foundation-taxonomy-readiness.md
+        evidence: null
