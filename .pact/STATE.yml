@@ -1,0 +1,9 @@
+project: tradelinks
+working_tree_holder: null
+agents:
+  - { id: codex, roles: [orchestrator, reviewer] }
+  - { id: claude, roles: [worker, reviewer] }
+  - { id: gemini, roles: [worker] }
+  - { id: kimi, roles: [worker, reviewer] }
+  - { id: opencode, roles: [worker] }
+features:
