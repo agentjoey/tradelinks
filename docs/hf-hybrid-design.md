@@ -1,5 +1,6 @@
 # HF 混合方案详细设计（2026-07-19）
 
+> **状态（2026-07-21 更新）**：P1 已实施并上线（`cbbbc53`）；**P2（scraper→HF Spaces）经 Human Owner 决策取消——保持架构简洁性，不引入第三平台**。本文 P2/P3 部分仅作设计备案留存，不再执行。
 > 前置：`docs/arch-review-2026-07.md`（四方向评估）、`docs/hf-migration-eval.md`（HF 单点）。
 > 本文：① worker/scraper 成本压力分解 → ② 混合方案详细设计（P1 Neon 成本修正 + P2 scraper→HF + P3 可选 worker→Fly）。
 

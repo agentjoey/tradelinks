@@ -1,5 +1,6 @@
 # 整体架构评估（2026-07-19）：四个方向 + DB/Auth 替代项
 
+> **决策记录（2026-07-21）**：P1（Neon 节奏修正）已实施上线（`cbbbc53`）；**scraper→HF 迁移取消，架构保持 Vercel + Railway(worker+scraper) + Neon 三组件，不引入新平台**。§3 推荐路径中 P2/P3 不再执行，本文其余分析（成本压力、Neon 免费帽、worker 归宿判定）继续有效。
 > 关联文档：`docs/hf-migration-eval.md`（HF 单点评估）、`docs/architecture.md`、`docs/railway-setup.md`。
 > 本文是决策评估，不是实施计划。选定方向后再出 plan。
 
