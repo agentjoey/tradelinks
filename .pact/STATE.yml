@@ -33,7 +33,7 @@ features:
         deps: [forward-schema]
       - id: collection-runs
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-collection-runs.md
         evidence: null
