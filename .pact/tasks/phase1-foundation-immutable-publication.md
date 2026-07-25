@@ -223,3 +223,33 @@ verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run t
   browser verification has been claimed.
 - Next safe action: verify `b4ffca0` and the uncommitted file list, fix only the
   five test type errors, rerun `pnpm lint`, then continue the exact GREEN gate.
+
+## Handoff Record — Kimi session restart 2026-07-26
+
+- Task / Brief / revision: `immutable-publication` / `Task6-T3-r3`; the
+  no-auth-bypass final-build clarification is committed at `4edcd8d`.
+- Agent role / harness / session: Kimi K3 remains the sole implementation
+  worker. Codex performed coordination and read-only verification only; no
+  product-code edit or implementation delegation occurred.
+- Branch / base / current commit: `feat-phase1-foundation`; product work remains
+  uncommitted on top of `4edcd8d`.
+- Files changed: exactly the in-scope product, migration, test, and architecture
+  paths listed above. `git diff --check` is clean; auth files are untouched.
+- Commands/evidence: on the approved isolated Neon branch, the fresh exact GREEN
+  gate passed on 2026-07-26: schema valid, 12 migrations up to date,
+  `test/canonical-publish.test.ts` plus `test/alert-route.test.ts` passed 22/22,
+  and `pnpm lint` exited 0. The DB-backed suite took 231 seconds because of
+  remote Neon latency.
+- Known risk requiring worker resolution before design review: the correction
+  UI currently accepts a changed action template, while
+  `correctCanonicalChange` correctly invalidates the old template-review
+  timestamp and then immediately applies the publication invariant. This makes
+  that visible correction input non-actionable. Resolve the product path within
+  the approved files and cover the chosen behavior with TDD; do not weaken the
+  action-template review invariant.
+- Remaining gates: run Impeccable critique and audit, fix every finding, run
+  Impeccable polish, rerun the exact GREEN gate, create one final `pnpm build`,
+  then verify the unauthenticated permission-denial journey on that build. Do
+  not create any auth bypass or alternate build. Prepare non-production fixture
+  data and stop at the Human Owner authenticated-walkthrough gate without
+  checkpointing or launching Claude review.
