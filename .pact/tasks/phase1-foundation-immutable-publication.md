@@ -169,6 +169,14 @@ Simplify transaction/invariant/UI composition without weakening evidence fields 
 
 After tests and fixes, run `pnpm build`, start that exact production build locally with non-production fixture/test data, and verify `/admin/review` in a real browser before checkpointing. Capture final-build screenshots at mobile, intermediate, and desktop widths in both supported themes where applicable; verify keyboard/focus, permission denial, reduced motion, all applicable states above, blocked Verified publication, valid publication, correction history, and rejection reason. Screenshots and browser results must come from the post-fix final build and contain no secrets.
 
+No committed or temporary auth bypass, stubbed `requireAdmin`, alternate
+auth-disabled build, fixture route, or second screenshot build is allowed.
+Without a real authenticated local Neon Auth session, the worker may verify the
+permission-denial journey on the one final build and prepare the authenticated
+fixture data, but must then stop at the Human Owner walkthrough gate. The Human
+Owner uses a real session on that same still-running final build; subsequent
+screenshots and interaction evidence must target that exact build.
+
 Claude must review and verify in a **fresh context/session**, starting only from this Brief, target commit/diff, and evidence. Claude must independently rerun the machine gate and browser critical journeys rather than inheriting Kimi's conclusions. If Claude edits implementation, a new fresh-context Claude review is required for the affected diff. Human Owner must personally walk the critical local journey and confirm the rollback path before acceptance; this does not authorize deployment.
 
 ## 自审 / Self-review
