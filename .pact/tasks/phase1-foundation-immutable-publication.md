@@ -365,3 +365,33 @@ verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run t
 - Worker must stop after fixture preparation and the bounded architecture-note
   correction; do not checkpoint, launch Claude, deploy, restore a branch, or
   mutate production.
+
+## Handoff Record — Owner walkthrough complete 2026-07-26
+
+- Human Owner confirmation: the authenticated final-build walkthrough completed
+  all four required journeys. Fixture A published successfully, Fixture B was
+  rejected with a persisted reason, Fixture C was corrected forward, and the
+  Human Owner explicitly confirmed the rollback strategy. No production data,
+  deployment, restore, or cloud configuration was involved.
+- Final-build visual evidence: the Owner-provided screenshot shows Fixture C
+  v4 as `PUBLISHED` and `current`, v3 retained as `DRAFT`, and v1/v2 retained as
+  earlier published versions. The page displays the persisted correction reason
+  `Owner walkthrough: verified forward correction flow.` together with the
+  effective-date and action-template diff.
+- Independent read-only database verification on approved isolated branch
+  `br-plain-shadow-aoknpdf3`: v1 is `PUBLISHED`/non-current; v2 is
+  `PUBLISHED`/non-current; v3 is `DRAFT`/non-current; v4 is the sole
+  `PUBLISHED`/current version. v4 persists the exact non-blank correction reason,
+  `reviewedBy` and `actionTemplateReviewedBy` as the Human Owner identity,
+  effective date `2026-09-15`, and the corrected action template. No older
+  version was overwritten or deleted.
+- Confirmed rollback policy: application/code and read-path rollback leaves the
+  additive nullable `0012` columns in place; investigation creates a new branch
+  from the branch creation-time historical checkpoint (or untouched production
+  parent as appropriate) and never overwrites production; published content is
+  corrected only by a new forward version while older versions remain immutable.
+- Worker authorization: all Human Owner gates are now satisfied. Kimi may rerun
+  the exact GREEN machine gate and `pnpm build`, complete the bounded self-review
+  and T3 Verification Record, and checkpoint `immutable-publication` with the
+  full evidence. Kimi must not deploy, restore a branch, mutate production, or
+  start either dependent task before Claude's independent acceptance.
