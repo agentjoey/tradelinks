@@ -1,0 +1,298 @@
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { prisma } from "../src/db/client.js";
+import {
+  applyFoundationBackfill,
+  planFoundationBackfill,
+  type BackfillReport,
+} from "../src/canonicalize/backfill.js";
+
+const RUN_ID = randomUUID();
+
+const SOURCE_ID = `legacy-backfill-test-source-${RUN_ID}`;
+const ITEM_ID = `legacy-backfill-test-item-${RUN_ID}`;
+const CLUSTER_ID = `legacy-backfill-test-cluster-${RUN_ID}`;
+const ALERT_ID = `legacy-backfill-test-alert-${RUN_ID}`;
+const ALERT_MISSING_TITLE_ID = `legacy-backfill-test-alert-missing-title-${RUN_ID}`;
+const ALERT_ORPHAN_ID = `legacy-backfill-test-alert-orphan-${RUN_ID}`;
+
+const SLUG_CONVERTIBLE = `legacy-alert:${ALERT_ID}`;
+const SLUG_MISSING_TITLE = `legacy-alert:${ALERT_MISSING_TITLE_ID}`;
+const SLUG_ORPHAN = `legacy-alert:${ALERT_ORPHAN_ID}`;
+const CLUSTER_FINGERPRINT = `legacy-cluster:${CLUSTER_ID}`;
+const ORPHAN_CLUSTER_FINGERPRINT = `legacy-alert-cluster:${ALERT_ORPHAN_ID}`;
+
+const FIXTURE_SLUGS = [SLUG_CONVERTIBLE, SLUG_MISSING_TITLE, SLUG_ORPHAN];
+const FIXTURE_CLUSTER_FINGERPRINTS = [CLUSTER_FINGERPRINT, ORPHAN_CLUSTER_FINGERPRINT];
+const SOURCE_URL = `https://example.com/backfill-test/source-${RUN_ID}`;
+const ITEM_URL = `https://example.com/backfill-test/item-${RUN_ID}`;
+const ITEM_URL_HASH = `legacy-backfill-test-hash-${RUN_ID}`;
+
+let fixturePlan: BackfillReport;
+
+async function cleanupFixtureRows() {
+  const versions = await prisma.canonicalChangeVersion.findMany({
+    where: {
+      canonicalChange: {
+        slug: { in: FIXTURE_SLUGS },
+      },
+    },
+    select: { id: true },
+  });
+  const versionIds = versions.map((v) => v.id);
+
+  await prisma.evidenceRecord.deleteMany({
+    where: { changeVersionId: { in: versionIds } },
+  });
+  await prisma.canonicalChangeVersion.deleteMany({
+    where: { id: { in: versionIds } },
+  });
+  await prisma.canonicalChange.deleteMany({
+    where: { slug: { in: FIXTURE_SLUGS } },
+  });
+  await prisma.evidenceClusterMember.deleteMany({
+    where: { itemId: ITEM_ID },
+  });
+  await prisma.evidenceCluster.deleteMany({
+    where: {
+      fingerprint: {
+        in: FIXTURE_CLUSTER_FINGERPRINTS,
+      },
+    },
+  });
+  await prisma.alert.deleteMany({
+    where: {
+      id: { in: [ALERT_ID, ALERT_MISSING_TITLE_ID, ALERT_ORPHAN_ID] },
+    },
+  });
+  await prisma.cluster.deleteMany({ where: { id: CLUSTER_ID } });
+  await prisma.item.deleteMany({
+    where: { OR: [{ id: ITEM_ID }, { url: ITEM_URL }, { urlHash: ITEM_URL_HASH }] },
+  });
+  await prisma.source.deleteMany({
+    where: { OR: [{ id: SOURCE_ID }, { url: SOURCE_URL }] },
+  });
+}
+
+async function seedFixtures() {
+  await prisma.source.create({
+    data: {
+      id: SOURCE_ID,
+      name: "Backfill Test Source",
+      url: SOURCE_URL,
+      adapter: "rss",
+      frequencyCron: "0 * * * *",
+      language: "en",
+      regions: ["north_america"],
+      platforms: [],
+    },
+  });
+  await prisma.item.create({
+    data: {
+      id: ITEM_ID,
+      sourceId: SOURCE_ID,
+      url: ITEM_URL,
+      urlHash: ITEM_URL_HASH,
+      title: "Backfill test item",
+      publishedAt: new Date("2026-07-01T00:00:00Z"),
+      regions: ["north_america"],
+      platforms: [],
+      lang: "en",
+    },
+  });
+  await prisma.cluster.create({
+    data: {
+      id: CLUSTER_ID,
+      representativeItemId: ITEM_ID,
+      sourceUrls: [ITEM_URL],
+      items: { connect: { id: ITEM_ID } },
+    },
+  });
+  await prisma.alert.create({
+    data: {
+      id: ALERT_ID,
+      clusterId: CLUSTER_ID,
+      title: "Legacy backfill test alert",
+      summary: "Backfill test alert summary",
+      urgencyScore: 5,
+      regions: ["north_america"],
+      platforms: [],
+      category: "regulatory",
+      affectedSkus: [],
+      sourceUrls: [ITEM_URL],
+      status: "published",
+      publishedAt: new Date("2026-07-01T00:00:00Z"),
+    },
+  });
+  await prisma.alert.create({
+    data: {
+      id: ALERT_MISSING_TITLE_ID,
+      title: "   ",
+      summary: "missing title",
+      urgencyScore: 1,
+      regions: [],
+      platforms: [],
+      category: "regulatory",
+      affectedSkus: [],
+      sourceUrls: [],
+      status: "pending_review",
+    },
+  });
+  await prisma.alert.create({
+    data: {
+      id: ALERT_ORPHAN_ID,
+      title: "Legacy orphan alert",
+      summary: "orphan alert summary",
+      urgencyScore: 2,
+      regions: ["north_america"],
+      platforms: [],
+      category: "platform_policy",
+      affectedSkus: [],
+      sourceUrls: [ITEM_URL],
+      status: "published",
+      publishedAt: new Date("2026-07-01T00:00:00Z"),
+    },
+  });
+}
+
+async function stablePair(
+  timeoutMs = 240000,
+): Promise<{ first: BackfillReport; second: BackfillReport }> {
+  const deadline = Date.now() + timeoutMs;
+  let first = await planFoundationBackfill();
+  while (Date.now() < deadline) {
+    const second = await planFoundationBackfill();
+    if (second.fingerprint === first.fingerprint) {
+      return { first, second };
+    }
+    first = second;
+  }
+  throw new Error(`Could not obtain stable backfill plan pair within ${timeoutMs}ms`);
+}
+
+async function applyWithRetry(
+  timeoutMs = 240000,
+): Promise<{ plan: BackfillReport; applied: BackfillReport }> {
+  const deadline = Date.now() + timeoutMs;
+  let { second: plan } = await stablePair();
+  while (Date.now() < deadline) {
+    try {
+      const applied = await applyFoundationBackfill(plan.fingerprint);
+      return { plan, applied };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/fingerprint mismatch/i.test(msg)) throw err;
+      const pair = await stablePair();
+      plan = pair.second;
+    }
+  }
+  throw new Error(`Could not apply backfill within ${timeoutMs}ms`);
+}
+
+beforeAll(async () => {
+  await cleanupFixtureRows();
+  await seedFixtures();
+  const pair = await stablePair();
+  fixturePlan = pair.second;
+}, 300000);
+
+afterAll(async () => {
+  await cleanupFixtureRows();
+}, 300000);
+
+describe("foundation backfill", () => {
+  it("maps a legacy alert to an in-review experimental draft with exact legacy-alert slug", () => {
+    const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
+    expect(draft).toBeDefined();
+    expect(draft).toMatchObject({
+      id: ALERT_ID,
+      slug: SLUG_CONVERTIBLE,
+      readiness: "EXPERIMENTAL",
+      editorialStatus: "IN_REVIEW",
+      isCurrent: false,
+    });
+  });
+
+  it("uses a deterministic cluster fingerprint derived from the legacy alert id", () => {
+    const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
+    expect(draft).toBeDefined();
+    const evidenceSourceId = draft?.evidence[0]?.sourceId;
+    expect(evidenceSourceId).toBe(SOURCE_ID);
+  });
+
+  it("produces the same fingerprint on repeated dry runs", async () => {
+    const { first, second } = await stablePair();
+    expect(second.fingerprint).toBe(first.fingerprint);
+  }, 240000);
+
+  it("keeps legacy source urls and items as secondary context evidence", () => {
+    const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
+    expect(draft).toBeDefined();
+    expect(draft!.evidence.length).toBeGreaterThan(0);
+    expect(draft!.evidence.every((e) => e.role === "SECONDARY_CONTEXT")).toBe(true);
+  });
+
+  it("records fixture-derived rejected rows with reasons", () => {
+    const rejected = fixturePlan.rejectedRows.filter(
+      (r) => r.table === "alerts" && r.id === ALERT_MISSING_TITLE_ID,
+    );
+    expect(rejected.length).toBe(1);
+    expect(rejected[0]!.reason).toMatch(/MISSING_TITLE/i);
+  });
+
+  it("apply matches the dry-run counts exactly on first apply and zero on replay", async () => {
+    const { plan: successfulPlan, applied } = await applyWithRetry();
+    expect(applied.fingerprint).toBe(successfulPlan.fingerprint);
+    expect(applied.sourceItems).toBe(successfulPlan.sourceItems);
+    expect(applied.clusters).toBe(successfulPlan.clusters);
+    expect(applied.canonicalChanges).toBe(successfulPlan.canonicalChanges);
+    expect(applied.versions).toBe(successfulPlan.versions);
+    expect(applied.evidenceRecords).toBe(successfulPlan.evidenceRecords);
+    expect(applied.rejectedRows).toEqual(successfulPlan.rejectedRows);
+
+    const created = await prisma.canonicalChange.findUnique({
+      where: { slug: SLUG_CONVERTIBLE },
+      include: {
+        versions: {
+          include: { evidence: true },
+        },
+      },
+    });
+    expect(created).not.toBeNull();
+    expect(created!.versions.length).toBe(1);
+    expect(created!.versions[0]!.editorialStatus).toBe("IN_REVIEW");
+    expect(created!.versions[0]!.readiness).toBe("EXPERIMENTAL");
+    expect(created!.versions[0]!.isCurrent).toBe(false);
+    expect(created!.versions[0]!.evidence.length).toBeGreaterThan(0);
+    expect(
+      created!.versions[0]!.evidence.every((e) => e.role === "SECONDARY_CONTEXT"),
+    ).toBe(true);
+
+    const orphanCluster = await prisma.evidenceCluster.findUnique({
+      where: { fingerprint: ORPHAN_CLUSTER_FINGERPRINT },
+      include: { members: true },
+    });
+    expect(orphanCluster).not.toBeNull();
+    expect(
+      orphanCluster!.members.some(
+        (m) => m.itemId === ITEM_ID && m.role === "SECONDARY_CONTEXT",
+      ),
+    ).toBe(true);
+
+    const replay = await applyFoundationBackfill(applied.fingerprint);
+    expect(replay.fingerprint).toBe(successfulPlan.fingerprint);
+    expect(replay.sourceItems).toBe(0);
+    expect(replay.clusters).toBe(0);
+    expect(replay.canonicalChanges).toBe(0);
+    expect(replay.versions).toBe(0);
+    expect(replay.evidenceRecords).toBe(0);
+    expect(replay.rejectedRows).toEqual(successfulPlan.rejectedRows);
+  }, 300000);
+
+  it("apply rejects a mismatched fingerprint", async () => {
+    await expect(applyFoundationBackfill("not-the-fingerprint")).rejects.toThrow(
+      /fingerprint/i,
+    );
+  }, 60000);
+});
