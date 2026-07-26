@@ -61,8 +61,8 @@ features:
         deps: [immutable-publication]
       - id: legacy-backfill
         owner: kimi
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-foundation-legacy-backfill.md
-        evidence: null
+        evidence: verify passed on recovery: gate passed for "pnpm tsx scripts/backfill-phase1-foundation.ts --dry-run --output /tmp/tradelinks-foundation-backfill.json && pnpm tsx scripts/backfill-phase1-foundation.ts --apply --fingerprint \"$(jq -r .fingerprint /tmp/tradelinks-foundation-backfill.json)\" && pnpm vitest run test/foundation-backfill.test.ts"
         deps: [coverage-readiness]
