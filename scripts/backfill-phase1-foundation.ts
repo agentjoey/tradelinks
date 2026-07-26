@@ -71,7 +71,7 @@ async function main() {
   if (args.apply) {
     if (!isApprovedApplyTarget()) {
       console.error(
-        "Refusing to apply backfill: DATABASE_URL/DIRECT_URL do not point to the approved isolated endpoint.",
+        "Refusing to apply backfill: DATABASE_URL is required and every configured database URL must point to the approved isolated endpoint.",
       );
       process.exit(1);
     }

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../src/db/client.js";
 import {
   applyFoundationBackfill,
+  isApprovedApplyTarget,
   planFoundationBackfill,
   type BackfillReport,
 } from "../src/canonicalize/backfill.js";
@@ -14,17 +15,30 @@ const SOURCE_ID = `legacy-backfill-test-source-${RUN_ID}`;
 const ITEM_ID = `legacy-backfill-test-item-${RUN_ID}`;
 const CLUSTER_ID = `legacy-backfill-test-cluster-${RUN_ID}`;
 const ALERT_ID = `legacy-backfill-test-alert-${RUN_ID}`;
+const ALERT_SHARED_CLUSTER_ID = `legacy-backfill-test-alert-shared-cluster-${RUN_ID}`;
 const ALERT_MISSING_TITLE_ID = `legacy-backfill-test-alert-missing-title-${RUN_ID}`;
 const ALERT_ORPHAN_ID = `legacy-backfill-test-alert-orphan-${RUN_ID}`;
 
 const SLUG_CONVERTIBLE = `legacy-alert:${ALERT_ID}`;
+const SLUG_SHARED_CLUSTER = `legacy-alert:${ALERT_SHARED_CLUSTER_ID}`;
 const SLUG_MISSING_TITLE = `legacy-alert:${ALERT_MISSING_TITLE_ID}`;
 const SLUG_ORPHAN = `legacy-alert:${ALERT_ORPHAN_ID}`;
-const CLUSTER_FINGERPRINT = `legacy-cluster:${CLUSTER_ID}`;
+const CLUSTER_FINGERPRINT = `legacy-cluster:${CLUSTER_ID}:alert:${ALERT_ID}`;
+const SHARED_CLUSTER_FINGERPRINT =
+  `legacy-cluster:${CLUSTER_ID}:alert:${ALERT_SHARED_CLUSTER_ID}`;
 const ORPHAN_CLUSTER_FINGERPRINT = `legacy-alert-cluster:${ALERT_ORPHAN_ID}`;
 
-const FIXTURE_SLUGS = [SLUG_CONVERTIBLE, SLUG_MISSING_TITLE, SLUG_ORPHAN];
-const FIXTURE_CLUSTER_FINGERPRINTS = [CLUSTER_FINGERPRINT, ORPHAN_CLUSTER_FINGERPRINT];
+const FIXTURE_SLUGS = [
+  SLUG_CONVERTIBLE,
+  SLUG_SHARED_CLUSTER,
+  SLUG_MISSING_TITLE,
+  SLUG_ORPHAN,
+];
+const FIXTURE_CLUSTER_FINGERPRINTS = [
+  CLUSTER_FINGERPRINT,
+  SHARED_CLUSTER_FINGERPRINT,
+  ORPHAN_CLUSTER_FINGERPRINT,
+];
 const SOURCE_URL = `https://example.com/backfill-test/source-${RUN_ID}`;
 const ITEM_URL = `https://example.com/backfill-test/item-${RUN_ID}`;
 const ITEM_URL_HASH = `legacy-backfill-test-hash-${RUN_ID}`;
@@ -63,7 +77,9 @@ async function cleanupFixtureRows() {
   });
   await prisma.alert.deleteMany({
     where: {
-      id: { in: [ALERT_ID, ALERT_MISSING_TITLE_ID, ALERT_ORPHAN_ID] },
+      id: {
+        in: [ALERT_ID, ALERT_SHARED_CLUSTER_ID, ALERT_MISSING_TITLE_ID, ALERT_ORPHAN_ID],
+      },
     },
   });
   await prisma.cluster.deleteMany({ where: { id: CLUSTER_ID } });
@@ -116,6 +132,22 @@ async function seedFixtures() {
       title: "Legacy backfill test alert",
       summary: "Backfill test alert summary",
       urgencyScore: 5,
+      regions: ["north_america"],
+      platforms: [],
+      category: "regulatory",
+      affectedSkus: [],
+      sourceUrls: [ITEM_URL],
+      status: "published",
+      publishedAt: new Date("2026-07-01T00:00:00Z"),
+    },
+  });
+  await prisma.alert.create({
+    data: {
+      id: ALERT_SHARED_CLUSTER_ID,
+      clusterId: CLUSTER_ID,
+      title: "Second legacy alert sharing a cluster",
+      summary: "Second alert on the same legacy cluster",
+      urgencyScore: 3,
       regions: ["north_america"],
       platforms: [],
       category: "regulatory",
@@ -190,18 +222,54 @@ async function applyWithRetry(
   throw new Error(`Could not apply backfill within ${timeoutMs}ms`);
 }
 
-beforeAll(async () => {
-  await cleanupFixtureRows();
-  await seedFixtures();
-  const pair = await stablePair();
-  fixturePlan = pair.second;
-}, 300000);
+describe("foundation backfill apply target safety", () => {
+  it("requires the write URL and rejects any present non-approved database URL", async () => {
+    const originalDatabaseUrl = process.env.DATABASE_URL;
+    const originalDirectUrl = process.env.DIRECT_URL;
 
-afterAll(async () => {
-  await cleanupFixtureRows();
-}, 300000);
+    try {
+      delete process.env.DATABASE_URL;
+      process.env.DIRECT_URL =
+        "postgresql://user:pass@ep-proud-dream-aotwdl52.c-2.ap-southeast-1.aws.neon.tech/db";
+      expect(isApprovedApplyTarget()).toBe(false);
+      await expect(applyFoundationBackfill("unused-fingerprint")).rejects.toThrow(
+        /DATABASE_URL is required/i,
+      );
+
+      process.env.DATABASE_URL =
+        "postgresql://user:pass@ep-production-pooler.c-2.ap-southeast-1.aws.neon.tech/db";
+      expect(isApprovedApplyTarget()).toBe(false);
+
+      process.env.DATABASE_URL =
+        "postgresql://user:pass@ep-proud-dream-aotwdl52-pooler.c-2.ap-southeast-1.aws.neon.tech/db";
+      process.env.DIRECT_URL =
+        "postgresql://user:pass@attacker-ep-proud-dream-aotwdl52.example.com/db";
+      expect(isApprovedApplyTarget()).toBe(false);
+
+      process.env.DIRECT_URL =
+        "postgresql://user:pass@ep-proud-dream-aotwdl52.c-2.ap-southeast-1.aws.neon.tech/db";
+      expect(isApprovedApplyTarget()).toBe(true);
+    } finally {
+      if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+      else process.env.DATABASE_URL = originalDatabaseUrl;
+      if (originalDirectUrl === undefined) delete process.env.DIRECT_URL;
+      else process.env.DIRECT_URL = originalDirectUrl;
+    }
+  });
+});
 
 describe("foundation backfill", () => {
+  beforeAll(async () => {
+    await cleanupFixtureRows();
+    await seedFixtures();
+    const pair = await stablePair();
+    fixturePlan = pair.second;
+  }, 300000);
+
+  afterAll(async () => {
+    await cleanupFixtureRows();
+  }, 300000);
+
   it("maps a legacy alert to an in-review experimental draft with exact legacy-alert slug", () => {
     const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
     expect(draft).toBeDefined();
@@ -214,7 +282,7 @@ describe("foundation backfill", () => {
     });
   });
 
-  it("uses a deterministic cluster fingerprint derived from the legacy alert id", () => {
+  it("maps linked legacy item evidence to the fixture source", () => {
     const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
     expect(draft).toBeDefined();
     const evidenceSourceId = draft?.evidence[0]?.sourceId;
@@ -269,6 +337,17 @@ describe("foundation backfill", () => {
       created!.versions[0]!.evidence.every((e) => e.role === "SECONDARY_CONTEXT"),
     ).toBe(true);
 
+    const sharedClusterChanges = await prisma.canonicalChange.findMany({
+      where: { slug: { in: [SLUG_CONVERTIBLE, SLUG_SHARED_CLUSTER] } },
+      include: { cluster: true },
+      orderBy: { slug: "asc" },
+    });
+    expect(sharedClusterChanges).toHaveLength(2);
+    expect(new Set(sharedClusterChanges.map((change) => change.clusterId)).size).toBe(2);
+    expect(sharedClusterChanges.map((change) => change.cluster.fingerprint).sort()).toEqual(
+      [CLUSTER_FINGERPRINT, SHARED_CLUSTER_FINGERPRINT].sort(),
+    );
+
     const orphanCluster = await prisma.evidenceCluster.findUnique({
       where: { fingerprint: ORPHAN_CLUSTER_FINGERPRINT },
       include: { members: true },
@@ -288,7 +367,7 @@ describe("foundation backfill", () => {
     expect(replay.versions).toBe(0);
     expect(replay.evidenceRecords).toBe(0);
     expect(replay.rejectedRows).toEqual(successfulPlan.rejectedRows);
-  }, 300000);
+  }, 600000);
 
   it("apply rejects a mismatched fingerprint", async () => {
     await expect(applyFoundationBackfill("not-the-fingerprint")).rejects.toThrow(

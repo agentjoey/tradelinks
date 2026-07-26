@@ -25,27 +25,31 @@ const TX_OPTIONS = { maxWait: 30_000, timeout: 120_000 } as const;
 const APPROVED_APPLY_ENDPOINT = "ep-proud-dream-aotwdl52";
 
 /**
- * Returns true only when DATABASE_URL or DIRECT_URL points at the explicitly
- * approved isolated branch endpoint. Apply must not rely on merely rejecting
- * the known production host.
+ * Returns true only when the actual Prisma write URL is present and every
+ * configured database URL points at the explicitly approved isolated branch.
  */
 export function isApprovedApplyTarget(): boolean {
-  for (const envKey of ["DATABASE_URL", "DIRECT_URL"]) {
-    const url = process.env[envKey];
-    if (!url) continue;
+  const isApprovedUrl = (url: string): boolean => {
     try {
       const { hostname } = new URL(url);
-      if (
+      return (
         hostname.startsWith(`${APPROVED_APPLY_ENDPOINT}.`) ||
         hostname.startsWith(`${APPROVED_APPLY_ENDPOINT}-pooler.`)
-      ) {
-        return true;
-      }
+      );
     } catch {
-      // malformed URL, skip
+      return false;
     }
+  };
+
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl || !isApprovedUrl(databaseUrl)) return false;
+
+  const directUrl = process.env.DIRECT_URL;
+  if (directUrl && !isApprovedUrl(directUrl)) {
+    return false;
   }
-  return false;
+
+  return true;
 }
 
 export interface BackfillDraftEvidence {
@@ -354,10 +358,11 @@ function computeFingerprint(snapshot: LegacySnapshot): string {
 function buildClusterFingerprint(
   legacyClusterId: string | undefined,
   legacyAlertId: string,
+  linkedAlertCount: number,
 ): string {
-  return legacyClusterId
-    ? `legacy-cluster:${legacyClusterId}`
-    : `legacy-alert-cluster:${legacyAlertId}`;
+  if (!legacyClusterId) return `legacy-alert-cluster:${legacyAlertId}`;
+  if (linkedAlertCount === 1) return `legacy-cluster:${legacyClusterId}`;
+  return `legacy-cluster:${legacyClusterId}:alert:${legacyAlertId}`;
 }
 
 function buildEvidenceForAlert(
@@ -453,8 +458,12 @@ function buildFullPlan(
   const fingerprint = computeFingerprint(snapshot);
   const proposed: ProposedChange[] = [];
   const rejectedRows: BackfillReport["rejectedRows"] = [];
-  const clusterFingerprints = new Map<string, ProposedCluster>();
   const sourceMatcher = buildSourceMatcher(snapshot.sources);
+  const alertsPerCluster = new Map<string, number>();
+  for (const alert of snapshot.alerts) {
+    if (!alert.clusterId) continue;
+    alertsPerCluster.set(alert.clusterId, (alertsPerCluster.get(alert.clusterId) ?? 0) + 1);
+  }
 
   for (const alert of snapshot.alerts) {
     const slug = buildChangeSlug(alert.id);
@@ -478,20 +487,15 @@ function buildFullPlan(
     );
     const memberItemIds = [...new Set([...clusterItemIds, ...recoveredItemIds])].sort();
 
-    let proposedCluster: ProposedCluster;
-    if (alert.clusterId && clusterFingerprints.has(alert.clusterId)) {
-      proposedCluster = clusterFingerprints.get(alert.clusterId)!;
-      // Union any newly recovered item ids into the shared cluster.
-      const combined = new Set([...proposedCluster.memberItemIds, ...memberItemIds]);
-      proposedCluster.memberItemIds = [...combined].sort();
-    } else {
-      proposedCluster = {
-        fingerprint: buildClusterFingerprint(alert.clusterId ?? undefined, alert.id),
-        legacyClusterId: alert.clusterId ?? undefined,
-        memberItemIds,
-      };
-      if (alert.clusterId) clusterFingerprints.set(alert.clusterId, proposedCluster);
-    }
+    const proposedCluster: ProposedCluster = {
+      fingerprint: buildClusterFingerprint(
+        alert.clusterId ?? undefined,
+        alert.id,
+        alert.clusterId ? (alertsPerCluster.get(alert.clusterId) ?? 0) : 0,
+      ),
+      legacyClusterId: alert.clusterId ?? undefined,
+      memberItemIds,
+    };
 
     const signalType = CATEGORY_TO_SIGNAL_TYPE[alert.category] ?? "INDUSTRY";
     const policyTopics = (CATEGORY_TO_POLICY_TOPIC[alert.category]
@@ -588,7 +592,7 @@ export async function planFoundationBackfill(): Promise<BackfillReport> {
 export async function applyFoundationBackfill(reportFingerprint: string): Promise<BackfillReport> {
   if (!isApprovedApplyTarget()) {
     throw new Error(
-      "Refusing to apply backfill: DATABASE_URL/DIRECT_URL do not point to the approved isolated endpoint.",
+      "Refusing to apply backfill: DATABASE_URL is required and every configured database URL must point to the approved isolated endpoint.",
     );
   }
 
@@ -616,7 +620,7 @@ export async function applyFoundationBackfill(reportFingerprint: string): Promis
     };
   }
 
-  // Group proposals by cluster fingerprint so shared clusters are inserted once.
+  // Group by deterministic proposal cluster fingerprint for bounded bulk writes.
   const clusterProposals = new Map<string, ProposedChange[]>();
   for (const p of plan.proposed) {
     const list = clusterProposals.get(p.cluster.fingerprint) ?? [];

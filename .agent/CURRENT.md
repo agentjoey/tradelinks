@@ -3,8 +3,15 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-07-19 by kimi-code (BL-045 前端重设计：双主题 + 移动端导航 + 设计系统收敛 + Instrument Panel 动效)
+Last Updated:   2026-07-26 by Task 8 worker/Codex (Phase 1 Foundation legacy backfill 隔离分支验收完成)
 Sprint File:    .agent/sprints/sprint-005.md
+
+## Phase 1 Foundation 状态（2026-07-26，未部署）
+
+- Prisma migration `0011_phase1_intelligence_foundation` 已在获批的非生产 Neon 隔离分支验证；未变更生产数据库、云端配置或部署。
+- Legacy backfill dry-run 指纹：`538aac05f9121d58b8fa4a13288fd1a00f5fa357febc96da0004c4458f281a24`；显式拒绝 25 行，原因分为 `SOURCE_NOT_FOUND`、`MISSING_TITLE`、`MISSING_EVIDENCE`。
+- 当前重复 dry-run 的五项待写入计数均为 0，隔离分支 apply/replay 幂等；回填草稿保持 `EXPERIMENTAL` / `IN_REVIEW` / 非 current，证据保持 `SECONDARY_CONTEXT`。
+- Public Intelligence cutover 尚未开始；旧公开页面、生产流量与部署状态均未切换。
 
 ## 🆕 本轮新增（2026-07-19）：BL-045 前端重设计（已上线 main `17aa648`，frontend-harness-workflow Tier 3 全流程）
 
