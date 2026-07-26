@@ -334,3 +334,34 @@ verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run t
   smallest GET auth-probe adaptation, make the regression test GREEN, refactor,
   then rerun the expanded exact machine gate and `pnpm build`. Return to Codex
   before checkpointing so the same real session can rerun all owner journeys.
+
+## Handoff Record — Owner walkthrough correction follow-up 2026-07-26
+
+- Owner-reported result: the post-fix authenticated actions no longer return
+  `NETWORK_ERROR`; Fixture A publication and Fixture B rejection completed.
+- Read-only database verification: A v1 is `PUBLISHED` and current; B v1 is
+  `REJECTED` and not current; C v2 is `PUBLISHED` and current, but no version
+  has a `correctionReason`. The owner used C's direct publish control, so the
+  forward-correction journey is not yet satisfied despite the reported UI
+  success.
+- Fixture-only next action: on the approved isolated branch, append one new
+  non-current DRAFT version to `fixture-review-c-change`, cloning the current
+  C facts and structured evidence. Do not modify or delete C v1/v2. This draft
+  exists only to surface the correction control against current v2; a completed
+  correction must create a later current PUBLISHED version with the owner's
+  non-blank `correctionReason`, preserving every older version.
+- Rollback clarification: branch `br-plain-shadow-aoknpdf3` was created at
+  `2026-07-23T11:28:15Z` and subsequently received migrations/test writes; the
+  static pre-migration checkpoint is its creation-time snapshot, not the
+  branch's current mutable head. Amend only the existing bounded rollback note
+  in `docs/architecture.md` to say investigation restores create a new branch
+  from that historical point (or the untouched production parent as
+  appropriate), never overwrite production in place. No restore is authorized
+  in this task.
+- Owner confirmation still required: after the correction journey, confirm the
+  policy of code/read-path rollback with nullable `0012` columns retained,
+  investigation on a new historical branch, and forward-only content
+  correction with immutable older versions.
+- Worker must stop after fixture preparation and the bounded architecture-note
+  correction; do not checkpoint, launch Claude, deploy, restore a branch, or
+  mutate production.
