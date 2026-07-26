@@ -10,6 +10,11 @@
 import parser from "cron-parser";
 import { prisma } from "../db/client.js";
 import { SOURCES_BY_ID, BESTSELLER_SOURCE_IDS } from "../config/sources.js";
+import {
+  isSourceOverdue,
+  recomputeAllCapabilityReadiness,
+} from "../canonicalize/coverage.js";
+import type { ReadinessLevel } from "../domain/intelligence/taxonomy.js";
 
 export type HealthTier = "healthy" | "degraded" | "unhealthy" | "silent" | "disabled";
 
@@ -126,6 +131,11 @@ export function scoreSource(m: SourceMetrics, now = Date.now()): SourceHealth {
 
 const TIER_RANK: Record<HealthTier, number> = { silent: 0, unhealthy: 1, degraded: 2, healthy: 3, disabled: 4 };
 
+/** Attention order for coverage capabilities: problems first, like the source tiers. */
+const READINESS_RANK: Record<ReadinessLevel, number> = {
+  STALE: 0, EXPERIMENTAL: 1, MONITORED: 2, VERIFIED: 3, UNAVAILABLE: 4,
+};
+
 /** Compute live health for every source. Worst (silent/unhealthy) first. */
 export async function getSourceHealth(now = Date.now()): Promise<SourceHealth[]> {
   const rows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
@@ -177,3 +187,104 @@ export const TIER_BADGE: Record<HealthTier, string> = {
   silent: "💀 Silent",
   disabled: "⏸ Disabled",
 };
+
+// ---------------------------------------------------------------------------
+// Phase 1 coverage readiness
+// ---------------------------------------------------------------------------
+
+/**
+ * Drive the Phase 1 readiness transitions: recompute every stored coverage
+ * capability at the injected clock. Source health snapshots alone cannot do
+ * this — staleness is defined per capability by its required sources' SLAs.
+ * Automated recompute can only lower a capability to STALE, never promote.
+ */
+export async function refreshCapabilityReadiness(
+  now = new Date(),
+): Promise<Array<{ id: string; key: string; readiness: ReadinessLevel }>> {
+  return recomputeAllCapabilityReadiness(now);
+}
+
+export interface CapabilityView {
+  id: string;
+  key: string;
+  readiness: ReadinessLevel;
+  summary: string;
+  knownGaps: string[];
+  sources: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    slaMinutes: number | null;
+    lastOkAt: Date | null;
+    overdue: boolean;
+  }>;
+}
+
+export interface SourceContractView {
+  readiness: string | null;
+  slaMinutes: number | null;
+  userPromise: string | null;
+  degradationPolicy: string | null;
+  capabilityKeys: string[];
+}
+
+export interface CoverageOverview {
+  capabilities: CapabilityView[];
+  /** Phase 1 contract + linked-capability view per source id. */
+  bySource: Map<string, SourceContractView>;
+}
+
+/**
+ * Coverage capabilities and per-source contract facts for the admin sources
+ * surface. `overdue` is derived with the same rule as the readiness
+ * transitions, so the dashboard never overstates coverage relative to what
+ * `refreshCapabilityReadiness` would store.
+ */
+export async function getCoverageOverview(now = new Date()): Promise<CoverageOverview> {
+  const [capabilities, contracts] = await Promise.all([
+    prisma.coverageCapability.findMany({
+      orderBy: { key: "asc" },
+      include: { sources: { include: { source: true } } },
+    }),
+    prisma.source.findMany({
+      where: { userPromise: { not: null } },
+      select: {
+        id: true,
+        readiness: true,
+        freshnessSlaMinutes: true,
+        userPromise: true,
+        degradationPolicy: true,
+      },
+    }),
+  ]);
+
+  const bySource = new Map<string, SourceContractView>();
+  for (const c of contracts) {
+    bySource.set(c.id, {
+      readiness: c.readiness,
+      slaMinutes: c.freshnessSlaMinutes,
+      userPromise: c.userPromise,
+      degradationPolicy: c.degradationPolicy,
+      capabilityKeys: [],
+    });
+  }
+
+  const views: CapabilityView[] = capabilities.map((cap) => ({
+    id: cap.id,
+    key: cap.key,
+    readiness: cap.readiness,
+    summary: cap.summary,
+    knownGaps: cap.knownGaps,
+    sources: cap.sources.map((link) => {
+      const s = link.source;
+      const overdue = isSourceOverdue(s, now);
+      const view = bySource.get(s.id);
+      if (view) view.capabilityKeys.push(cap.key);
+      else bySource.set(s.id, { readiness: s.readiness, slaMinutes: s.freshnessSlaMinutes, userPromise: s.userPromise, degradationPolicy: s.degradationPolicy, capabilityKeys: [cap.key] });
+      return { id: s.id, name: s.name, enabled: s.isActive, slaMinutes: s.freshnessSlaMinutes, lastOkAt: s.lastOkAt, overdue };
+    }),
+  }));
+  views.sort((a, b) => READINESS_RANK[a.readiness] - READINESS_RANK[b.readiness] || a.key.localeCompare(b.key));
+
+  return { capabilities: views, bySource };
+}

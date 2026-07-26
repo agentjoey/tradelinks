@@ -1,12 +1,16 @@
 import { prisma } from "../db/client.js";
 import { SOURCES } from "../config/sources.js";
 import { logger } from "../lib/logger.js";
+import { seedPhase1Coverage } from "../canonicalize/coverage.js";
 
 /**
  * Upsert every configured source into the `sources` table on worker boot.
  * Without rows, `markOk()` (which updates lastCrawledAt) silently no-ops, so the
  * scheduler treats every source as perpetually "due" and re-dispatches each tick.
  * Seeding fixes scheduling + the worker heartbeat. Idempotent.
+ *
+ * Also seeds the Phase 1 contract fields and coverage capabilities
+ * (`seedPhase1Coverage`), which never rewrites a stored readiness.
  */
 export async function seedSources(): Promise<void> {
   let n = 0;
@@ -36,4 +40,8 @@ export async function seedSources(): Promise<void> {
     n++;
   }
   logger.info({ sources: n }, "sources seeded");
+
+  // Phase 1: contract fields on every source row + the ten coverage
+  // capabilities. Idempotent; never rewrites a stored readiness.
+  await seedPhase1Coverage();
 }
