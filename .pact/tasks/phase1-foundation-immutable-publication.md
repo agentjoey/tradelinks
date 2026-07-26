@@ -30,8 +30,12 @@ Only these files are in scope:
 - Create or modify `test/canonical-publish.test.ts` only for publication behavior owned by this task
 - Create root `PRODUCT.md` as the Human Owner-approved Impeccable product-context bootstrap for this task
 - Modify `docs/architecture.md` only to document the two additive review fields and rollback checkpoint
+- Modify `middleware.ts` only for the Human Owner-approved `Task6-T3-r4`
+  non-GET admin-session probe described below
+- Create `test/middleware-auth.test.ts` only for the `Task6-T3-r4` middleware
+  regression contract described below
 
-Do not create `DESIGN.md` or Impeccable live-mode configuration in this task. Do not add routes, alter auth middleware, change global design tokens, edit translation registries, deploy, or touch production data. If correct implementation requires another file, stop and request a scope revision.
+Do not create `DESIGN.md` or Impeccable live-mode configuration in this task. Do not add routes, modify `app/lib/auth.ts`, change the admin allowlist or cookie configuration, change global design tokens, edit translation registries, deploy, or touch production data. The only authorized middleware change is the exact `Task6-T3-r4` request-method normalization below; it may not bypass or weaken either middleware or server-action authorization. If correct implementation requires another file, stop and request a scope revision.
 
 ## 契约 / Contract
 
@@ -116,6 +120,58 @@ add a route, dependency, auth bypass, or global style.
 
 Kimi must still run the required Impeccable shape command and record how its output conforms to this approved revision before writing product code. It must create `PRODUCT.md` first from the confirmed strategic context above because the Impeccable context check reported `NO_PRODUCT_MD`. The final-build Human Owner walkthrough and rollback confirmation remain pending and cannot be satisfied by this approval.
 
+### Human Owner-approved authenticated-mutation revision
+
+`Task6-T3-r4` was explicitly approved by the Human Owner on 2026-07-26 after
+the real-session final-build walkthrough proved that every admin Server Action
+failed before its business transaction. Runtime diagnostics established the
+exact upstream interaction without exposing cookie values:
+
+- an authenticated page `GET` called Neon Auth `get-session` with `GET` and
+  received `200`;
+- the same authenticated browser's Server Action caused Neon Auth middleware
+  to call `get-session` with the original request method `POST`, received
+  `404`, and redirected `/admin/review` to `/auth/sign-in` with `307`;
+- the forwarded request retained both the session-token and session-data
+  cookies, so this was not a browser/session-loss failure;
+- the canonical fixture rows remained unchanged, proving the failure occurred
+  before the publication transaction.
+
+The approved fix is deliberately narrow and retains both authorization layers:
+
+- In `middleware.ts`, continue to run the existing Neon Auth middleware for
+  every `/admin/**` request.
+- For an admin request whose method is neither `GET` nor `HEAD`, pass that auth
+  middleware a cloned `NextRequest` with the same URL and headers but method
+  `GET`. Returning `NextResponse.next()` from that auth probe continues the
+  original request; it does not replace the original Server Action method.
+- If the auth probe redirects or denies, propagate that response unchanged.
+  Never allow a request merely because it carries an action header, and never
+  special-case a missing/invalid session as allowed.
+- Keep normal admin `GET`/`HEAD` behavior unchanged. Keep public locale routing
+  unchanged.
+- Every canonical mutation Server Action must continue calling
+  `requireAdmin()` before validation or database access. Do not alter
+  `app/lib/auth.ts`, cookie settings, allowlist behavior, or the action-level
+  authorization call.
+
+Create `test/middleware-auth.test.ts` with deterministic unit coverage proving:
+
+- authenticated/allowed admin `POST` is checked by the existing auth
+  middleware as a `GET` probe with the original cookie and relevant headers,
+  while the middleware result allows the original request to proceed;
+- unauthenticated/denied admin `POST` propagates the auth middleware redirect
+  and is never converted to `NextResponse.next()`;
+- admin `GET` and `HEAD` retain their original methods when checked;
+- non-admin locale rewrite/header behavior is unchanged.
+
+For this regression, record a separate TDD cycle before rerunning the task gate:
+
+- RED: `pnpm vitest run test/middleware-auth.test.ts` must fail because the
+  current middleware passes the admin `POST` method through to Neon Auth.
+- GREEN/REFACTOR: the same command passes with no auth bypass and no unrelated
+  middleware behavior change.
+
 Cover this state matrix with the specified files and tests:
 
 - loading/pending: mutation feedback and duplicate-submit prevention
@@ -155,11 +211,12 @@ Run `pnpm db:gen`, then `pnpm exec prisma migrate deploy` only on that branch.
 
 Run the exact GREEN machine gate:
 
-`pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint`
+`pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts test/middleware-auth.test.ts && pnpm lint`
 
 Record migration identity/status, confidence persistence, required rejection
-reason, publication, correction, old-Alert rejection, server-action typing, and
-auth-related coverage passing.
+reason, publication, correction, old-Alert rejection, server-action typing,
+action-level authorization, and the non-GET middleware regression coverage
+passing.
 
 ### REFACTOR
 
@@ -193,7 +250,7 @@ Review dimension: **ux**.
 
 Claude confirms the reviewer can understand evidence and consequences before acting, every action/state is accessible and unambiguous, final-build browser evidence matches the target commit, and all T3 gates above are present. Missing fresh-context review, Owner walkthrough, final-build screenshots, keyboard/permission checks, or a release-blocking finding blocks acceptance.
 
-verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts && pnpm lint
+verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run test/canonical-publish.test.ts test/alert-route.test.ts test/middleware-auth.test.ts && pnpm lint
 
 ## Handoff Record — Kimi session restart 2026-07-23
 
@@ -253,3 +310,27 @@ verify: pnpm db:validate && pnpm exec prisma migrate status && pnpm vitest run t
   not create any auth bypass or alternate build. Prepare non-production fixture
   data and stop at the Human Owner authenticated-walkthrough gate without
   checkpointing or launching Claude review.
+
+## Handoff Record — Task6-T3-r4 authenticated-mutation fix 2026-07-26
+
+- Task / Brief / revision: `immutable-publication` / `Task6-T3-r4`, explicitly
+  approved by the Human Owner after the authenticated walkthrough failure.
+- Agent role / harness / session: Kimi K3 remains the sole worker. Codex traced
+  the runtime failure without editing product code or business data.
+- Current branch/state: `feat-phase1-foundation`; the previously passing Task 6
+  implementation remains uncommitted. `middleware.ts` is still unchanged at
+  handoff time.
+- Root-cause evidence: authenticated admin page GETs called Neon Auth
+  `/get-session` with GET and returned 200. Admin Server Action POSTs caused
+  Neon Auth middleware to call the same endpoint with POST and return 404;
+  `/admin/review` then returned a 307 login redirect and Next reported
+  `failed to forward action response`. Internal forwarding retained session
+  token and session-data cookies. No fixture row changed.
+- Authorized scope addition: modify only `middleware.ts` and create only
+  `test/middleware-auth.test.ts` for the exact method-normalization contract in
+  `Task6-T3-r4`. Do not alter `app/lib/auth.ts`, action-level `requireAdmin()`,
+  cookie options, allowlists, routes, dependencies, or cloud configuration.
+- Next safe action: record the specified middleware test RED, implement the
+  smallest GET auth-probe adaptation, make the regression test GREEN, refactor,
+  then rerun the expanded exact machine gate and `pnpm build`. Return to Codex
+  before checkpointing so the same real session can rerun all owner journeys.
