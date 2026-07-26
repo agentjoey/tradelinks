@@ -600,6 +600,8 @@ model CanonicalChangeVersion {
   actionTemplateReviewedAt   DateTime?
   actionTemplateReviewedBy   String?
   editorialStatus            EditorialStatus   @default(DRAFT)
+  classificationConfidence   Float?
+  rejectionReason            String?
   correctionReason           String?
   reviewedAt                 DateTime?
   reviewedBy                 String?

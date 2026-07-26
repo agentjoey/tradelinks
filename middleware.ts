@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./app/lib/auth";
 import { localeFromPath, stripLocale } from "./app/lib/locale";
 
@@ -11,11 +11,26 @@ import { localeFromPath, stripLocale } from "./app/lib/locale";
  */
 const authMiddleware = auth ? auth.middleware({ loginUrl: "/auth/sign-in" }) : null;
 
-export default function middleware(req: NextRequest, event: NextFetchEvent) {
+export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/admin")) {
-    return authMiddleware ? authMiddleware(req, event) : NextResponse.next();
+    if (!authMiddleware) return NextResponse.next();
+    // Task6-T3-r4: Neon Auth's get-session endpoint only answers GET — an
+    // admin Server Action (POST) probed with its own method gets a 404 and a
+    // spurious sign-in redirect even with a valid session. Check non-GET
+    // admin requests with a GET probe carrying the same URL and headers; the
+    // auth result (next/redirect/deny) is returned unchanged and never
+    // replaces the original request method. requireAdmin() in each Server
+    // Action remains the second authorization layer.
+    if (req.method === "GET" || req.method === "HEAD") {
+      return authMiddleware(req);
+    }
+    const probe = new NextRequest(req.url, {
+      method: "GET",
+      headers: req.headers,
+    });
+    return authMiddleware(probe);
   }
 
   const lang = localeFromPath(pathname);

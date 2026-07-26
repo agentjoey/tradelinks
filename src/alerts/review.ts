@@ -1,5 +1,12 @@
 // Review-queue operations for high-urgency alerts (status pending_review).
 // Web UI lands in Sprint 003; this backend is driven by scripts/review.ts now.
+//
+// The legacy Alert functions below are still consumed by the Telegram webhook
+// and the CLI; their behavior and signatures are frozen. The admin web
+// surface no longer uses them — it reviews canonical change versions through
+// listCanonicalReviewQueue + src/canonicalize/publish.ts instead.
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "../db/client.js";
 
 export interface PendingAlert {
@@ -49,4 +56,48 @@ export async function rejectAlert(id: string, reviewer = "cli"): Promise<boolean
     data: { status: "rejected", reviewedBy: reviewer },
   });
   return res.count > 0;
+}
+
+// ---------- Canonical review queue (admin web surface) ----------
+
+const canonicalReviewArgs = Prisma.validator<Prisma.CanonicalChangeVersionDefaultArgs>()({
+  include: {
+    evidence: {
+      orderBy: [{ role: "asc" }, { url: "asc" }],
+      include: { source: { select: { id: true, name: true } } },
+    },
+    canonicalChange: {
+      select: {
+        id: true,
+        slug: true,
+        versions: {
+          orderBy: { version: "desc" },
+          include: {
+            evidence: {
+              orderBy: [{ role: "asc" }, { url: "asc" }],
+              include: { source: { select: { id: true, name: true } } },
+            },
+          },
+        },
+      },
+    },
+  },
+});
+
+export type CanonicalReviewDraft = Prisma.CanonicalChangeVersionGetPayload<
+  typeof canonicalReviewArgs
+>;
+
+/**
+ * Canonical drafts awaiting review (newest first), each with its structured
+ * evidence and the change's current published version (the diff base and the
+ * correction target). Read-only; publication goes through
+ * src/canonicalize/publish.ts.
+ */
+export async function listCanonicalReviewQueue(): Promise<CanonicalReviewDraft[]> {
+  return prisma.canonicalChangeVersion.findMany({
+    where: { editorialStatus: { in: ["DRAFT", "IN_REVIEW"] } },
+    orderBy: [{ urgency: "desc" }, { createdAt: "desc" }],
+    ...canonicalReviewArgs,
+  });
 }

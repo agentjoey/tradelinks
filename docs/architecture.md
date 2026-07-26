@@ -211,10 +211,28 @@ SourceCheck and PipelineRun record checks independently from new-item volume.
 - `CoverageCapability`/`CapabilitySource` record what TradeLinks can truthfully
   promise per market/platform/category, and which sources back each promise.
 
+Migration `0012_phase1_publication_review_fields` (task 6, additive and
+forward-only — `0011` is never edited or replayed) adds two nullable review
+facts to `CanonicalChangeVersion` that `0011` could not represent:
+
+- `classificationConfidence Float?` — the real classifier confidence persisted
+  on classification-created drafts. Never inferred from readiness and never
+  synthesized for display; null renders as "unavailable".
+- `rejectionReason String?` — the explicit, non-blank reason required and
+  persisted when a draft is rejected (with `reviewedAt`/`reviewedBy`).
+
+Both columns are nullable so the additive migration does not rewrite or
+invalidate pre-existing rows. Rollback of `0012` is a code/read-path rollback
+that leaves the nullable columns in place; never run a down migration.
+
 **Rollback checkpoint (forward-only).** Pre-migration checkpoint branch:
 `phase1-foundation-pre-migration` (`br-plain-shadow-aoknpdf3`, project
 `steep-bird-11404641`, parent `production`, expires 2026-07-30T12:00:00Z).
 Procedure: stop new writers, route readers back to the pre-cutover public
 release, **retain the additive tables**, compare row counts/content hashes, and
-ship a **forward corrective migration**. Restore the checkpoint branch only into
-a **new branch** for investigation; never overwrite production in place.
+ship a **forward corrective migration**. The static pre-migration checkpoint is
+the branch's **creation-time snapshot** (`2026-07-23T11:28:15Z`), not the
+branch's current mutable head, which has since received migrations and test
+writes. Investigation restores create a **new branch** from that historical
+point (or from the untouched production parent as appropriate); never overwrite
+production in place.
