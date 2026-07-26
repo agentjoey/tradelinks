@@ -58,3 +58,4 @@
 {"event_id":"4e3ef21936e7b881d07e2e4456646bff","ts":"2026-07-26T05:51:51Z","agent_id":"claude","role":"reviewer","event_type":"accept","task_id":"coverage-readiness","feature":"phase1-foundation","payload":{}}
 {"event_id":"570d8c8aec3c116997de14daf463f972","ts":"2026-07-26T05:52:21Z","agent_id":"codex","role":"orchestrator","event_type":"escalate","task_id":"","feature":"phase1-foundation","payload":{"reason":"iteration limit exceeded","seat":"codex"}}
 {"event_id":"03bdecc6055dabab8ee779600c8873a3","ts":"2026-07-26T05:52:43Z","agent_id":"codex","role":"orchestrator","event_type":"start","task_id":"legacy-backfill","feature":"phase1-foundation","payload":{"owner":"kimi"}}
+{"event_id":"1117e53f43823c184963952a99516549","ts":"2026-07-26T05:53:00Z","agent_id":"kimi","role":"worker","event_type":"join","task_id":"","feature":"","payload":{"client":{"name":"pactify-cli","version":"dev"},"protocol_version":1,"roles":["worker","reviewer"]}}
