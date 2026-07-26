@@ -86,3 +86,25 @@ Review dimension: **correctness**.
 In a new reviewer session, Claude independently reruns the machine gate, checks every initial capability and ceiling, forces stale and healthy cases, and confirms admin visibility matches stored readiness without overstating coverage. Auto-promotion above a reviewed ceiling or an empty known-gaps list blocks acceptance.
 
 verify: pnpm vitest run test/coverage-readiness.test.ts test/health.test.ts && pnpm lint
+
+## Handoff Record — frontend hard-gate correction 2026-07-26
+
+- The Kimi implementation session was stopped before checkpointing after its
+  inline audit treated a 3px status side rail as an established house pattern
+  and attempted to waive it. Repository-level frontend rules explicitly forbid
+  side rails wider than 1px and do not permit an agent waiver.
+- Preserve the current uncommitted Task 7 backend, test, coverage UI, critique,
+  and screenshot-harness work. In `app/admin/sources/page.tsx`, replace both the
+  inherited source-health rail and the newly added capability-readiness rail
+  (`w-[3px]`) with a token-consistent 1px treatment. Do not add another visual
+  rail or compensate with a thicker border.
+- Rerun Impeccable critique and audit against the corrected page. Their records
+  must describe the 1px rule as satisfied; the previous statement that the
+  3px rail is an acceptable house-pattern exception is invalid and may not be
+  carried into checkpoint evidence.
+- After the correction, complete the exact GREEN and unchanged REFACTOR gates,
+  generate the final-build browser evidence, inspect the final screenshot, and
+  checkpoint only if the working tree is bounded and every frontend finding is
+  fixed or explicitly returned to the Human Owner for a waiver.
+- Per the Human Owner's updated orchestration instruction, the independent
+  reviewer for this and all later tasks must run Claude Opus 5, not Opus 4.8.
