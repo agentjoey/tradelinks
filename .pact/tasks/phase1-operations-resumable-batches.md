@@ -22,6 +22,14 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - `canonicalizeBatch` requires a credential-free injected factory and a dedicated `test/canonicalize-batch.test.ts`. Cover the 200-orphan cap, exact replay no-op, no version/publication writes, and use of the existing `decideCluster` contract (official-id/date/platform/title guards) before creating or joining clusters. Keep the public `canonicalizeBatch(args)` signature.
 - Canonicalization must persist the same final status and item count it returns on its real `PipelineRun`; do not call the collection `finishRun` derivation for a canonicalization run with zero `SourceCheck` rows. Model completion in the injected canonicalization port and assert the persisted completion summary in credential-free tests.
 
+## Final rework acceptance pins
+
+- Export `createCollectBatch(deps)` for tests while the production `collectBatch(group, args)` has exactly two parameters. Export `createCanonicalizeBatch(deps)` for tests while the production `canonicalizeBatch(args)` has exactly one parameter. Credential-free tests call the factories, not hidden optional production parameters.
+- The collection completion port returns persisted cumulative `attempted`, `succeeded`, `failed`, `status`, and `itemCount`; `JobResult` and `exitCode` are derived from that one persisted summary on both first execution and replay.
+- SourceConfig rows added only to support the finite Phase 1 resolver must set `enabled: false`, so this task does not add them to the legacy pg-boss scheduler.
+- Retry exhaustion must preserve the exact last structured machine code (`HTTP_503` in the contract test), not merely assert that some non-empty string exists.
+- Refresh `task-2-report.md` to match the final implementation, files, review rounds, gates, and remaining concerns.
+
 ## Verification
 
 RED/GREEN task gate:
