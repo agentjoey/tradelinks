@@ -107,3 +107,4 @@
 {"event_id":"55cff9a8c55f14742e69cebef78c01a3","ts":"2026-07-28T19:44:27Z","agent_id":"codex","role":"orchestrator","event_type":"escalate","task_id":"","feature":"phase1-operations","payload":{"reason":"iteration limit exceeded","seat":"codex"}}
 {"event_id":"eb75aa2280c170815f5f1646f0f0748c","ts":"2026-07-28T19:47:58Z","agent_id":"claude","role":"reviewer","event_type":"accept","task_id":"finite-dispatch","feature":"phase1-operations","payload":{}}
 {"event_id":"4de708e29cde3beb8e90aae936bd8252","ts":"2026-07-28T19:48:25Z","agent_id":"codex","role":"orchestrator","event_type":"escalate","task_id":"","feature":"phase1-operations","payload":{"reason":"iteration limit exceeded","seat":"codex"}}
+{"event_id":"258db648dfd5d230d25901004801a534","ts":"2026-07-28T19:49:20Z","agent_id":"codex","role":"orchestrator","event_type":"start","task_id":"resumable-batches","feature":"phase1-operations","payload":{"owner":"opencode"}}
