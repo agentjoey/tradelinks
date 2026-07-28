@@ -1,5 +1,5 @@
 export function bigintFromStableHash(key: string): bigint {
-  let hash = 14695981039346656037n;
+  let hash = 14695981039346656037n & 0x7fffffffffffffffn;
   for (let i = 0; i < key.length; i++) {
     hash ^= BigInt(key.charCodeAt(i));
     hash *= 1099511628211n;

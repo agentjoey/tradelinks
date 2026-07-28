@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { retryUnit } from "../src/jobs/retry.js";
+import { retryUnit, computeDelayMs, defaultDelay, RETRY_MULTIPLIER } from "../src/jobs/retry.js";
 
 async function alwaysRetryableFailure(): Promise<never> {
   throw new Error("retryable");
@@ -76,5 +76,51 @@ describe("retryUnit", () => {
     });
     expect(result.status).toBe("EXHAUSTED");
     expect(delays).toEqual([2]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  computeDelayMs — production schedule                               */
+/* ------------------------------------------------------------------ */
+
+describe("computeDelayMs", () => {
+  it("returns 0 for attempt 1 (no delay before first execution)", () => {
+    expect(computeDelayMs(1, 1000)).toBe(0);
+  });
+
+  it("yields 1s / 4s / 16s with baseDelayMs=1000", () => {
+    expect(computeDelayMs(2, 1000)).toBe(1000); // 1 s
+    expect(computeDelayMs(3, 1000)).toBe(4000); // 4 s
+    expect(computeDelayMs(4, 1000)).toBe(16000); // 16 s
+  });
+
+  it("scales linearly with baseDelayMs", () => {
+    expect(computeDelayMs(2, 2000)).toBe(2000); // 2 s
+    expect(computeDelayMs(3, 2000)).toBe(8000); // 8 s
+    expect(computeDelayMs(4, 2000)).toBe(32000); // 32 s
+  });
+
+  it("uses RETRY_MULTIPLIER = 4", () => {
+    expect(RETRY_MULTIPLIER).toBe(4);
+    expect(computeDelayMs(2, 1)).toBe(1);
+    expect(computeDelayMs(3, 1)).toBe(4);
+    expect(computeDelayMs(4, 1)).toBe(16);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  defaultDelay — returns a promise (smoke test)                     */
+/* ------------------------------------------------------------------ */
+
+describe("defaultDelay", () => {
+  it("resolves instantly for attempt 1", async () => {
+    const start = Date.now();
+    await defaultDelay(1, 1000);
+    expect(Date.now() - start).toBeLessThan(50);
+  });
+
+  it("returns a promise for attempt 2", () => {
+    const p = defaultDelay(2, 1);
+    expect(p).toBeInstanceOf(Promise);
   });
 });

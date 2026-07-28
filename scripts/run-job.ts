@@ -1,5 +1,5 @@
 import { setLockAdapter } from "../src/jobs/lock.js";
-import { prismaLockAdapter } from "../src/jobs/prisma-adapter.js";
+import { prismaLockAdapter } from "../src/jobs/default-adapter.js";
 
 setLockAdapter(prismaLockAdapter);
 
