@@ -27,6 +27,7 @@ export type JobResult = { runId: string; status: "SUCCEEDED_EMPTY" | "SUCCEEDED_
 - Build the lock key only from typed slot identity (`name` plus canonical `scheduledFor`), not `Object.values`, delimiter-joined arbitrary values, or property insertion order. Tests must cover reordered/non-slot input and delimiter-like values.
 - Make the 1s/4s/16s production retry ladder explicit and test its exact delay values. Registered runnable jobs must not silently default to a single attempt.
 - Populate every field required by the exact `JobResult` contract on every return path. Remove the out-of-scope `opencode.json` schema addition in the rework commit.
+- Current checkpoint `c671cf3` is not compliant until independently disproved or fixed: `types.ts` and `run.ts` still use the alternate `Record<string, unknown>` args, alternate status/timestamp/result fields, and a third `opts` parameter; `MAX_JOB_DURATION_MS` remains 300,000 ms despite the plan's 20-minute jobs and the explicit greater-than-20-minute requirement; its fake Prisma stores acquired keys in a shared instance set, so one concurrent transaction's `finally` can release another transaction's lock; and no assertion inspects the transaction timeout options. Reviewer must verify these exact points before accepting.
 
 ## Verification
 
