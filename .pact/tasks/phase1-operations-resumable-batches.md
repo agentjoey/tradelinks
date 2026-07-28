@@ -16,6 +16,10 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
 - Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must use credential-free unit tests and dependency injection. The Codex orchestrator alone runs the combined Neon staging integration gate after checkpoint, with unique test data and cleanup, and records only the redacted command/result summary in Pact evidence.
 - Keep the public two-argument batch signatures and add injected factories/adapters for credential-free tests; do not replace production collection, scraper, ledger, or canonicalization code with test-only implementations.
+- The production source fetch path must reuse the existing source registry plus `buildAdapter`/`toFetchOutcome` and the existing `callScraper` 120-second bridge. Do not maintain parallel RSS/JSON/HTML parser implementations in `collect-batch.ts`; every enabled selected Phase 1 source must resolve to its real source config or fail closed as an invariant.
+- Structured outcomes drive retry: `{ kind: "failed", retryable: true }` is retried up to three attempts, while blocked, robots/license denial, validation/schema/fixture failures, and `{ retryable: false }` are recorded after one attempt. Tests must return structured outcomes (not only throw) and assert exact call counts plus preservation of the machine outcome code.
+- The returned result summarizes the persisted run, not only work performed by the current replay invocation. Successful checks with `itemCount === 0` produce `SUCCEEDED_EMPTY`; a same-slot replay that fetches nothing preserves the prior run status, item count, and cumulative check counts. A rejected ledger write cannot disappear through `Promise.allSettled` without incrementing failure or surfacing an invariant.
+- `canonicalizeBatch` requires a credential-free injected factory and a dedicated `test/canonicalize-batch.test.ts`. Cover the 200-orphan cap, exact replay no-op, no version/publication writes, and use of the existing `decideCluster` contract (official-id/date/platform/title guards) before creating or joining clusters. Keep the public `canonicalizeBatch(args)` signature.
 
 ## Verification
 
@@ -23,11 +27,11 @@ RED/GREEN task gate:
 
 Worker/reviewer credential-free gate:
 
-`pnpm vitest run test/collect-batch.test.ts test/job-lock.test.ts test/job-retry.test.ts`
+`pnpm vitest run test/collect-batch.test.ts test/canonicalize-batch.test.ts test/job-lock.test.ts test/job-retry.test.ts`
 
 Orchestrator-only Neon staging gate after checkpoint:
 
-`pnpm vitest run test/collect-batch.test.ts test/collection-run.test.ts test/scrape-bridge.test.ts test/canonical-cluster.test.ts`
+`pnpm vitest run test/collect-batch.test.ts test/canonicalize-batch.test.ts test/collection-run.test.ts test/scrape-bridge.test.ts test/canonical-cluster.test.ts`
 
 Type gate:
 
