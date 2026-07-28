@@ -21,7 +21,7 @@ git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 
 - All eight Pact tasks were independently accepted by Claude Opus 5.
 - Integrated gate passed Prisma validation, TypeScript, 53 test files / 426 tests, and the Next.js production build.
-- Database migrations and backfill were validated only on the approved non-production Neon branch; no production database, deployment, cloud configuration, or public-route cutover is part of this change.
+- Database migrations and backfill were validated on the approved isolated Neon branch. Migrations `0011/0012` and the app are now on protected staging; staging backfill remains dry-run only. No production database, deployment, or public-route cutover is part of this change.
 - Draft PR: [#3](https://github.com/agentjoey/tradelinks/pull/3). Public Intelligence and Private Relevance remain subsequent delivery phases.
 
 ## [0.12.0] — 2026-06-08

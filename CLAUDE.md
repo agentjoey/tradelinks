@@ -11,7 +11,7 @@ TradeLinks 正在从跨境电商信号/趋势站翻新为帮助卖家进入并�
 **Location:** /Users/xtation/AgentWorks/CodeSpace/tradelinks
 **GitHub:**   agentjoey/tradelinks
 **Live:**     https://tradelinks-mvp.vercel.app (Vercel) · worker runs on Railway/local
-**Version:**  v0.12.0 + Phase 1 Foundation（Draft PR #3，未部署）
+**Version:**  v0.12.0 + Phase 1 Foundation（Draft PR #3，staging only）
 
 **Technical docs:** [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Operations](docs/operations.md) · [Sources](docs/specs/sources.md)
 
@@ -37,7 +37,7 @@ TradeLinks 正在从跨境电商信号/趋势站翻新为帮助卖家进入并�
 ## Key Implementation Details
 - **Phase 1 Foundation:** `Source → Item → EvidenceCluster → CanonicalChange → CanonicalChangeVersion`, with structured `EvidenceRecord`, `PipelineRun` / `SourceCheck`, and `CoverageCapability`.
 - **Publication invariant:** Verified publication requires reviewed `PRIMARY_OFFICIAL` evidence; action recommendations additionally require a reviewed action template. Corrections create a new immutable version.
-- **Current release boundary:** Foundation is accepted in Draft PR #3 but not deployed. Public Intelligence, Seller Profile, Private Relevance, Railway Cron cutover, and the 7-day P0 soak remain later work.
+- **Current release boundary:** Foundation is accepted in Draft PR #3 and deployed only to protected Vercel/Neon staging. Staging backfill remains dry-run only; production, Public Intelligence, Seller Profile, Private Relevance, Railway Cron cutover, and the 7-day P0 soak remain later work.
 - Alert pipeline forks at classification: urgency×impact score ≥4 triggers immediate push; <4 queues to daily digest
 - Trend diffusion: cross-region time-series alignment (Google Trends slope + Amazon BSR rank delta + TikTok CC mentions) — 3-source consensus required before marking a signal
 - All items tagged with `region[]` + `platform[]` + `category` — push routing is subscription-filter based, never broadcast

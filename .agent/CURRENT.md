@@ -2,18 +2,26 @@
 
 Version:        v0.12.0 + Phase 1 Foundation（未发布）
 Sprint:         Phase 1 Product Refresh — Foundation
-Sprint Status:  ✅ 8/8 Pact tasks accepted · Draft PR #3 · 未部署
-Last Updated:   2026-07-28 by Codex (Foundation 文档、验收与 PR 状态收口)
+Sprint Status:  ✅ 8/8 Pact tasks accepted · Draft PR #3 · staging 已部署 · production 未变更
+Last Updated:   2026-07-28 by Codex (Foundation staging migration、Preview 与冒烟验收完成)
 Sprint File:    docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md
 
 ## Phase 1 Foundation 状态（2026-07-28，未部署）
 
 - Pact feature `phase1-foundation` 的 8 个任务已全部由 Claude Opus 5 独立接受；实现分支为 `feat-phase1-foundation`，Draft PR 为 [#3](https://github.com/agentjoey/tradelinks/pull/3)。本地 `main` 已 fast-forward 验证，远端 `main` 尚未合并。
-- Prisma migrations `0011_phase1_intelligence_foundation` 与 `0012_phase1_publication_review_fields` 已在获批的非生产 Neon 隔离分支验证；未变更生产数据库、云端配置或部署。
+- Prisma migrations `0011_phase1_intelligence_foundation` 与 `0012_phase1_publication_review_fields` 已在获批的非生产 Neon 隔离分支验证，并已应用到 Neon staging；production 数据库未变更。
 - Legacy backfill 重复 dry-run 指纹稳定为 `7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332`；五项待写入计数均为 0；显式拒绝 18 行，原因均为 `SOURCE_NOT_FOUND`。
 - 隔离分支 apply/replay 幂等；回填草稿保持 `EXPERIMENTAL` / `IN_REVIEW` / 非 current，证据保持 `SECONDARY_CONTEXT`。中断测试夹具已按唯一 runId 精确清理并确认五类记录零残留。
 - 最终门禁：Prisma schema valid、TypeScript lint 通过、53 个测试文件 / 426 个测试通过、Next.js production build 成功。
 - Public Intelligence cutover 尚未开始；旧公开页面、生产流量与部署状态均未切换。下一执行入口是 `docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md`，P0 仍要求连续 7 天稳定运行。
+
+## Phase 1 Foundation staging 状态（2026-07-28）
+
+- Git `staging` 已 fast-forward 到 `91a7d25`；Vercel deployment `dpl_424Kr1CvUspdrLZ78AwuuuQE1thd` 为 READY，稳定 alias：`https://tradelinks-git-staging-agentjoeys-projects.vercel.app`。Preview 保持 Vercel Deployment Protection。
+- Neon staging 为 `br-delicate-snow-aoi9sgtw` / endpoint `ep-odd-violet-ao98q1jy`；12/12 migrations up to date。迁移前检查点 `br-orange-king-ao98kiew` 无 compute，2026-08-04T12:00:00Z 自动过期。
+- Vercel `staging` branch 专属变量已设置：DATABASE_URL/Auth 指向 staging；Resend、Telegram、X、channel push、translation 与 Daily autopublish 均禁用或使用隔离值。
+- 冒烟通过：`/`、`/wire`、`/trends`、`/daily`、RSS、robots、sitemap、sign-in 均 200；admin 未登录正确 307 到 sign-in；Auth session proxy 200；public API 以浏览器 UA 返回 200；最近 15 分钟无 Vercel error/500 日志。
+- staging backfill 仅 dry-run，fingerprint `5632d495f4683ee4fdb15138fbcbb4becaeed5c58a58ab0ecfd85dd1059b37f9`；预计 520 sourceItems / 552 clusters / 552 changes / 552 versions / 555 evidenceRecords，另有 18 条 `SOURCE_NOT_FOUND`。未 apply；production 未部署。
 
 ## 🆕 本轮新增（2026-07-19）：BL-045 前端重设计（已上线 main `17aa648`，frontend-harness-workflow Tier 3 全流程）
 

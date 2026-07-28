@@ -2,11 +2,12 @@
 
 > Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
 
-> **Foundation release boundary:** Draft PR #3 is not deployed. Migrations `0011` and
-> `0012` and the legacy backfill were validated only on an isolated Neon branch. Before
-> any staging or production rollout, create a fresh Neon backup/branch checkpoint,
-> apply migrations forward in staging, rerun the dry-run/rejection audit, and obtain a
-> separate deployment approval. Never use a down migration for rollback.
+> **Foundation release boundary:** commit `91a7d25` is deployed to protected Vercel
+> staging Preview and Neon staging has migrations `0011` and `0012`. The staging
+> backfill is dry-run only. Production remains unchanged. Before production rollout,
+> create a fresh Neon production checkpoint, apply migrations forward, rerun the
+> dry-run/rejection audit, and obtain a separate deployment approval. Never use a down
+> migration for rollback.
 
 ## Stack Overview
 

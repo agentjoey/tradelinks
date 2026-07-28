@@ -8,7 +8,7 @@ Branch: `feat-phase1-foundation`
 
 Draft PR: [#3 — Phase 1 foundation: evidence-ready intelligence model](https://github.com/agentjoey/tradelinks/pull/3)
 
-Release state: **accepted in repository; not deployed**
+Release state: **accepted; deployed to protected staging only; production unchanged**
 
 ## Outcome
 
@@ -111,6 +111,27 @@ Foundation does not complete Phase 1 P0. The following remain unimplemented or u
 - staging/production migration and deployment approval
 
 The next implementation plan is `docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md`.
+
+## Staging deployment — 2026-07-28
+
+- Git `staging`: `91a7d25bf63028306cb3f919a24126f2aad7afe9`
+- Vercel deployment: `dpl_424Kr1CvUspdrLZ78AwuuuQE1thd`, status READY
+- Stable protected alias: `https://tradelinks-git-staging-agentjoeys-projects.vercel.app`
+- Neon staging: `br-delicate-snow-aoi9sgtw`, endpoint `ep-odd-violet-ao98q1jy`
+- Pre-migration checkpoint: `br-orange-king-ao98kiew`, no compute, expires 2026-08-04T12:00:00Z
+- Staging migration status: 12/12, including `0011` and `0012`
+
+Vercel variables were scoped specifically to Preview branch `staging`. Database and Auth point to staging; Resend, Telegram, X, channel push, translation, and Daily autopublish are disabled or use isolated values.
+
+Authenticated Vercel CLI smoke results:
+
+- 200: `/`, `/wire`, `/trends`, `/daily`, `/feed.xml`, `/robots.txt`, `/sitemap.xml`, `/auth/sign-in`, `/api/auth/get-session`
+- 200 with browser User-Agent: `/api/public/alerts`; the CLI's default non-browser User-Agent correctly receives the existing 403 bot gate
+- 307 to `/auth/sign-in`: `/admin/review`, `/admin/sources`
+- Vercel deployment error logs: none
+- HTTP 500 logs: none
+
+Staging legacy backfill was not applied. Its read-only dry-run produced fingerprint `5632d495f4683ee4fdb15138fbcbb4becaeed5c58a58ab0ecfd85dd1059b37f9`, with 520 source items, 552 clusters, 552 canonical changes, 552 versions, 555 evidence records, and 18 explicit `SOURCE_NOT_FOUND` rejections.
 
 ## Non-blocking reviewer notes
 

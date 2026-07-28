@@ -56,7 +56,7 @@ TradeLinks 帮助跨境卖家判断如何进入并运营美国市场。它把分
 
 Phase 1 Foundation 已开发并由独立 reviewer 接受：taxonomy、source contracts、collection runs、canonicalization、immutable publication、coverage readiness 与 legacy backfill 均已完成。Draft PR 为 [#3](https://github.com/agentjoey/tradelinks/pull/3)。
 
-Foundation 尚未部署；Public Intelligence 与 Private Relevance 尚未切换。现有 Wire/Radar/Daily 公开体验继续服务线上流量，直到后续公开产品计划通过迁移、SEO、性能和连续 7 天稳定性门禁。
+Foundation 已部署到受 Vercel Deployment Protection 保护的 staging Preview，Neon staging schema 已迁移；legacy backfill 在 staging 仅 dry-run、未 apply。Public Intelligence 与 Private Relevance 尚未切换，production 未部署。现有 Wire/Radar/Daily 公开体验继续服务线上流量，直到后续公开产品计划通过迁移、SEO、性能和连续 7 天稳定性门禁。
 
 ## Design Principles
 

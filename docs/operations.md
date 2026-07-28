@@ -19,8 +19,9 @@ Local `.env` points to dev; staging/production require explicit commands (`pnpm 
 ## Phase 1 Foundation rollout status
 
 - Repository: complete; 8/8 Pact tasks accepted; Draft PR [#3](https://github.com/agentjoey/tradelinks/pull/3).
-- Database: migrations `0011` and `0012` plus legacy backfill verified only on approved isolated branch `br-plain-shadow-aoknpdf3`.
-- Production: unchanged. Do not run the Foundation backfill or migrations against production from this document.
+- Staging: Git commit `91a7d25`; Vercel Preview READY at `https://tradelinks-git-staging-agentjoeys-projects.vercel.app`; Neon branch `br-delicate-snow-aoi9sgtw` has migrations `0011` and `0012` applied.
+- Staging rollback checkpoint: `br-orange-king-ao98kiew`, no compute, expires 2026-08-04T12:00:00Z.
+- Staging backfill is dry-run only. Production is unchanged; do not run the Foundation backfill or migrations against production from this document.
 - Next operational gate: merge/review Public Intelligence and the Railway Cron/short-lived worker cutover, then complete seven consecutive days of source-SLA and global-gap monitoring before P0 acceptance.
 - The checkpoint branch expires on 2026-07-30; any later rollout requires a fresh Neon backup/branch checkpoint rather than treating the old branch as a durable backup.
 

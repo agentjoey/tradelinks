@@ -15,7 +15,7 @@ Phase 1 的产品结构是：
 - Pact feature `phase1-foundation`：8/8 tasks accepted。
 - Draft PR：[Phase 1 foundation: evidence-ready intelligence model](https://github.com/agentjoey/tradelinks/pull/3)。
 - 验证：Prisma schema、TypeScript、53 个测试文件 / 426 个测试、Next.js production build 全部通过。
-- 数据库验证仅发生在批准的非生产 Neon 隔离分支；没有生产数据库、云端配置或部署变更。
+- Foundation 已部署到受保护的 Vercel staging Preview，Neon staging 已应用 migrations `0011/0012`；production 数据库、production deployment 和公开流量均未变更。
 - 下一阶段：Public Intelligence；P0 验收包含连续 7 天稳定运行。
 
 ## 文档入口

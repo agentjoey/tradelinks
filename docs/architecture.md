@@ -1,6 +1,6 @@
 # TradeLinks — System Architecture
 
-> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation (Draft PR #3, not deployed)
+> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation (staging only)
 
 ## Overview
 
@@ -11,12 +11,12 @@ TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**�
 | Layer | Repository state | Production state |
 |-------|------------------|------------------|
 | Legacy Wire / Radar / Daily | Preserved for current traffic | Live |
-| Phase 1 Foundation | Complete; 8/8 Pact tasks accepted; Draft PR #3 | Not deployed |
+| Phase 1 Foundation | Complete; 8/8 Pact tasks accepted; Draft PR #3 | Vercel/Neon staging only; production unchanged |
 | Public Intelligence | Detailed plan only | Not started |
 | Private Relevance | Detailed plan only | Not started |
 | Operations / cost cutover | Detailed plan only | Not started |
 
-Foundation validation uses the approved non-production Neon branch only. Migrations `0011` and `0012`, legacy backfill apply/replay, 426 tests, and the production build passed there; production data and cloud configuration were not changed.
+Foundation validation used the approved non-production Neon branch. Migrations `0011` and `0012`, legacy backfill apply/replay, 426 tests, and the production build passed there. The migrations are now also applied on Neon staging and commit `91a7d25` is live on a protected Vercel staging Preview; staging backfill remains dry-run only and production is unchanged.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
