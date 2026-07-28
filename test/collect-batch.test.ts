@@ -82,6 +82,23 @@ function successOutcome(
   };
 }
 
+function retryableFailed(): FetchOutcome {
+  return { kind: "failed", code: "HTTP_503", retryable: true, httpStatus: 503 };
+}
+
+function nonRetryableFailed(): FetchOutcome {
+  return {
+    kind: "failed",
+    code: "HTTP_400",
+    retryable: false,
+    httpStatus: 400,
+  };
+}
+
+function blockedOutcome(): FetchOutcome {
+  return { kind: "blocked", code: "BOT_WALL", retryable: false, httpStatus: 403 };
+}
+
 interface FakeLedger extends BatchLedger {
   _runs: Map<string, RunState>;
 }
@@ -98,7 +115,6 @@ interface RunState {
  *  the same run, matching the real PipelineRun upsert behaviour. */
 function fakeLedger(): FakeLedger {
   const runs = new Map<string, RunState>();
-  // slotKey = `${scopeKey}|${scheduledFor.toISOString()}`
   const slotToRunId = new Map<string, string>();
   let nextRunId = 1;
 
@@ -213,9 +229,11 @@ describe("getSourcesForGroup", () => {
   it("includes sources whose interval is exactly at the boundary", () => {
     const sources = getSourcesForGroup("STANDARD");
     const every12h = sources.filter(
-      (s) => s.refreshCron && parseCronIntervalHours(s.refreshCron) <= 12 && parseCronIntervalHours(s.refreshCron) > 6,
+      (s) =>
+        s.refreshCron &&
+        parseCronIntervalHours(s.refreshCron) <= 12 &&
+        parseCronIntervalHours(s.refreshCron) > 6,
     );
-    // At least one source should fall in the 7-12h range.
     expect(every12h.length).toBeGreaterThan(0);
   });
 
@@ -235,7 +253,7 @@ describe("getSourcesForGroup", () => {
 });
 
 // ================================================================
-// Orchestration tests — injectable fake ledger
+// False-success test
 // ================================================================
 
 describe("collectBatch — false success", () => {
@@ -246,20 +264,11 @@ describe("collectBatch — false success", () => {
     const deferA = deferred<FetchOutcome>();
     let aFetchStarted = false;
 
-    const fetchCounts = new Map<string, number>();
-
     const ledger = fakeLedger();
-    const beginSpy: string[] = [];
-    const originalBegin = ledger.beginRun.bind(ledger);
-    ledger.beginRun = async (input) => {
-      beginSpy.push(input.scopeKey);
-      return originalBegin(input);
-    };
 
     const deps = {
       getSources: (_group: CollectionGroup) => [sourceA, sourceB],
       fetchSource: async (s: SourceContract): Promise<FetchOutcome> => {
-        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
         if (s.id === sourceA.id) {
           aFetchStarted = true;
           return deferA.promise;
@@ -271,17 +280,14 @@ describe("collectBatch — false success", () => {
 
     const batchPromise = collectBatch("FAST", baseArgs(), deps);
 
-    // Give the batch a tick to start fetching sourceA.
     await new Promise((r) => setTimeout(r, 200));
     expect(aFetchStarted).toBe(true);
 
-    // Before sourceA resolves: it should NOT be in the succeeded set.
     const succeededBefore = await ledger.alreadySucceeded(
       ledger._runs.keys().next().value ?? "",
     );
     expect(succeededBefore.has(sourceA.id)).toBe(false);
 
-    // Resolve sourceA.
     deferA.resolve(successOutcome(sourceA.id));
 
     const result = await batchPromise;
@@ -290,7 +296,6 @@ describe("collectBatch — false success", () => {
     expect(result.succeeded).toBe(2);
     expect(result.failed).toBe(0);
 
-    // After resolution: sourceA IS in the succeeded set.
     const succeededAfter = await ledger.alreadySucceeded(
       ledger._runs.keys().next().value ?? "",
     );
@@ -299,46 +304,43 @@ describe("collectBatch — false success", () => {
   }, 10000);
 });
 
+// ================================================================
+// Same-slot replay tests
+// ================================================================
+
 describe("collectBatch — same-slot replay", () => {
   it("skips sources already successful in the same scheduled slot", async () => {
     const sourceOk = testSourceContract("test-replay-ok");
     const sourceFlaky = testSourceContract("test-replay-flaky");
 
     const fetchCounts = new Map<string, number>();
-
     const ledger = fakeLedger();
 
     const deps = (): Parameters<typeof collectBatch>[2] => ({
       getSources: (_group: CollectionGroup) => [sourceOk, sourceFlaky],
       fetchSource: async (s: SourceContract): Promise<FetchOutcome> => {
         fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
-        if (s.id === sourceFlaky.id) {
-          const count = fetchCounts.get(s.id) ?? 0;
-          if (count === 1) throw new Error("HTTP 503");
+        if (s.id === sourceFlaky.id && (fetchCounts.get(s.id) ?? 0) === 1) {
+          return retryableFailed();
         }
         return successOutcome(s.id);
       },
       ledger,
     });
 
-    // First run.
     const first = await collectBatch("FAST", baseArgs(), deps());
     expect(first.status).toBe("SUCCEEDED_ITEMS");
 
-    // sourceFlaky failed once then retried: at least 2 calls (fail on attempt 1, succeed on 2)
-    expect(fetchCounts.get(sourceFlaky.id)).toBeGreaterThanOrEqual(2);
+    // sourceFlaky: 1st call returned retryable, 2nd call succeeded = 2 calls
+    expect(fetchCounts.get(sourceFlaky.id)).toBe(2);
     expect(first.succeeded).toBe(2);
 
-    // Second run (same slot): sourceOk already successful → skipped.
-    // sourceFlaky also successful now → skipped.
     const flakyBeforeReplay = fetchCounts.get(sourceFlaky.id)!;
     const second = await collectBatch("FAST", baseArgs(), deps());
 
-    // Both sources were already successful — neither should have been fetched again.
     expect(fetchCounts.get(sourceOk.id)).toBe(1);
     expect(fetchCounts.get(sourceFlaky.id)).toBe(flakyBeforeReplay);
 
-    // Result should indicate no new work.
     expect(second.attempted).toBe(0);
     expect(second.status).toBe("SUCCEEDED_EMPTY");
   }, 10000);
@@ -349,7 +351,6 @@ describe("collectBatch — same-slot replay", () => {
 
     const fetchCounts = new Map<string, number>();
     let bExhausts = true;
-
     const ledger = fakeLedger();
 
     const makeDeps = (): Parameters<typeof collectBatch>[2] => ({
@@ -357,51 +358,152 @@ describe("collectBatch — same-slot replay", () => {
       fetchSource: async (s: SourceContract): Promise<FetchOutcome> => {
         fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
         if (s.id === sourceB.id && bExhausts) {
-          throw new Error("HTTP 502");
+          return retryableFailed();
         }
         return successOutcome(s.id);
       },
       ledger,
     });
 
-    // First run: sourceA succeeds, sourceB exhausts (3 attempts).
+    // First run: sourceA succeeds, sourceB exhausts (3 attempts all retryable).
     const first = await collectBatch("FAST", baseArgs(), makeDeps());
     expect(first.status).toBe("PARTIAL");
     expect(fetchCounts.get(sourceA.id)).toBe(1);
-    // sourceB: 3 attempts exhausted
     expect(fetchCounts.get(sourceB.id)).toBe(3);
 
     // Second run: sourceA already successful → skipped.
     // sourceB was FAILED (not in succeeded set) → retried.
     bExhausts = false;
     const second = await collectBatch("FAST", baseArgs(), makeDeps());
-    expect(fetchCounts.get(sourceA.id)).toBe(1); // unchanged — skipped
-    expect(fetchCounts.get(sourceB.id)).toBe(4); // +1 — retried
+    expect(fetchCounts.get(sourceA.id)).toBe(1);
+    expect(fetchCounts.get(sourceB.id)).toBe(4);
     expect(second.status).toBe("SUCCEEDED_ITEMS");
   }, 10000);
 });
 
-describe("collectBatch — non-retryable errors", () => {
-  it("stops after one attempt on an invariant error (robots_denied)", async () => {
-    const source = testSourceContract("test-non-retryable");
+// ================================================================
+// STRUCTURED OUTCOME retry tests (primary contract — BLOCKER 2 fix)
+// ================================================================
+
+describe("collectBatch — structured retry", () => {
+  it("retries exactly 3 times on retryable failure then records FAILED", async () => {
+    const source = testSourceContract("test-structured-retryable");
     const fetchCounts = new Map<string, number>();
-
     const ledger = fakeLedger();
-    const result = await collectBatch(
-      "FAST",
-      baseArgs(),
-      {
-        getSources: () => [source],
-        fetchSource: async (s: SourceContract) => {
-          fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
-          throw new Error("robots_denied: Cloudflare challenge");
-        },
-        ledger,
-      },
-    );
 
-    expect(fetchCounts.get(source.id)).toBe(1); // not retried
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        return retryableFailed();
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(3);
     expect(result.failed).toBe(1);
     expect(result.succeeded).toBe(0);
+    expect(result.exitCode).toBe(1);
+  }, 10000);
+
+  it("fetches non-retryable failure exactly once (INVARIANT_FAILURE)", async () => {
+    const source = testSourceContract("test-structured-nonretryable");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        return nonRetryableFailed();
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.exitCode).toBe(1);
+  }, 10000);
+
+  it("fetches blocked outcome exactly once", async () => {
+    const source = testSourceContract("test-structured-blocked");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        return blockedOutcome();
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.exitCode).toBe(1);
+  }, 10000);
+
+  it("retryable-then-success on attempt 2 records SUCCEEDED with count 1", async () => {
+    const source = testSourceContract("test-structured-recover");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        const count = (fetchCounts.get(s.id) ?? 0) + 1;
+        fetchCounts.set(s.id, count);
+        if (count < 2) return retryableFailed();
+        return successOutcome(s.id);
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(2);
+    expect(result.succeeded).toBe(1);
+    expect(result.failed).toBe(0);
+  }, 10000);
+});
+
+// ================================================================
+// DEFENSIVE FALLBACK — thrown errors (kept as secondary contract)
+// ================================================================
+
+describe("collectBatch — thrown-error fallback", () => {
+  it("stops after one attempt on robots_denied throw", async () => {
+    const source = testSourceContract("test-throw-deny");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s: SourceContract) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        throw new Error("robots_denied: Cloudflare challenge");
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(1);
+    expect(result.failed).toBe(1);
+  }, 10000);
+
+  it("retries on thrown transport error (defensive fallback)", async () => {
+    const source = testSourceContract("test-throw-transport");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const result = await collectBatch("FAST", baseArgs(), {
+      getSources: () => [source],
+      fetchSource: async (s: SourceContract) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        throw new Error("fetch failed: socket hang up");
+      },
+      ledger,
+    });
+
+    expect(fetchCounts.get(source.id)).toBe(3);
+    expect(result.failed).toBe(1);
   }, 10000);
 });

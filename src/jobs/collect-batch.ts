@@ -30,6 +30,28 @@ import { env } from "../config/env.js";
 
 export type CollectionGroup = "FAST" | "STANDARD" | "SLOW";
 
+// ---- custom errors for structured retry ----
+
+/** Thrown when a retryable FetchOutcome is received (e.g. HTTP 503). */
+export class RetryableFetchError extends Error {
+  public readonly outcome: FetchOutcome;
+  constructor(outcome: FetchOutcome) {
+    super(outcome.kind === "success" ? "RETRYABLE" : outcome.code);
+    this.name = "RetryableFetchError";
+    this.outcome = outcome;
+  }
+}
+
+/** Thrown when a non-retryable FetchOutcome is received (e.g. blocked, INVARIANT). */
+export class NonRetryableFetchError extends Error {
+  public readonly outcome: FetchOutcome;
+  constructor(outcome: FetchOutcome) {
+    super(outcome.kind === "success" ? "NON_RETRYABLE" : outcome.code);
+    this.name = "NonRetryableFetchError";
+    this.outcome = outcome;
+  }
+}
+
 // ---- BatchLedger — injected so credential-free tests pass without DATABASE_URL ----
 
 export interface BatchLedger {
@@ -284,6 +306,9 @@ async function fetchScraperSource(
 }
 
 async function fetchPageDiffSource(source: SourceContract): Promise<FetchOutcome> {
+  // PAGE_DIFF always returns empty items with a contentHash. The hash diff
+  // detection is deferred to a future task; currently this records
+  // SUCCEEDED_EMPTY every slot with the current hash for auditing.
   try {
     const res = await fetch(source.url, {
       headers: { "User-Agent": JSON_UA },
@@ -304,14 +329,25 @@ async function fetchPageDiffSource(source: SourceContract): Promise<FetchOutcome
       httpStatus: res.status,
       contentHash: createHash("sha256").update(body).digest("hex"),
     };
-  } catch (err) {
+  } catch {
     return { kind: "failed", code: "FETCH_ERROR", retryable: true };
   }
 }
 
 // ---- retryable error detection ----
 
-function isRetryableFetchError(error: unknown): boolean {
+/** Primary path: outcome-based retry decision. Called after fetchSource returns. */
+function branchOnOutcome(outcome: FetchOutcome): FetchOutcome {
+  if (outcome.kind === "success") return outcome;
+  if (outcome.retryable) throw new RetryableFetchError(outcome);
+  throw new NonRetryableFetchError(outcome);
+}
+
+/** Fallback: thrown errors that bypassed the outcome path (e.g. transport errors). */
+function isRetryableThrownError(error: unknown): boolean {
+  if (error instanceof RetryableFetchError) return true;
+  if (error instanceof NonRetryableFetchError) return false;
+  // Defensive fallback for bare throws (transport/protocol errors).
   const msg = error instanceof Error ? error.message : String(error);
   if (/robots_denied/i.test(msg)) return false;
   if (/license_denied/i.test(msg)) return false;
@@ -320,22 +356,39 @@ function isRetryableFetchError(error: unknown): boolean {
   return true;
 }
 
-// ---- concurrency limiter ----
+/** Extract the source-level FetchOutcome from a retry error, if possible. */
+function outcomeFromError(error: unknown): FetchOutcome | null {
+  if (error instanceof RetryableFetchError) return error.outcome;
+  if (error instanceof NonRetryableFetchError) return error.outcome;
+  return null;
+}
+
+// ---- sliding-window concurrency limiter ----
 
 async function mapWithLimit<T, R>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<R>,
 ): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += limit) {
-    const batch = items.slice(i, i + limit);
-    const settled = await Promise.allSettled(batch.map(fn));
-    for (const s of settled) {
-      if (s.status === "fulfilled") results.push(s.value);
+  const results: (R | undefined)[] = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      const item = items[i]!;
+      try {
+        results[i] = await fn(item);
+      } catch {
+        // errors are handled at the call site
+      }
     }
   }
-  return results;
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+  return results.filter((r): r is R => r !== undefined);
 }
 
 // ---- collectBatch ----
@@ -372,7 +425,6 @@ export async function collectBatch(
     runnerVersion: args.runnerVersion,
   });
 
-  // Find sources already successful in this run — skip them.
   const skipIds = await d.ledger.alreadySucceeded(runId);
   const pendingSources = sources.filter((s) => !skipIds.has(s.id));
 
@@ -386,8 +438,11 @@ export async function collectBatch(
     const retryResult = await retryUnit({
       maxAttempts: 3,
       baseDelayMs: 1000,
-      execute: () => d.fetchSource(source),
-      isRetryable: isRetryableFetchError,
+      execute: async () => {
+        const outcome = await d.fetchSource(source);
+        return branchOnOutcome(outcome);
+      },
+      isRetryable: isRetryableThrownError,
     });
 
     if (retryResult.status === "OK") {
@@ -403,14 +458,15 @@ export async function collectBatch(
         failed++;
       }
     } else {
-      // Exhausted or invariant failure — record the failure for diagnostics.
+      // Exhausted or invariant failure — record a structured diagnostic check.
+      const lastOutcome = outcomeFromError(retryResult.error);
+      const code =
+        retryResult.status === "EXHAUSTED" ? "RETRY_EXHAUSTED" : "INVARIANT_FAILURE";
       try {
-        await d.ledger.recordOutcome(runId, source.id, {
+        await d.ledger.recordOutcome(runId, source.id, lastOutcome ?? {
           kind: "failed",
-          code: retryResult.error instanceof Error
-            ? retryResult.error.message.slice(0, 100)
-            : String(retryResult.error ?? "UNKNOWN").slice(0, 100),
-          retryable: retryResult.status === "EXHAUSTED",
+          code,
+          retryable: false,
         });
       } catch {
         // best-effort
