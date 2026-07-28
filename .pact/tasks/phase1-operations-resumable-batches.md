@@ -5,6 +5,8 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 ## Context and binding constraints
 
 - This is Operations Task 2 and depends on accepted Task 1 runtime primitives.
+- Implement against Task 1's accepted exact contract. `collectBatch` and `canonicalizeBatch` return a complete `JobResult` whose `runId` is the real persisted `PipelineRun.id`; per-source partial failures return honest attempted/succeeded/failed/itemCount values instead of throwing through the dispatcher. Register the three collection jobs and canonicalize job with the finite registry so the CLI path is executable.
+- Source-level retry is owned by the batch and remains maximum three attempts. Configure the registered dispatcher handlers to one job-level attempt so retries do not multiply (for example, 3 source attempts becoming 12 job attempts).
 - Use TDD: add the false-success and same-slot replay tests first, run the specified RED, then implement minimum GREEN behavior.
 - `collectBatch(group, args)` uses enabled `PHASE1_SOURCES`, persists one idempotent `PipelineRun`, skips sources already successful in that same scheduled slot, and records each source only after fetch/parse or scraper completion.
 - A failed source does not poison other sources. Concurrency is bounded to five. Retry only structured retryable failures, maximum three attempts. Never retry `robots_denied`, `license_denied`, schema/fixture validation failures, or other invariant errors.
@@ -13,6 +15,7 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - `canonicalizeBatch(args)` processes at most 200 observations lacking an `EvidenceClusterMember`, uses existing fingerprint/cluster/classification contracts, and is replay-idempotent. Do not publish versions or add Task 3 behavior.
 - No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
 - Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must use credential-free unit tests and dependency injection. The Codex orchestrator alone runs the combined Neon staging integration gate after checkpoint, with unique test data and cleanup, and records only the redacted command/result summary in Pact evidence.
+- Keep the public two-argument batch signatures and add injected factories/adapters for credential-free tests; do not replace production collection, scraper, ledger, or canonicalization code with test-only implementations.
 
 ## Verification
 
