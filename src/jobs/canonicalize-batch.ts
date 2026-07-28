@@ -52,6 +52,13 @@ export interface CanonicalizeDeps {
    *  overwriting a prior run's count with 0. Returns 0 if the run does
    *  not exist. */
   existingItemCount?(runId: string): Promise<number>;
+  /** Read the existing PipelineRun summary — used on replay to preserve
+   *  the prior status and cumulative counts when no new work was done.
+   *  Returns null when no prior summary exists (first run). */
+  existingSummary?(runId: string): Promise<{
+    status: string; itemCount: number; attempted: number;
+    succeeded: number; failed: number;
+  } | null>;
 }
 
 // ---- production deps ----
@@ -132,6 +139,21 @@ const REAL_DEPS: CanonicalizeDeps = {
       select: { itemCount: true },
     });
     return run?.itemCount ?? 0;
+  },
+  async existingSummary(runId: string) {
+    const { prisma: db } = await import("../db/client.js");
+    const run = await db.pipelineRun.findUnique({
+      where: { id: runId },
+      select: { status: true, itemCount: true, finishedAt: true },
+    });
+    if (!run || !run.finishedAt) return null;
+    return {
+      status: run.status,
+      itemCount: run.itemCount,
+      attempted: run.itemCount > 0 ? 1 : 0,
+      succeeded: run.itemCount > 0 ? 1 : 0,
+      failed: 0,
+    };
   },
 };
 
@@ -258,29 +280,45 @@ export function createCanonicalizeBatch(
 
     const failed = attempted - succeeded;
 
-    // BLOCKER 5 fix: on replay (totalItems === 0), read the existing
-    // PipelineRun itemCount and preserve it instead of overwriting with 0.
+    // On replay (no new work), read the existing summary and preserve the
+    // prior status and cumulative counts instead of overwriting with zeros.
+    let persistedStatus: JobStatus = status;
     let persistedItemCount = totalItems;
-    if (totalItems === 0 && deps.existingItemCount) {
-      persistedItemCount = await deps.existingItemCount(runId);
+    let persistedAttempted = attempted;
+    let persistedSucceeded = succeeded;
+    let persistedFailed = failed;
+    if (totalItems === 0 && deps.existingSummary) {
+      const prior = await deps.existingSummary(runId);
+      if (prior) {
+        persistedStatus = (prior.status === "FAILED" || prior.status === "SUCCEEDED_EMPTY" ||
+          prior.status === "SUCCEEDED_ITEMS" || prior.status === "PARTIAL")
+          ? prior.status : status;
+        persistedItemCount = prior.itemCount;
+        persistedAttempted = prior.attempted;
+        persistedSucceeded = prior.succeeded;
+        persistedFailed = prior.failed;
+      } else if (deps.existingItemCount) {
+        // Fallback to itemCount-only (backward compat).
+        persistedItemCount = await deps.existingItemCount(runId);
+      }
     }
 
     await deps.finishRun(runId, {
-      status,
+      status: persistedStatus,
       itemCount: persistedItemCount,
-      attempted,
-      succeeded,
-      failed,
+      attempted: persistedAttempted,
+      succeeded: persistedSucceeded,
+      failed: persistedFailed,
     });
 
     return {
       runId,
-      status,
-      attempted,
-      succeeded,
-      failed,
+      status: persistedStatus,
+      attempted: persistedAttempted,
+      succeeded: persistedSucceeded,
+      failed: persistedFailed,
       itemCount: persistedItemCount,
-      exitCode: failed > 0 ? 1 : 0,
+      exitCode: persistedFailed > 0 ? 1 : 0,
     };
   };
 }

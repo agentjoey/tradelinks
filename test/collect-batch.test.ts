@@ -154,10 +154,20 @@ describe("collectBatch — false success", () => {
       },
     });
 
-    const bp = call("FAST", baseArgs());
+    // beginRun is slot-idempotent — calling it first gives us the same
+    // runId the factory will reuse, so we can query alreadySucceeded
+    // before the batch finishes.
+    const slot = scheduledSlot();
+    const runId = await ledger.beginRun({
+      jobType: "COLLECT", scopeKey: "collect-fast",
+      scheduledFor: slot, runnerVersion: "test",
+    });
+
+    const bp = call("FAST", { scheduledFor: slot, runnerVersion: "test", dryRun: false });
     await new Promise(r => setTimeout(r, 200));
     expect(aStarted).toBe(true);
-    expect((await ledger.alreadySucceeded(ledger as any)).has(sourceA.id)).toBe(false);
+    // Before sourceA resolves, its check must NOT be in the succeeded set.
+    expect((await ledger.alreadySucceeded(runId)).has(sourceA.id)).toBe(false);
 
     deferA.resolve(successOutcome(sourceA.id));
     const r = await bp;
@@ -165,6 +175,9 @@ describe("collectBatch — false success", () => {
     expect(r.attempted).toBe(2);
     expect(r.succeeded).toBe(2);
     expect(r.failed).toBe(0);
+
+    // After resolution: sourceA IS in the succeeded set.
+    expect((await ledger.alreadySucceeded(runId)).has(sourceA.id)).toBe(true);
   }, 10000);
 });
 
@@ -192,7 +205,7 @@ describe("collectBatch — rejecting ledger write", () => {
   }, 10000);
 });
 
-// ============================ persisted replay (BLOCKER B) ======
+// ============================ persistent replay (BLOCKER B) ======
 
 describe("collectBatch — persisted replay", () => {
   it("replay preserves prior run status and cumulative counts", async () => {
@@ -214,6 +227,38 @@ describe("collectBatch — persisted replay", () => {
     expect(second.succeeded).toBe(1);
     expect(second.failed).toBe(0);
     expect(second.exitCode).toBe(0);
+  }, 10000);
+
+  it("re-fetches only previously-failed sources on same-slot replay", async () => {
+    const sourceOk = testSourceContract("replay-ok");
+    const sourceFlaky = testSourceContract("replay-flaky");
+    const fetchCounts = new Map<string, number>();
+    const ledger = fakeLedger();
+
+    const call = createCollectBatch({
+      getSources: () => [sourceOk, sourceFlaky],
+      fetchSource: async (s) => {
+        fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
+        if (s.id === sourceFlaky.id && (fetchCounts.get(s.id) ?? 0) === 1) {
+          return { kind: "failed", code: "HTTP_503", retryable: true, httpStatus: 503 };
+        }
+        return successOutcome(s.id);
+      },
+      ledger,
+    });
+
+    await call("FAST", baseArgs());
+    // sourceOk: 1 fetch (succeeded). sourceFlaky: 1st fails -> retry -> 2nd succeeds = 2 fetches.
+    expect(fetchCounts.get(sourceOk.id)).toBe(1);
+    expect(fetchCounts.get(sourceFlaky.id)).toBe(2);
+
+    // Same-slot replay: sourceOk already successful → skipped.
+    // sourceFlaky was also successful → skipped.
+    const flakyBefore = fetchCounts.get(sourceFlaky.id)!;
+    const second = await call("FAST", baseArgs());
+    expect(fetchCounts.get(sourceOk.id)).toBe(1); // unchanged — skipped
+    expect(fetchCounts.get(sourceFlaky.id)).toBe(flakyBefore); // unchanged — skipped
+    expect(second.failed).toBe(0);
   }, 10000);
 });
 
