@@ -1,11 +1,11 @@
 /**
  * Phase 1 resumable collection batch — finite path (Operations Task 2).
  *
- * collectBatch(group, args, deps) iterates enabled sources in the given
- * collection group, fetches each, records per-source outcomes in the
- * idempotent run ledger, and returns a complete JobResult. A failed source
- * never poisons the batch; concurrent fetches are bounded to 5; source-level
- * retry is owned by the batch (maximum 3 structured attempts).
+ * collectBatch(group, args, deps) resolves every enabled source contract to
+ * its real SourceConfig, fetches via buildAdapter + toFetchOutcome (RSS /
+ * fetch / JSON) or callScraper (SCRAPER), records per-source outcomes in the
+ * idempotent run ledger, and returns a JobResult that reflects the **persisted**
+ * run — not just current-invocation counts.
  *
  * The BatchLedger interface decouples the orchestration from the database so
  * credential-free tests can inject a fake ledger.
@@ -17,14 +17,12 @@ import parser from "cron-parser";
 import type { FetchOutcome } from "../domain/intelligence/source-contract.js";
 import type { SourceContract } from "../domain/intelligence/source-contract.js";
 import { PHASE1_SOURCES } from "../config/phase1-sources.js";
+import { SOURCES_BY_ID } from "../config/sources.js";
+import { buildAdapter, toFetchOutcome } from "../adapters/index.js";
 import { beginRun, finishRun, recordSourceOutcome } from "../collection/run.js";
 import { retryUnit } from "./retry.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
-import { parseFeed } from "../adapters/rss.js";
-import { parseFederalRegister } from "../adapters/json.js";
-import { parseHtml } from "../adapters/fetch.js";
-import { isBlocked } from "../adapters/blocked.js";
 import { callScraper } from "../workers/scrape.js";
 import { env } from "../config/env.js";
 
@@ -32,7 +30,6 @@ export type CollectionGroup = "FAST" | "STANDARD" | "SLOW";
 
 // ---- custom errors for structured retry ----
 
-/** Thrown when a retryable FetchOutcome is received (e.g. HTTP 503). */
 export class RetryableFetchError extends Error {
   public readonly outcome: FetchOutcome;
   constructor(outcome: FetchOutcome) {
@@ -42,7 +39,6 @@ export class RetryableFetchError extends Error {
   }
 }
 
-/** Thrown when a non-retryable FetchOutcome is received (e.g. blocked, INVARIANT). */
 export class NonRetryableFetchError extends Error {
   public readonly outcome: FetchOutcome;
   constructor(outcome: FetchOutcome) {
@@ -55,28 +51,23 @@ export class NonRetryableFetchError extends Error {
 // ---- BatchLedger — injected so credential-free tests pass without DATABASE_URL ----
 
 export interface BatchLedger {
-  /** Begin (or reuse) the run for one scheduled slot. Returns the run id. */
   beginRun(input: {
     jobType: string;
     scopeKey: string;
     scheduledFor: Date;
     runnerVersion: string;
   }): Promise<string>;
-  /** Source IDs that already have a successful check in this run. */
   alreadySucceeded(runId: string): Promise<Set<string>>;
-  /** Record one source's fetch outcome. Returns status + itemCount. */
   recordOutcome(
     runId: string,
     sourceId: string,
     outcome: FetchOutcome,
   ): Promise<{ status: string; itemCount: number }>;
-  /** Close and derive the run status. */
   finishRun(
     runId: string,
   ): Promise<{ status: string; itemCount: number }>;
 }
 
-/** Real ledger backed by the Phase 1 collection-run module. */
 const DB_LEDGER: BatchLedger = {
   async beginRun(input) {
     const run = await beginRun({
@@ -118,13 +109,12 @@ export interface CollectBatchDeps {
 
 export const DEFAULT_DEPS: CollectBatchDeps = {
   getSources: getSourcesForGroup,
-  fetchSource: fetchSourceImpl,
+  fetchSource: fetchSourceViaRegistry,
   ledger: DB_LEDGER,
 };
 
 // ---- cron-to-group mapping ----
 
-/** Parse the hours interval from a cron expression using cron-parser. */
 export function parseCronIntervalHours(cron: string): number {
   try {
     const interval = parser.parseExpression(cron);
@@ -136,7 +126,6 @@ export function parseCronIntervalHours(cron: string): number {
   }
 }
 
-/** Default source resolver: group by cron frequency from PHASE1_SOURCES. */
 export function getSourcesForGroup(group: CollectionGroup): SourceContract[] {
   return PHASE1_SOURCES.filter((s) => {
     if (!s.enabled || !s.refreshCron) return false;
@@ -147,146 +136,55 @@ export function getSourcesForGroup(group: CollectionGroup): SourceContract[] {
   });
 }
 
-// ---- fetchSourceImpl — production fetch path ----
+// ---- fetchSourceViaRegistry — production path via existing registry ----
 
-async function fetchSourceImpl(source: SourceContract): Promise<FetchOutcome> {
-  switch (source.fetchMethod) {
-    case "RSS":
-      return fetchRssSource(source);
-    case "JSON":
-      return fetchJsonSource(source);
-    case "HTML":
-      return fetchHtmlSource(source);
-    case "SCRAPER":
-      return fetchScraperSource(source);
-    case "PAGE_DIFF":
-      return fetchPageDiffSource(source);
+/**
+ * Resolve a SourceContract to its real SourceConfig and fetch via the
+ * existing buildAdapter + toFetchOutcome pipeline. Enabled sources that
+ * cannot be resolved fail closed as a non-retryable invariant.
+ */
+async function fetchSourceViaRegistry(source: SourceContract): Promise<FetchOutcome> {
+  const config = SOURCES_BY_ID.get(source.id);
+  if (!config) {
+    return { kind: "failed", code: "INVARIANT: no SourceConfig", retryable: false };
   }
-}
 
-const BROWSER_UA =
-  "TradeLinks/0.1 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0";
+  // SCRAPER / scrapling sources: route to the Python bridge.
+  if (config.adapter === "scrapling") {
+    return fetchViaScraper(source, config);
+  }
 
-async function fetchRssSource(source: SourceContract): Promise<FetchOutcome> {
+  // PAGE_DIFF: fetch the page, return empty items + contentHash for auditing.
+  if (source.fetchMethod === "PAGE_DIFF") {
+    return fetchPageDiffImpl(source, config);
+  }
+
+  // RSS / fetch / JSON: use the TS adapter + toFetchOutcome.
+  const adapter = buildAdapter(config);
+  if (!adapter) {
+    return { kind: "failed", code: "INVARIANT: unresolvable adapter", retryable: false };
+  }
+
   try {
-    const res = await fetch(source.url, {
-      headers: { "User-Agent": BROWSER_UA },
-      signal: AbortSignal.timeout(30_000),
-    });
-    const body = await res.text();
-    if (!res.ok) {
-      return {
-        kind: "failed",
-        code: `HTTP_${res.status}`,
-        retryable: res.status === 429 || res.status >= 500,
-        httpStatus: res.status,
-      };
-    }
-    const items = await parseFeed(body, "en");
-    return {
-      kind: "success",
-      items,
-      httpStatus: res.status,
-      contentHash: createHash("sha256").update(body).digest("hex"),
-    };
+    const result = await adapter.crawl({ sourceId: source.id, url: source.url, adapter: config.adapter });
+    return toFetchOutcome(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (/robots_denied|license_denied/i.test(msg)) {
-      return { kind: "blocked", code: "BOT_WALL", retryable: false };
-    }
-    return { kind: "failed", code: "FETCH_ERROR", retryable: true };
+    return { kind: "failed", code: `ADAPTER_ERROR: ${msg}`, retryable: true };
   }
 }
 
-const JSON_UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0 Safari/537.36";
-
-async function fetchJsonSource(source: SourceContract): Promise<FetchOutcome> {
-  try {
-    const res = await fetch(source.url, {
-      headers: { "User-Agent": JSON_UA, Accept: "application/json" },
-      signal: AbortSignal.timeout(30_000),
-    });
-    const body = await res.text();
-    if (!res.ok) {
-      return {
-        kind: "failed",
-        code: `HTTP_${res.status}`,
-        retryable: res.status === 429 || res.status >= 500,
-        httpStatus: res.status,
-      };
-    }
-    const items = parseFederalRegister(JSON.parse(body));
-    return {
-      kind: "success",
-      items,
-      httpStatus: res.status,
-      contentHash: createHash("sha256").update(body).digest("hex"),
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/robots_denied|license_denied/i.test(msg)) {
-      return { kind: "blocked", code: "BOT_WALL", retryable: false };
-    }
-    return { kind: "failed", code: "FETCH_ERROR", retryable: true };
-  }
-}
-
-async function fetchHtmlSource(source: SourceContract): Promise<FetchOutcome> {
-  if (!source.selectors) {
-    return { kind: "failed", code: "INVARIANT: no selectors", retryable: false };
-  }
-  try {
-    const res = await fetch(source.url, {
-      headers: {
-        "User-Agent": JSON_UA,
-        "Accept-Language": "en-US,en;q=0.9",
-        Accept: "text/html,application/xhtml+xml,*/*;q=0.9",
-      },
-      signal: AbortSignal.timeout(30_000),
-    });
-    const body = await res.text();
-    if (!res.ok) {
-      return {
-        kind: "failed",
-        code: `HTTP_${res.status}`,
-        retryable: res.status === 429 || res.status >= 500,
-        httpStatus: res.status,
-      };
-    }
-    if (isBlocked({ body, expectedSelectors: source.selectors ? Object.values(source.selectors) : undefined })) {
-      return { kind: "blocked", code: "BOT_WALL", retryable: false };
-    }
-    const items = parseHtml(body, source.url, {
-      itemSelector: source.selectors.item ?? "article",
-      titleSelector: source.selectors.title ?? "h2",
-      ...(source.selectors.link ? { linkSelector: source.selectors.link } : {}),
-    });
-    return {
-      kind: "success",
-      items,
-      httpStatus: res.status,
-      contentHash: createHash("sha256").update(body).digest("hex"),
-    };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/robots_denied|license_denied/i.test(msg)) {
-      return { kind: "blocked", code: "BOT_WALL", retryable: false };
-    }
-    return { kind: "failed", code: "FETCH_ERROR", retryable: true };
-  }
-}
-
-async function fetchScraperSource(
+async function fetchViaScraper(
   source: SourceContract,
+  config: { scrapeMode?: string; scrapeSelectors?: Record<string, string> },
 ): Promise<FetchOutcome> {
   try {
     const items = await callScraper(
       {
         sourceId: source.id,
         url: source.url,
-        mode: "stealth",
-        ...(source.selectors ? { selectors: source.selectors as Record<string, string> } : {}),
+        mode: (config.scrapeMode as "stealth" | "trends") ?? "stealth",
+        ...(config.scrapeSelectors ? { selectors: config.scrapeSelectors } : {}),
       },
       env.SCRAPER_SERVICE_URL,
     );
@@ -301,17 +199,23 @@ async function fetchScraperSource(
     if (/robots_denied|license_denied/i.test(msg)) {
       return { kind: "blocked", code: "BOT_WALL", retryable: false };
     }
-    return { kind: "failed", code: "FETCH_ERROR", retryable: true };
+    return { kind: "failed", code: `SCRAPER_ERROR: ${msg}`, retryable: true };
   }
 }
 
-async function fetchPageDiffSource(source: SourceContract): Promise<FetchOutcome> {
-  // PAGE_DIFF always returns empty items with a contentHash. The hash diff
-  // detection is deferred to a future task; currently this records
-  // SUCCEEDED_EMPTY every slot with the current hash for auditing.
+async function fetchPageDiffImpl(
+  source: SourceContract,
+  _config: { url: string },
+): Promise<FetchOutcome> {
+  // Fetch the page to compute a content hash. No items — this is a change-
+  // detection source. PAGE_DIFF diff logic is deferred; currently records
+  // SUCCEEDED_EMPTY with the hash for auditing in every slot.
   try {
     const res = await fetch(source.url, {
-      headers: { "User-Agent": JSON_UA },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0 Safari/537.36",
+      },
       signal: AbortSignal.timeout(30_000),
     });
     const body = await res.text();
@@ -336,18 +240,15 @@ async function fetchPageDiffSource(source: SourceContract): Promise<FetchOutcome
 
 // ---- retryable error detection ----
 
-/** Primary path: outcome-based retry decision. Called after fetchSource returns. */
 function branchOnOutcome(outcome: FetchOutcome): FetchOutcome {
   if (outcome.kind === "success") return outcome;
   if (outcome.retryable) throw new RetryableFetchError(outcome);
   throw new NonRetryableFetchError(outcome);
 }
 
-/** Fallback: thrown errors that bypassed the outcome path (e.g. transport errors). */
 function isRetryableThrownError(error: unknown): boolean {
   if (error instanceof RetryableFetchError) return true;
   if (error instanceof NonRetryableFetchError) return false;
-  // Defensive fallback for bare throws (transport/protocol errors).
   const msg = error instanceof Error ? error.message : String(error);
   if (/robots_denied/i.test(msg)) return false;
   if (/license_denied/i.test(msg)) return false;
@@ -356,7 +257,6 @@ function isRetryableThrownError(error: unknown): boolean {
   return true;
 }
 
-/** Extract the source-level FetchOutcome from a retry error, if possible. */
 function outcomeFromError(error: unknown): FetchOutcome | null {
   if (error instanceof RetryableFetchError) return error.outcome;
   if (error instanceof NonRetryableFetchError) return error.outcome;
@@ -393,17 +293,6 @@ async function mapWithLimit<T, R>(
 
 // ---- collectBatch ----
 
-function deriveResultStatus(
-  attempted: number,
-  succeeded: number,
-  failed: number,
-): JobStatus {
-  if (attempted === 0) return "SUCCEEDED_EMPTY";
-  if (succeeded > 0 && failed === 0) return "SUCCEEDED_ITEMS";
-  if (succeeded > 0) return "PARTIAL";
-  return "FAILED";
-}
-
 export async function collectBatch(
   group: CollectionGroup,
   args: JobArgs,
@@ -431,7 +320,6 @@ export async function collectBatch(
   let attempted = 0;
   let succeeded = 0;
   let failed = 0;
-  let totalItems = 0;
 
   await mapWithLimit(pendingSources, 5, async (source) => {
     attempted++;
@@ -447,14 +335,18 @@ export async function collectBatch(
 
     if (retryResult.status === "OK") {
       const outcome = retryResult.value!;
-      const check = await d.ledger.recordOutcome(runId, source.id, outcome);
-      if (
-        check.status === "SUCCEEDED_ITEMS" ||
-        check.status === "SUCCEEDED_EMPTY"
-      ) {
-        succeeded++;
-        totalItems += check.itemCount;
-      } else {
+      try {
+        const check = await d.ledger.recordOutcome(runId, source.id, outcome);
+        if (
+          check.status === "SUCCEEDED_ITEMS" ||
+          check.status === "SUCCEEDED_EMPTY"
+        ) {
+          succeeded++;
+        } else {
+          failed++;
+        }
+      } catch {
+        // Ledger write rejected → count as failed (BLOCKER 3 fix).
         failed++;
       }
     } else {
@@ -469,21 +361,23 @@ export async function collectBatch(
           retryable: false,
         });
       } catch {
-        // best-effort
+        // best-effort diagnostic — failure already counted below
       }
       failed++;
     }
   });
 
-  await d.ledger.finishRun(runId);
+  // Derive the persisted status and cumulative itemCount from finishRun,
+  // not from in-invocation counters (BLOCKER 2 fix).
+  const finished = await d.ledger.finishRun(runId);
 
   return {
     runId,
-    status: deriveResultStatus(attempted, succeeded, failed),
+    status: finished.status as JobStatus,
     attempted,
     succeeded,
     failed,
-    itemCount: totalItems,
+    itemCount: finished.itemCount,
     exitCode: failed > 0 ? 1 : 0,
   };
 }
