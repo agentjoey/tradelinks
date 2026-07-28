@@ -1,18 +1,29 @@
-export type JobName = "health";
+export type JobName =
+  | "collect-fast"
+  | "collect-standard"
+  | "collect-slow"
+  | "canonicalize"
+  | "publish"
+  | "public-briefing"
+  | "health"
+  | "cost-report";
 
-export type JobArgs = Record<string, unknown>;
+export interface JobArgs {
+  scheduledFor: Date;
+  runnerVersion: string;
+  dryRun: boolean;
+}
 
-export type JobStatus = "OK" | "DRY_RUN" | "LOCKED" | "EXHAUSTED" | "INVARIANT_FAILURE" | "UNKNOWN_JOB";
+export type JobStatus = "SUCCEEDED_EMPTY" | "SUCCEEDED_ITEMS" | "PARTIAL" | "FAILED" | "BLOCKED";
 
 export interface JobResult {
-  name: JobName;
+  runId: string;
   status: JobStatus;
-  exitCode: number;
-  attempts?: number;
-  error?: string;
-  result?: unknown;
-  dryRun?: boolean;
-  timestamp?: string;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  itemCount: number;
+  exitCode: 0 | 1 | 2;
 }
 
 export type RetryStatus = "OK" | "EXHAUSTED" | "INVARIANT_FAILURE";

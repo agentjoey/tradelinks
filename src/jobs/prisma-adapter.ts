@@ -2,12 +2,11 @@ import { bigintFromStableHash } from "./lock-internal.js";
 import type { LockAdapter } from "./lock-internal.js";
 
 /**
- * Maximum job duration (5 min) enforced by the Prisma interactive-transaction
- * timeout. A job whose single attempt runs longer than this cap will see the
- * xact lock silently released (P2028 rollback) and a concurrent dispatch can
- * overlap. No Task 2 batch or health scan is expected to approach this ceiling.
+ * Maximum job duration (21 min) exceeding the plan's 20-minute Railway job
+ * maximum. P2028 rollback and concurrent-dispatch overlap cannot occur while
+ * any supported callback is still running.
  */
-export const MAX_JOB_DURATION_MS = 300_000;
+export const MAX_JOB_DURATION_MS = 1_260_000;
 
 /** Create a LockAdapter backed by an injected SQL executor. */
 export function createPrismaLockAdapter(

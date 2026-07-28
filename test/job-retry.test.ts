@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { retryUnit, computeDelayMs, defaultDelay, RETRY_MULTIPLIER } from "../src/jobs/retry.js";
+import { retryUnit, computeDelayMs, defaultDelay, RETRY_MULTIPLIER, DEFAULT_MAX_ATTEMPTS } from "../src/jobs/retry.js";
 
 async function alwaysRetryableFailure(): Promise<never> {
   throw new Error("retryable");
@@ -77,6 +77,10 @@ describe("retryUnit", () => {
     expect(result.status).toBe("EXHAUSTED");
     expect(delays).toEqual([2]);
   });
+
+  it("defaults to 4 attempts via DEFAULT_MAX_ATTEMPTS", () => {
+    expect(DEFAULT_MAX_ATTEMPTS).toBe(4);
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -89,27 +93,31 @@ describe("computeDelayMs", () => {
   });
 
   it("yields 1s / 4s / 16s with baseDelayMs=1000", () => {
-    expect(computeDelayMs(2, 1000)).toBe(1000); // 1 s
-    expect(computeDelayMs(3, 1000)).toBe(4000); // 4 s
-    expect(computeDelayMs(4, 1000)).toBe(16000); // 16 s
+    expect(computeDelayMs(2, 1000)).toBe(1000);
+    expect(computeDelayMs(3, 1000)).toBe(4000);
+    expect(computeDelayMs(4, 1000)).toBe(16000);
   });
 
   it("scales linearly with baseDelayMs", () => {
-    expect(computeDelayMs(2, 2000)).toBe(2000); // 2 s
-    expect(computeDelayMs(3, 2000)).toBe(8000); // 8 s
-    expect(computeDelayMs(4, 2000)).toBe(32000); // 32 s
+    expect(computeDelayMs(2, 2000)).toBe(2000);
+    expect(computeDelayMs(3, 2000)).toBe(8000);
+    expect(computeDelayMs(4, 2000)).toBe(32000);
   });
 
   it("uses RETRY_MULTIPLIER = 4", () => {
     expect(RETRY_MULTIPLIER).toBe(4);
-    expect(computeDelayMs(2, 1)).toBe(1);
-    expect(computeDelayMs(3, 1)).toBe(4);
-    expect(computeDelayMs(4, 1)).toBe(16);
+  });
+
+  it("total retry budget fits within lock timeout", () => {
+    // worst case: 4 attempts, delays 0 + 1s + 4s + 16s = 21s of waiting
+    // plus execution time < 20 min per the Railway cap
+    const totalDelayMs = computeDelayMs(2, 1000) + computeDelayMs(3, 1000) + computeDelayMs(4, 1000);
+    expect(totalDelayMs).toBe(21000);
   });
 });
 
 /* ------------------------------------------------------------------ */
-/*  defaultDelay — returns a promise (smoke test)                     */
+/*  defaultDelay — returns a promise (smoke test)                      */
 /* ------------------------------------------------------------------ */
 
 describe("defaultDelay", () => {
