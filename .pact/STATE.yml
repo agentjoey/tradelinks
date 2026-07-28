@@ -72,7 +72,7 @@ features:
     tasks:
       - id: finite-dispatch
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-finite-dispatch.md
         evidence: RED (before impl, prior session): pnpm vitest run test/job-lock.test.ts test/job-retry.test.ts -> lock suite failed — PrismaClientInitializationError (DATABASE_URL not found). Retry suite loaded but module not yet implemented. Spec then updated to require credential-free lock tests (commit 3a88d08).  GREEN (this session, all gates):  1. pnpm vitest run test/job-lock.test.ts test/job-retry.test.ts -> Test Files 2 passed (2), Tests 10 passed (10). Lock: 5/5 (acquire, LOCKED concurrency, different keys, release-after-complete, release-on-throw) using injectable in-memory LockAdapter (credential-free, no PrismaClient). Retry: 5/5 (first-attempt OK, retry-until-success, EXHAUSTED after 3 attempts, INVARIANT_FAILURE stop, injectable delay). 2. pnpm job --name health --dry-run -> exit 0, single JSON JobResult {name:health,status:DRY_RUN,exitCode:0,dryRun:true}, no writes. 3. pnpm lint (tsc --noEmit) -> exit 0.  REFACTOR: lock.ts split into lock-internal.ts (pure core, no Prisma import) + prisma-adapter.ts (Prisma-backed via pg_try_advisory_xact_lock in  for pooled-connection safety) to satisfy the credential-free mandate. Public API preserved as two-argument withJobLock(key, fn).  Scope: src/jobs/{types,lock-internal,lock,prisma-adapter,registry,retry,run}.ts, scripts/run-job.ts, package.json (+job script), test/job-lock.test.ts, test/job-retry.test.ts. No schema, migration, backfill, cloud, deployment, UI, or public-route changes. pg-boss and persistent workers untouched.
