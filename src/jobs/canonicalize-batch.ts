@@ -290,25 +290,39 @@ export function createCanonicalizeBatch(
 
     const failed = attempted - succeeded;
 
-    // On replay (no new work), read the existing summary and preserve the
-    // prior status and cumulative counts instead of overwriting with zeros.
+    // On replay, accumulate onto the prior persisted summary so the result
+    // summarizes the run's complete history, not just current-invocation work.
     let persistedStatus: JobStatus = status;
     let persistedItemCount = totalItems;
     let persistedAttempted = attempted;
     let persistedSucceeded = succeeded;
     let persistedFailed = failed;
-    if (totalItems === 0 && deps.existingSummary) {
+    if (deps.existingSummary) {
       const prior = await deps.existingSummary(runId);
       if (prior) {
-        persistedStatus = (prior.status === "FAILED" || prior.status === "SUCCEEDED_EMPTY" ||
-          prior.status === "SUCCEEDED_ITEMS" || prior.status === "PARTIAL")
-          ? prior.status : status;
-        persistedItemCount = prior.itemCount;
-        persistedAttempted = prior.attempted;
-        persistedSucceeded = prior.succeeded;
-        persistedFailed = prior.failed;
-      } else if (deps.existingItemCount) {
-        // Fallback to itemCount-only (backward compat).
+        if (totalItems === 0) {
+          // Replay produced no new work — preserve the prior summary verbatim.
+          persistedStatus = (prior.status === "FAILED" || prior.status === "SUCCEEDED_EMPTY" ||
+            prior.status === "SUCCEEDED_ITEMS" || prior.status === "PARTIAL")
+            ? prior.status : status;
+          persistedItemCount = prior.itemCount;
+          persistedAttempted = prior.attempted;
+          persistedSucceeded = prior.succeeded;
+          persistedFailed = prior.failed;
+        } else {
+          // Replay produced new work — accumulate onto the prior summary.
+          persistedItemCount = prior.itemCount + totalItems;
+          persistedAttempted = prior.attempted + attempted;
+          persistedSucceeded = prior.succeeded + succeeded;
+          persistedFailed = prior.failed + failed;
+          persistedStatus = (
+            persistedAttempted === 0 ? "SUCCEEDED_EMPTY"
+            : persistedSucceeded === persistedAttempted
+              ? persistedItemCount > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY"
+            : "PARTIAL"
+          ) as JobStatus;
+        }
+      } else if (totalItems === 0 && deps.existingItemCount) {
         persistedItemCount = await deps.existingItemCount(runId);
       }
     }

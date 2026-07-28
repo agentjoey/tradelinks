@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createCollectBatch,
+  classifyCallScraperError,
   getSourcesForGroup,
   parseCronIntervalHours,
   type BatchLedger,
@@ -371,6 +372,114 @@ describe("collectBatch — thrown-error fallback", () => {
     });
     const r = await call("FAST", baseArgs());
     expect(counts.get(source.id)).toBe(3);
+    expect(r.failed).toBe(1);
+  }, 10000);
+});
+
+// ============================ scraper error classification =======
+
+describe("classifyCallScraperError", () => {
+  function assertFailed(outcome: FetchOutcome, retryable: boolean) {
+    expect(outcome.kind).not.toBe("success");
+    if (outcome.kind !== "success") {
+      expect(outcome.retryable).toBe(retryable);
+    }
+  }
+  function assertBlocked(outcome: FetchOutcome) {
+    expect(outcome.kind).toBe("blocked");
+  }
+
+  it("classifies scraper HTTP 503 as retryable", () => {
+    const outcome = classifyCallScraperError(new Error("scraper service HTTP 503: Service Unavailable"));
+    assertFailed(outcome, true);
+    if (outcome.kind === "failed") expect(outcome.httpStatus).toBe(503);
+  });
+
+  it("classifies scraper HTTP 400 as non-retryable", () => {
+    const outcome = classifyCallScraperError(new Error("scraper service HTTP 400: Bad Request"));
+    assertFailed(outcome, false);
+    if (outcome.kind === "failed") expect(outcome.httpStatus).toBe(400);
+  });
+
+  it("classifies scraper HTTP 403 as non-retryable", () => {
+    const outcome = classifyCallScraperError(new Error("scraper service HTTP 403: Forbidden"));
+    assertFailed(outcome, false);
+  });
+
+  it("classifies robots_denied as blocked (non-retryable)", () => {
+    const outcome = classifyCallScraperError(new Error("robots_denied: Cloudflare challenge"));
+    assertBlocked(outcome);
+    if (outcome.kind === "blocked") expect(outcome.code).toBe("BOT_WALL");
+  });
+
+  it("classifies non-HTTP error as non-retryable (schema validation / transport)", () => {
+    const outcome = classifyCallScraperError(new Error("Unexpected token"));
+    assertFailed(outcome, false);
+    if (outcome.kind === "failed") expect(outcome.code).toContain("SCRAPER_ERROR");
+  });
+});
+
+// ============================ scraper retry via full pipeline =====
+
+describe("collectBatch — scraper retry via injected fetchSource", () => {
+  it("scraper HTTP 503: retried 3 times", async () => {
+    const source = testSourceContract("sc-503");
+    const counts = new Map<string, number>();
+    const { call } = makeCollector({
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
+        return classifyCallScraperError(new Error("scraper service HTTP 503: boom"));
+      },
+    });
+    const r = await call("FAST", baseArgs());
+    expect(counts.get(source.id)).toBe(3);
+    expect(r.failed).toBe(1);
+  }, 10000);
+
+  it("scraper HTTP 400: fetched exactly once", async () => {
+    const source = testSourceContract("sc-400");
+    const counts = new Map<string, number>();
+    const { call } = makeCollector({
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
+        return classifyCallScraperError(new Error("scraper service HTTP 400: bad"));
+      },
+    });
+    const r = await call("FAST", baseArgs());
+    expect(counts.get(source.id)).toBe(1);
+    expect(r.failed).toBe(1);
+  }, 10000);
+
+  it("scraper schema parse failure: fetched exactly once", async () => {
+    const source = testSourceContract("sc-schema");
+    const counts = new Map<string, number>();
+    const { call } = makeCollector({
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
+        return classifyCallScraperError(new Error("Invalid json: expected items array"));
+      },
+    });
+    const r = await call("FAST", baseArgs());
+    expect(counts.get(source.id)).toBe(1);
+    expect(r.failed).toBe(1);
+  }, 10000);
+
+  it("buildAdapter config invariant: fetched exactly once", async () => {
+    const source = testSourceContract("cfg-invariant");
+    const counts = new Map<string, number>();
+    const { call } = makeCollector({
+      getSources: () => [source],
+      fetchSource: async (s) => {
+        counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
+        // Simulate the fail-closed path: buildAdapter throws → INVARIANT → non-retryable.
+        return { kind: "failed", code: "INVARIANT: Source X json=true but missing jsonShape", retryable: false };
+      },
+    });
+    const r = await call("FAST", baseArgs());
+    expect(counts.get(source.id)).toBe(1);
     expect(r.failed).toBe(1);
   }, 10000);
 });

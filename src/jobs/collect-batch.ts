@@ -172,7 +172,13 @@ async function fetchSourceViaRegistry(source: SourceContract): Promise<FetchOutc
     return fetchPageDiffImpl(source);
   }
 
-  const adapter = buildAdapter(config);
+  let adapter;
+  try {
+    adapter = buildAdapter(config);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { kind: "failed", code: `INVARIANT: ${msg}`, retryable: false };
+  }
   if (!adapter) {
     return { kind: "failed", code: "INVARIANT: unresolvable adapter", retryable: false };
   }
@@ -207,12 +213,34 @@ async function fetchViaScraper(
       contentHash: createHash("sha256").update(JSON.stringify(items)).digest("hex"),
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/robots_denied|license_denied/i.test(msg)) {
-      return { kind: "blocked", code: "BOT_WALL", retryable: false };
-    }
-    return { kind: "failed", code: `SCRAPER_ERROR: ${msg}`, retryable: true };
+    return classifyCallScraperError(err);
   }
+}
+
+/** Classify an error thrown by callScraper into a FetchOutcome. Parses the
+ *  HTTP status from scraper error messages and applies the same retryability
+ *  rule as toFetchOutcome: retryable only for 429/5xx/transport.
+ *  Schema validation failures (no HTTP status) are non-retryable. Exported
+ *  for credential-free testing. */
+export function classifyCallScraperError(err: unknown): FetchOutcome {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/robots_denied|license_denied/i.test(msg)) {
+    return { kind: "blocked", code: "BOT_WALL", retryable: false };
+  }
+  // callScraper throws "scraper service HTTP <status>: <body>" on non-2xx.
+  const statusMatch = msg.match(/\bHTTP (\d{3})\b/);
+  const httpStatus = statusMatch ? Number(statusMatch[1]) : undefined;
+  if (httpStatus !== undefined) {
+    return {
+      kind: "failed",
+      code: `SCRAPER_HTTP_${httpStatus}`,
+      retryable: httpStatus === 429 || httpStatus >= 500,
+      httpStatus,
+    };
+  }
+  // Schema validation failure (ZodError from ScrapeResponseSchema.parse) or
+  // other unclassified errors — never retried.
+  return { kind: "failed", code: `SCRAPER_ERROR: ${msg.slice(0, 100)}`, retryable: false };
 }
 
 async function fetchPageDiffImpl(source: SourceContract): Promise<FetchOutcome> {
