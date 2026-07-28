@@ -1,0 +1,35 @@
+# Phase 1 Operations Task 2 — Resumable Collection and Canonicalization Batches
+
+Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-2-brief.md`. It is the requirements source for exact files, interfaces, examples, commands, and definition of done.
+
+## Context and binding constraints
+
+- This is Operations Task 2 and depends on accepted Task 1 runtime primitives.
+- Use TDD: add the false-success and same-slot replay tests first, run the specified RED, then implement minimum GREEN behavior.
+- `collectBatch(group, args)` uses enabled `PHASE1_SOURCES`, persists one idempotent `PipelineRun`, skips sources already successful in that same scheduled slot, and records each source only after fetch/parse or scraper completion.
+- A failed source does not poison other sources. Concurrency is bounded to five. Retry only structured retryable failures, maximum three attempts. Never retry `robots_denied`, `license_denied`, schema/fixture validation failures, or other invariant errors.
+- Scraper requests retain the 120-second timeout. The finite path calls the scraper directly and exits; it must not require an enqueued pg-boss scrape job to become successful.
+- Preserve currently deployed legacy queue entry points until Operations Task 5; refactor shared finite functions rather than deleting the old scheduler in this task.
+- `canonicalizeBatch(args)` processes at most 200 observations lacking an `EvidenceClusterMember`, uses existing fingerprint/cluster/classification contracts, and is replay-idempotent. Do not publish versions or add Task 3 behavior.
+- No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
+- Do not expose `.env.local` or credentials. DB tests run only against the provided Neon staging branch and must create unique test data and clean it up.
+
+## Verification
+
+RED/GREEN task gate:
+
+`node --env-file=.env.local ./node_modules/vitest/vitest.mjs run test/collect-batch.test.ts test/collection-run.test.ts test/scrape-bridge.test.ts test/canonical-cluster.test.ts`
+
+Type gate:
+
+`pnpm lint`
+
+## Efficiency and handoff
+
+- Risk class: high-risk cross-cutting collection runtime.
+- Warning budget: 20,000,000 gross tokens. Hard budget: 30,000,000 gross tokens.
+- Use one fresh worker run for Task 2. Stop scope expansion at warning; at hard stop checkpoint and pause.
+- Pact checkpoint evidence is at most 4 KB and contains paths plus command/result summaries, not raw logs.
+- Write the full implementation report to `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-2-report.md` with: status, RED evidence, GREEN evidence, files, commit, self-review, concerns, and an `EFFICIENCY_RECORD`. Use `UNAVAILABLE` for token fields the provider does not expose; never invent values.
+- Worker cannot self-accept. Reviewer must give separate spec-compliance and code-quality verdicts.
+
