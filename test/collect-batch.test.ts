@@ -229,17 +229,20 @@ describe("collectBatch — persisted replay", () => {
     expect(second.exitCode).toBe(0);
   }, 10000);
 
-  it("re-fetches only previously-failed sources on same-slot replay", async () => {
+  it("re-fetches sources that failed permanently on a prior slot invocation", async () => {
     const sourceOk = testSourceContract("replay-ok");
     const sourceFlaky = testSourceContract("replay-flaky");
     const fetchCounts = new Map<string, number>();
     const ledger = fakeLedger();
 
+    // sourceFlaky always returns retryable failure → exhausts all 3 attempts.
+    let flakyExhausts = true;
+
     const call = createCollectBatch({
       getSources: () => [sourceOk, sourceFlaky],
       fetchSource: async (s) => {
         fetchCounts.set(s.id, (fetchCounts.get(s.id) ?? 0) + 1);
-        if (s.id === sourceFlaky.id && (fetchCounts.get(s.id) ?? 0) === 1) {
+        if (s.id === sourceFlaky.id && flakyExhausts) {
           return { kind: "failed", code: "HTTP_503", retryable: true, httpStatus: 503 };
         }
         return successOutcome(s.id);
@@ -247,17 +250,17 @@ describe("collectBatch — persisted replay", () => {
       ledger,
     });
 
+    // Run 1: sourceOk succeeds (1 fetch). sourceFlaky exhausts 3 retries → FAILED.
     await call("FAST", baseArgs());
-    // sourceOk: 1 fetch (succeeded). sourceFlaky: 1st fails -> retry -> 2nd succeeds = 2 fetches.
     expect(fetchCounts.get(sourceOk.id)).toBe(1);
-    expect(fetchCounts.get(sourceFlaky.id)).toBe(2);
+    expect(fetchCounts.get(sourceFlaky.id)).toBe(3); // all attempts exhausted
 
-    // Same-slot replay: sourceOk already successful → skipped.
-    // sourceFlaky was also successful → skipped.
-    const flakyBefore = fetchCounts.get(sourceFlaky.id)!;
+    // Run 2 (same slot): sourceOk already successful → skipped.
+    // sourceFlaky was FAILED (not in succeeded set) → MUST be re-fetched.
+    flakyExhausts = false;
     const second = await call("FAST", baseArgs());
-    expect(fetchCounts.get(sourceOk.id)).toBe(1); // unchanged — skipped
-    expect(fetchCounts.get(sourceFlaky.id)).toBe(flakyBefore); // unchanged — skipped
+    expect(fetchCounts.get(sourceOk.id)).toBe(1);   // unchanged — skipped
+    expect(fetchCounts.get(sourceFlaky.id)).toBe(4); // +1 — re-fetched
     expect(second.failed).toBe(0);
   }, 10000);
 });

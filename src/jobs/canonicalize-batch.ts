@@ -121,7 +121,7 @@ const REAL_DEPS: CanonicalizeDeps = {
     });
     return run.id;
   },
-  async finishRun(runId: string, summary: { status: string; itemCount: number }) {
+  async finishRun(runId: string, summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number }) {
     const { prisma: db } = await import("../db/client.js");
     await db.pipelineRun.update({
       where: { id: runId },
@@ -129,6 +129,17 @@ const REAL_DEPS: CanonicalizeDeps = {
         status: summary.status as import("@prisma/client").RunStatus,
         itemCount: summary.itemCount,
         finishedAt: new Date(),
+        // The canonicalize PipelineRun has no SourceChecks, so we store the
+        // completion summary in metadata for replay preservation.
+        metadata: {
+          canonicalizeSummary: {
+            status: summary.status,
+            itemCount: summary.itemCount,
+            attempted: summary.attempted,
+            succeeded: summary.succeeded,
+            failed: summary.failed,
+          },
+        },
       },
     });
   },
@@ -144,16 +155,15 @@ const REAL_DEPS: CanonicalizeDeps = {
     const { prisma: db } = await import("../db/client.js");
     const run = await db.pipelineRun.findUnique({
       where: { id: runId },
-      select: { status: true, itemCount: true, finishedAt: true },
+      select: { finishedAt: true, metadata: true },
     });
     if (!run || !run.finishedAt) return null;
-    return {
-      status: run.status,
-      itemCount: run.itemCount,
-      attempted: run.itemCount > 0 ? 1 : 0,
-      succeeded: run.itemCount > 0 ? 1 : 0,
-      failed: 0,
-    };
+    const meta = run.metadata as { canonicalizeSummary?: {
+      status: string; itemCount: number;
+      attempted: number; succeeded: number; failed: number;
+    } } | null;
+    if (!meta?.canonicalizeSummary) return null;
+    return meta.canonicalizeSummary;
   },
 };
 
