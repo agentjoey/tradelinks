@@ -3,14 +3,15 @@
 Version:        v0.12.0
 Sprint:         006 (Ops hardening + Source-health monitoring)
 Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-07-26 by Task 8 worker/Codex (Phase 1 Foundation legacy backfill 隔离分支验收完成)
+Last Updated:   2026-07-28 by Task 8 worker/Codex (Phase 1 Foundation legacy backfill 最终验证完成，待 reviewer 接受)
 Sprint File:    .agent/sprints/sprint-005.md
 
-## Phase 1 Foundation 状态（2026-07-26，未部署）
+## Phase 1 Foundation 状态（2026-07-28，未部署）
 
 - Prisma migration `0011_phase1_intelligence_foundation` 已在获批的非生产 Neon 隔离分支验证；未变更生产数据库、云端配置或部署。
-- Legacy backfill dry-run 指纹：`538aac05f9121d58b8fa4a13288fd1a00f5fa357febc96da0004c4458f281a24`；显式拒绝 25 行，原因分为 `SOURCE_NOT_FOUND`、`MISSING_TITLE`、`MISSING_EVIDENCE`。
-- 当前重复 dry-run 的五项待写入计数均为 0，隔离分支 apply/replay 幂等；回填草稿保持 `EXPERIMENTAL` / `IN_REVIEW` / 非 current，证据保持 `SECONDARY_CONTEXT`。
+- Legacy backfill 重复 dry-run 指纹稳定为 `7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332`；五项待写入计数均为 0；显式拒绝 18 行，原因均为 `SOURCE_NOT_FOUND`。
+- 隔离分支 apply/replay 幂等；回填草稿保持 `EXPERIMENTAL` / `IN_REVIEW` / 非 current，证据保持 `SECONDARY_CONTEXT`。中断测试夹具已按唯一 runId 精确清理并确认五类记录零残留。
+- 最终门禁：Prisma schema valid、TypeScript lint 通过、53 个测试文件 / 426 个测试通过、Next.js production build 成功。
 - Public Intelligence cutover 尚未开始；旧公开页面、生产流量与部署状态均未切换。
 
 ## 🆕 本轮新增（2026-07-19）：BL-045 前端重设计（已上线 main `17aa648`，frontend-harness-workflow Tier 3 全流程）

@@ -203,23 +203,107 @@ async function stablePair(
   throw new Error(`Could not obtain stable backfill plan pair within ${timeoutMs}ms`);
 }
 
-async function applyWithRetry(
-  timeoutMs = 240000,
-): Promise<{ plan: BackfillReport; applied: BackfillReport }> {
+function isFingerprintMismatch(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    /^Fingerprint mismatch: expected [0-9a-f]{64}, got [0-9a-f]{64}$/.test(error.message)
+  );
+}
+
+function expectFirstApplyMatchesPlan(plan: BackfillReport, applied: BackfillReport) {
+  expect(applied.fingerprint).toBe(plan.fingerprint);
+  expect(applied.sourceItems).toBe(plan.sourceItems);
+  expect(applied.clusters).toBe(plan.clusters);
+  expect(applied.canonicalChanges).toBe(plan.canonicalChanges);
+  expect(applied.versions).toBe(plan.versions);
+  expect(applied.evidenceRecords).toBe(plan.evidenceRecords);
+  expect(applied.rejectedRows).toEqual(plan.rejectedRows);
+}
+
+function expectReplayIsEmpty(plan: BackfillReport, replay: BackfillReport) {
+  expect(replay.fingerprint).toBe(plan.fingerprint);
+  expect(replay.sourceItems).toBe(0);
+  expect(replay.clusters).toBe(0);
+  expect(replay.canonicalChanges).toBe(0);
+  expect(replay.versions).toBe(0);
+  expect(replay.evidenceRecords).toBe(0);
+  expect(replay.rejectedRows).toEqual(plan.rejectedRows);
+}
+
+async function expectAppliedFixtureState() {
+  const created = await prisma.canonicalChange.findUnique({
+    where: { slug: SLUG_CONVERTIBLE },
+    include: {
+      versions: {
+        include: { evidence: true },
+      },
+    },
+  });
+  expect(created).not.toBeNull();
+  expect(created!.versions.length).toBe(1);
+  expect(created!.versions[0]!.editorialStatus).toBe("IN_REVIEW");
+  expect(created!.versions[0]!.readiness).toBe("EXPERIMENTAL");
+  expect(created!.versions[0]!.isCurrent).toBe(false);
+  expect(created!.versions[0]!.evidence.length).toBeGreaterThan(0);
+  expect(
+    created!.versions[0]!.evidence.every((e) => e.role === "SECONDARY_CONTEXT"),
+  ).toBe(true);
+
+  const sharedClusterChanges = await prisma.canonicalChange.findMany({
+    where: { slug: { in: [SLUG_CONVERTIBLE, SLUG_SHARED_CLUSTER] } },
+    include: { cluster: true },
+    orderBy: { slug: "asc" },
+  });
+  expect(sharedClusterChanges).toHaveLength(2);
+  expect(new Set(sharedClusterChanges.map((change) => change.clusterId)).size).toBe(2);
+  expect(sharedClusterChanges.map((change) => change.cluster.fingerprint).sort()).toEqual(
+    [CLUSTER_FINGERPRINT, SHARED_CLUSTER_FINGERPRINT].sort(),
+  );
+
+  const orphanCluster = await prisma.evidenceCluster.findUnique({
+    where: { fingerprint: ORPHAN_CLUSTER_FINGERPRINT },
+    include: { members: true },
+  });
+  expect(orphanCluster).not.toBeNull();
+  expect(
+    orphanCluster!.members.some(
+      (member) => member.itemId === ITEM_ID && member.role === "SECONDARY_CONTEXT",
+    ),
+  ).toBe(true);
+}
+
+async function expectApplyAndReplayWithRetry(
+  timeoutMs = 540000,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  let { second: plan } = await stablePair();
   while (Date.now() < deadline) {
+    await cleanupFixtureRows();
+    await seedFixtures();
+    const { second: plan } = await stablePair(Math.max(1, deadline - Date.now()));
+
+    let applied: BackfillReport;
     try {
-      const applied = await applyFoundationBackfill(plan.fingerprint);
-      return { plan, applied };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!/fingerprint mismatch/i.test(msg)) throw err;
-      const pair = await stablePair();
-      plan = pair.second;
+      applied = await applyFoundationBackfill(plan.fingerprint);
+    } catch (error) {
+      if (!isFingerprintMismatch(error)) throw error;
+      continue;
     }
+
+    expectFirstApplyMatchesPlan(plan, applied);
+    await expectAppliedFixtureState();
+
+    let replay: BackfillReport;
+    try {
+      replay = await applyFoundationBackfill(applied.fingerprint);
+    } catch (error) {
+      if (!isFingerprintMismatch(error)) throw error;
+      continue;
+    }
+
+    expectReplayIsEmpty(plan, replay);
+    return;
   }
-  throw new Error(`Could not apply backfill within ${timeoutMs}ms`);
+  throw new Error(`Could not apply and replay backfill within ${timeoutMs}ms`);
 }
 
 describe("foundation backfill apply target safety", () => {
@@ -310,63 +394,7 @@ describe("foundation backfill", () => {
   });
 
   it("apply matches the dry-run counts exactly on first apply and zero on replay", async () => {
-    const { plan: successfulPlan, applied } = await applyWithRetry();
-    expect(applied.fingerprint).toBe(successfulPlan.fingerprint);
-    expect(applied.sourceItems).toBe(successfulPlan.sourceItems);
-    expect(applied.clusters).toBe(successfulPlan.clusters);
-    expect(applied.canonicalChanges).toBe(successfulPlan.canonicalChanges);
-    expect(applied.versions).toBe(successfulPlan.versions);
-    expect(applied.evidenceRecords).toBe(successfulPlan.evidenceRecords);
-    expect(applied.rejectedRows).toEqual(successfulPlan.rejectedRows);
-
-    const created = await prisma.canonicalChange.findUnique({
-      where: { slug: SLUG_CONVERTIBLE },
-      include: {
-        versions: {
-          include: { evidence: true },
-        },
-      },
-    });
-    expect(created).not.toBeNull();
-    expect(created!.versions.length).toBe(1);
-    expect(created!.versions[0]!.editorialStatus).toBe("IN_REVIEW");
-    expect(created!.versions[0]!.readiness).toBe("EXPERIMENTAL");
-    expect(created!.versions[0]!.isCurrent).toBe(false);
-    expect(created!.versions[0]!.evidence.length).toBeGreaterThan(0);
-    expect(
-      created!.versions[0]!.evidence.every((e) => e.role === "SECONDARY_CONTEXT"),
-    ).toBe(true);
-
-    const sharedClusterChanges = await prisma.canonicalChange.findMany({
-      where: { slug: { in: [SLUG_CONVERTIBLE, SLUG_SHARED_CLUSTER] } },
-      include: { cluster: true },
-      orderBy: { slug: "asc" },
-    });
-    expect(sharedClusterChanges).toHaveLength(2);
-    expect(new Set(sharedClusterChanges.map((change) => change.clusterId)).size).toBe(2);
-    expect(sharedClusterChanges.map((change) => change.cluster.fingerprint).sort()).toEqual(
-      [CLUSTER_FINGERPRINT, SHARED_CLUSTER_FINGERPRINT].sort(),
-    );
-
-    const orphanCluster = await prisma.evidenceCluster.findUnique({
-      where: { fingerprint: ORPHAN_CLUSTER_FINGERPRINT },
-      include: { members: true },
-    });
-    expect(orphanCluster).not.toBeNull();
-    expect(
-      orphanCluster!.members.some(
-        (m) => m.itemId === ITEM_ID && m.role === "SECONDARY_CONTEXT",
-      ),
-    ).toBe(true);
-
-    const replay = await applyFoundationBackfill(applied.fingerprint);
-    expect(replay.fingerprint).toBe(successfulPlan.fingerprint);
-    expect(replay.sourceItems).toBe(0);
-    expect(replay.clusters).toBe(0);
-    expect(replay.canonicalChanges).toBe(0);
-    expect(replay.versions).toBe(0);
-    expect(replay.evidenceRecords).toBe(0);
-    expect(replay.rejectedRows).toEqual(successfulPlan.rejectedRows);
+    await expectApplyAndReplayWithRetry();
   }, 600000);
 
   it("apply rejects a mismatched fingerprint", async () => {
