@@ -66,3 +66,13 @@ features:
         spec: .pact/tasks/phase1-foundation-legacy-backfill.md
         evidence: RECOVERY: Kimi K2.7 provider remained unavailable with HTTP 403 quota exhaustion; a fresh Codex 5.6 Sol fallback worker made only the bounded test-concurrency correction, with attribution preserved. Reviewer remains Claude Opus 5.  RED: the prior full suite exposed an exact fingerprint race during concurrent remote-Neon suites (expected/got were both 64-hex fingerprints). The corrected helper retries only the anchored exact Fingerprint mismatch error; all other errors and all assertions propagate.  GREEN: the apply/replay test now restarts the entire run-scoped cleanup -> seed -> stable plan -> apply -> strict five-count/rejectedRows/trust/shared-cluster/orphan assertions -> immediate replay cycle on that one race. It never disables parallelism or weakens equality.  FIXTURE HYGIENE: exact signature-checked cleanup on approved isolated branch br-plain-shadow-aoknpdf3 removed one interrupted run test-1785229542092-ebq9i0: 13 Sources, 13 Items, 13 EvidenceClusters, 13 CanonicalChanges, 16 versions, 6 EvidenceRecords, 13 members; post-cleanup exact inventory is zero for Source/Item/EvidenceCluster/CanonicalChange/Alert. No production rows or production endpoint were touched.  FINAL GATE exact order: pnpm db:validate && pnpm lint && pnpm test && pnpm build && pnpm tsx scripts/backfill-phase1-foundation.ts --dry-run -> exit 0. Prisma valid; tsc clean; 53 test files and 426/426 tests passed (foundation-backfill 8/8); Next.js production build compiled and generated 18/18 static pages.  FINAL DRY-RUN: repeated fingerprint stable at 7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332; sourceItems/clusters/canonicalChanges/versions/evidenceRecords all 0; 18 rejectedRows, all SOURCE_NOT_FOUND.  SCOPE/SAFETY: checkpoint includes only test/foundation-backfill.test.ts and .agent/CURRENT.md. No product runtime change in this rework, no schema/cloud config/deployment/public cutover, and no production mutation.
         deps: [coverage-readiness]
+  - id: phase1-operations
+    branch: feat-phase1-operations
+    status: in_progress
+    tasks:
+      - id: finite-dispatch
+        owner: opencode
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-operations-finite-dispatch.md
+        evidence: null
