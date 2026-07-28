@@ -666,7 +666,10 @@ export const SOURCES: SourceConfig[] = [
   },
   // ---- Phase 1 official allowlist — safety / consumer protection entries
   //      (added for resumable-batches finite path; the Phase 1 source contract
-  //       is the single source of truth for scope/enabled) ----
+  //       is the single source of truth for scope/enabled.  enabled:false here
+  //       so the legacy crawler never dispatches these — the finite path gates
+  //       on PHASE1_SOURCES.enabled and resolves the SourceConfig for
+  //       adapter/scrapeMode only.) ----
   {
     id: "US-CPSC-RSS",
     name: "CPSC Recalls (RSS)",
@@ -677,6 +680,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
   },
   {
     id: "US-FTC-CONSUMER",
@@ -688,6 +693,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
   },
   {
     id: "US-FTC-ALL",
@@ -699,6 +706,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
   },
   {
     id: "US-FCC-FR",
@@ -712,6 +721,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
   },
   {
     id: "US-APHIS",
@@ -723,6 +734,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: [],
     categoryHint: "regulatory",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
     fetchConfig: {
       itemSelector: ".views-row",
       titleSelector: "h2, h3, .field-content",
@@ -739,6 +752,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "platform_policy",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
     fetchConfig: {
       itemSelector: "article",
       titleSelector: "h2, h3",
@@ -755,6 +770,8 @@ export const SOURCES: SourceConfig[] = [
     regions: ["north_america"],
     platforms: ["amazon"],
     categoryHint: "platform_policy",
+    enabled: false,
+    note: "Finite-only (resumable-batches). Legacy queue disabled.",
     fetchConfig: {
       itemSelector: "body",
       titleSelector: "title",

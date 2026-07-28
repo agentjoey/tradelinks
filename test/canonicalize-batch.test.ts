@@ -79,8 +79,8 @@ function fakeDeps(overrides: Partial<CanonicalizeDeps> = {}): CanonicalizeDeps {
     async beginRun(_input) {
       return overrides.beginRun?.(_input) ?? `run-${++runSeq}`;
     },
-    async finishRun(_runId) {
-      return overrides.finishRun?.(_runId) ?? { status: "RUNNING", itemCount: 0 };
+    async finishRun(_runId, _summary) {
+      if (overrides.finishRun) return overrides.finishRun(_runId, _summary);
     },
   };
 }
@@ -155,16 +155,42 @@ describe("canonicalizeBatch — per-cluster failure", () => {
         if (call === 2) throw new Error("simulated cluster write failure");
         return `cluster-${fp.slice(0, 8)}`;
       },
-      finishRun: async () => ({
-        status: "PARTIAL",
-        itemCount: 1, // only item-good was persisted
-      }),
     });
 
     const result = await canonicalizeBatch(baseArgs(), deps);
     expect(result.failed).toBeGreaterThanOrEqual(1);
     expect(result.status).toBe("PARTIAL");
     expect(result.exitCode).toBe(1);
+  }, 10000);
+});
+
+// ================================================================
+// BLOCKER A — finishRun receives exactly the returned summary
+// ================================================================
+
+describe("canonicalizeBatch — finishRun summary", () => {
+  it("calls finishRun with the same status/itemCount/attempted/succeeded/failed as the returned JobResult", async () => {
+    const items = [
+      fakeMatch("item-s1", "Amazon increases seller fees"),
+      fakeMatch("item-s2", "Amazon seller fee increase announced"),
+    ];
+
+    let capturedSummary: any = null;
+    const deps = fakeDeps({
+      selectOrphans: async () => items,
+      finishRun: async (_runId, summary) => {
+        capturedSummary = summary;
+      },
+    });
+
+    const result = await canonicalizeBatch(baseArgs(), deps);
+
+    expect(capturedSummary).not.toBeNull();
+    expect(capturedSummary.status).toBe(result.status);
+    expect(capturedSummary.itemCount).toBe(result.itemCount);
+    expect(capturedSummary.attempted).toBe(result.attempted);
+    expect(capturedSummary.succeeded).toBe(result.succeeded);
+    expect(capturedSummary.failed).toBe(result.failed);
   }, 10000);
 });
 

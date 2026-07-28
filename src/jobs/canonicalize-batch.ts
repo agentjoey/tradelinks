@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 
 import { candidateFingerprint, type SourceItemFacts } from "../canonicalize/fingerprint.js";
 import { decideCluster } from "../canonicalize/cluster.js";
-import { beginRun, finishRun } from "../collection/run.js";
+import { beginRun } from "../collection/run.js";
 import type { SourceContract } from "../domain/intelligence/source-contract.js";
 import { PHASE1_SOURCES_BY_ID } from "../config/phase1-sources.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
@@ -52,10 +52,13 @@ export interface CanonicalizeDeps {
     scheduledFor: Date;
     runnerVersion: string;
   }): Promise<string>;
-  /** Finish the run. Returns final status + itemCount. */
+  /** Finish the run with the derived completion summary. The implementation
+   *  must persist the summary to the PipelineRun so the persisted row matches
+   *  the returned JobResult. */
   finishRun(
     runId: string,
-  ): Promise<{ status: string; itemCount: number }>;
+    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number },
+  ): Promise<void>;
 }
 
 // ---- production deps ----
@@ -120,9 +123,16 @@ const REAL_DEPS: CanonicalizeDeps = {
     });
     return run.id;
   },
-  async finishRun(runId: string) {
-    const run = await finishRun(runId);
-    return { status: run.status, itemCount: run.itemCount };
+  async finishRun(runId: string, summary: { status: string; itemCount: number }) {
+    const { prisma: db } = await import("../db/client.js");
+    await db.pipelineRun.update({
+      where: { id: runId },
+      data: {
+        status: summary.status as import("@prisma/client").RunStatus,
+        itemCount: summary.itemCount,
+        finishedAt: new Date(),
+      },
+    });
   },
 };
 
@@ -246,8 +256,6 @@ export async function canonicalizeBatch(
     }
   }
 
-  await d.finishRun(runId);
-
   const status: JobStatus =
     attempted === 0
       ? "SUCCEEDED_EMPTY"
@@ -257,14 +265,25 @@ export async function canonicalizeBatch(
           : "SUCCEEDED_EMPTY"
         : "PARTIAL";
 
+  const failed = attempted - succeeded;
+
+  // Persist the completion summary so the PipelineRun row matches what we return.
+  await d.finishRun(runId, {
+    status,
+    itemCount: totalItems,
+    attempted,
+    succeeded,
+    failed,
+  });
+
   return {
     runId,
     status,
     attempted,
     succeeded,
-    failed: attempted - succeeded,
+    failed,
     itemCount: totalItems,
-    exitCode: succeeded === attempted ? 0 : 1,
+    exitCode: failed > 0 ? 1 : 0,
   };
 }
 

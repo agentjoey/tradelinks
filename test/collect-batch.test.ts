@@ -176,6 +176,12 @@ function fakeLedger(): FakeLedger {
       const someItems = [...run.outcomes.values()].some(
         (s) => s === "SUCCEEDED_ITEMS",
       );
+      const succeededCount = [...run.outcomes.values()].filter(
+        (s) => s === "SUCCEEDED_ITEMS" || s === "SUCCEEDED_EMPTY",
+      ).length;
+      const failedCount = [...run.outcomes.values()].filter(
+        (s) => s === "FAILED" || s === "BLOCKED",
+      ).length;
       run.persistedStatus = allSuccess
         ? someItems
           ? "SUCCEEDED_ITEMS"
@@ -183,7 +189,13 @@ function fakeLedger(): FakeLedger {
         : [...run.outcomes.values()].every((s) => s === "FAILED")
           ? "FAILED"
           : "PARTIAL";
-      return { status: run.persistedStatus, itemCount: run.persistedItemCount };
+      return {
+        status: run.persistedStatus,
+        itemCount: run.persistedItemCount,
+        attempted: run.outcomes.size,
+        succeeded: succeededCount,
+        failed: failedCount,
+      };
     },
   };
 }
@@ -324,7 +336,7 @@ describe("collectBatch — rejecting ledger write", () => {
 // ================================================================
 
 describe("collectBatch — persisted replay", () => {
-  it("replay preserves the prior run status and cumulative item count", async () => {
+  it("replay preserves the prior run status and cumulative counts", async () => {
     const source = testSourceContract("test-replay-persist");
     const ledger = fakeLedger();
 
@@ -337,15 +349,20 @@ describe("collectBatch — persisted replay", () => {
     const first = await collectBatch("FAST", baseArgs(), deps());
     expect(first.status).toBe("SUCCEEDED_ITEMS");
     expect(first.itemCount).toBeGreaterThanOrEqual(1);
-    const firstCount = first.itemCount;
+    expect(first.attempted).toBe(1);
+    expect(first.succeeded).toBe(1);
+    expect(first.failed).toBe(0);
 
     // Same-slot replay: source already succeeded → nothing to fetch.
     const second = await collectBatch("FAST", baseArgs(), deps());
 
-    // BLOCKER 2 fix: the persisted run status and cumulative count survive replay.
+    // BLOCKER B fix: cumulative counts survive replay from the persisted run.
     expect(second.status).toBe("SUCCEEDED_ITEMS");
-    expect(second.itemCount).toBe(firstCount);
-    expect(second.attempted).toBe(0);
+    expect(second.itemCount).toBe(first.itemCount);
+    // Cumulative counts from the ledger, not per-invocation.
+    expect(second.attempted).toBe(1); // survives as cumulative
+    expect(second.succeeded).toBe(1);
+    expect(second.failed).toBe(0);
     expect(second.exitCode).toBe(0);
   }, 10000);
 });

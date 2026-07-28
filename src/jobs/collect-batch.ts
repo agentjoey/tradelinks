@@ -63,9 +63,16 @@ export interface BatchLedger {
     sourceId: string,
     outcome: FetchOutcome,
   ): Promise<{ status: string; itemCount: number }>;
+  /** Close and derive the persisted run summary including cumulative check counts. */
   finishRun(
     runId: string,
-  ): Promise<{ status: string; itemCount: number }>;
+  ): Promise<{
+    status: string;
+    itemCount: number;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+  }>;
 }
 
 const DB_LEDGER: BatchLedger = {
@@ -95,7 +102,25 @@ const DB_LEDGER: BatchLedger = {
   },
   async finishRun(runId) {
     const run = await finishRun(runId);
-    return { status: run.status, itemCount: run.itemCount };
+    // Count checks across all statuses for cumulative attempted/succeeded/failed.
+    const { prisma } = await import("../db/client.js");
+    const checks = await prisma.sourceCheck.findMany({
+      where: { runId },
+      select: { status: true },
+    });
+    const succeededCount = checks.filter((c: { status: string }) =>
+      c.status === "SUCCEEDED_ITEMS" || c.status === "SUCCEEDED_EMPTY",
+    ).length;
+    const failedCount = checks.filter((c: { status: string }) =>
+      c.status === "FAILED" || c.status === "BLOCKED",
+    ).length;
+    return {
+      status: run.status,
+      itemCount: run.itemCount,
+      attempted: checks.length,
+      succeeded: succeededCount,
+      failed: failedCount,
+    };
   },
 };
 
@@ -367,18 +392,17 @@ export async function collectBatch(
     }
   });
 
-  // Derive the persisted status and cumulative itemCount from finishRun,
-  // not from in-invocation counters (BLOCKER 2 fix).
+  // Derive the persisted status and cumulative counts from finishRun.
   const finished = await d.ledger.finishRun(runId);
 
   return {
     runId,
     status: finished.status as JobStatus,
-    attempted,
-    succeeded,
-    failed,
+    attempted: finished.attempted,
+    succeeded: finished.succeeded,
+    failed: finished.failed,
     itemCount: finished.itemCount,
-    exitCode: failed > 0 ? 1 : 0,
+    exitCode: finished.failed > 0 ? 1 : 0,
   };
 }
 
