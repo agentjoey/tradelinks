@@ -12,17 +12,17 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - Production retry delays are 1s, 4s, and 16s. Tests inject their delay implementation. Non-retryable failures stop after the first attempt.
 - No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
 - Do not remove pg-boss or persistent workers; retirement belongs to Operations Task 5.
-- Do not expose `.env.local` or credentials. DB tests run only against the provided Neon staging branch and must use unique test data with cleanup.
+- Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must be dependency-injected and credential-free. The Codex orchestrator alone runs the real Neon staging integration gate after checkpoint, using unique test data with cleanup, and records only the redacted command/result summary in Pact evidence.
 
 ## Verification
 
 RED and GREEN task gate:
 
-`node --env-file=.env.local ./node_modules/vitest/vitest.mjs run test/job-lock.test.ts test/job-retry.test.ts`
+`pnpm vitest run test/job-lock.test.ts test/job-retry.test.ts`
 
 CLI gate:
 
-`node --env-file=.env.local ./node_modules/tsx/dist/cli.mjs scripts/run-job.ts --name health --dry-run`
+`pnpm job --name health --dry-run`
 
 Type gate:
 
@@ -36,4 +36,3 @@ Type gate:
 - Pact checkpoint evidence is at most 4 KB and contains paths plus command/result summaries, not raw logs.
 - Write the full implementation report to `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-1-report.md` with: status, RED evidence, GREEN evidence, files, commit, self-review, concerns, and an `EFFICIENCY_RECORD`. Use `UNAVAILABLE` for token fields the provider does not expose; never invent values.
 - Worker cannot self-accept. Reviewer must give separate spec-compliance and code-quality verdicts.
-

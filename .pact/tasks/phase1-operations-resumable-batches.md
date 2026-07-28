@@ -12,13 +12,19 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - Preserve currently deployed legacy queue entry points until Operations Task 5; refactor shared finite functions rather than deleting the old scheduler in this task.
 - `canonicalizeBatch(args)` processes at most 200 observations lacking an `EvidenceClusterMember`, uses existing fingerprint/cluster/classification contracts, and is replay-idempotent. Do not publish versions or add Task 3 behavior.
 - No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
-- Do not expose `.env.local` or credentials. DB tests run only against the provided Neon staging branch and must create unique test data and clean it up.
+- Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must use credential-free unit tests and dependency injection. The Codex orchestrator alone runs the combined Neon staging integration gate after checkpoint, with unique test data and cleanup, and records only the redacted command/result summary in Pact evidence.
 
 ## Verification
 
 RED/GREEN task gate:
 
-`node --env-file=.env.local ./node_modules/vitest/vitest.mjs run test/collect-batch.test.ts test/collection-run.test.ts test/scrape-bridge.test.ts test/canonical-cluster.test.ts`
+Worker/reviewer credential-free gate:
+
+`pnpm vitest run test/collect-batch.test.ts test/job-lock.test.ts test/job-retry.test.ts`
+
+Orchestrator-only Neon staging gate after checkpoint:
+
+`pnpm vitest run test/collect-batch.test.ts test/collection-run.test.ts test/scrape-bridge.test.ts test/canonical-cluster.test.ts`
 
 Type gate:
 
@@ -32,4 +38,3 @@ Type gate:
 - Pact checkpoint evidence is at most 4 KB and contains paths plus command/result summaries, not raw logs.
 - Write the full implementation report to `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-2-report.md` with: status, RED evidence, GREEN evidence, files, commit, self-review, concerns, and an `EFFICIENCY_RECORD`. Use `UNAVAILABLE` for token fields the provider does not expose; never invent values.
 - Worker cannot self-accept. Reviewer must give separate spec-compliance and code-quality verdicts.
-
