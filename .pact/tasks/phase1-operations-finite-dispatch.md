@@ -13,6 +13,7 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - No schema, migration, backfill, cloud configuration, deployment, UI, or public-route changes.
 - Do not remove pg-boss or persistent workers; retirement belongs to Operations Task 5.
 - Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must be dependency-injected and credential-free. The Codex orchestrator alone runs the real Neon staging integration gate after checkpoint, using unique test data with cleanup, and records only the redacted command/result summary in Pact evidence.
+- The credential-free lock suite must not instantiate the real Prisma client. Keep the public two-argument `withJobLock(key, fn)` contract and add an internal/exported factory or mockable transaction adapter for deterministic unit tests. A separate integration test may be environment-gated so it skips with no `DATABASE_URL` and runs only under the orchestrator's staging gate.
 
 ## Verification
 
