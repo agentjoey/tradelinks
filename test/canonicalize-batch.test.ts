@@ -1,35 +1,24 @@
 /**
- * Contract tests for canonicalize-batch (Operations Task 2 — BLOCKER 3/4 fix).
+ * Contract tests for canonicalize-batch (Operations Task 2).
  *
- * All tests use injectable CanonicalizeDeps so they pass credential-free.
+ * Tests call createCanonicalizeBatch(deps) — the factory — not the
+ * production two-parameter canonicalizeBatch.
  */
 
 import { describe, expect, it } from "vitest";
 
 import type { JobArgs } from "../src/jobs/types.js";
 import type { CanonicalizeDeps, MatchedItem } from "../src/jobs/canonicalize-batch.js";
-import { canonicalizeBatch } from "../src/jobs/canonicalize-batch.js";
+import { createCanonicalizeBatch } from "../src/jobs/canonicalize-batch.js";
 
-// ----- helpers -----
-
-function baseArgs(): JobArgs {
-  return {
-    scheduledFor: new Date("2026-07-29T08:00:00Z"),
-    runnerVersion: "test",
-    dryRun: false,
-  };
-}
+function baseArgs(): JobArgs { return { scheduledFor: new Date("2026-07-29T08:00:00Z"), runnerVersion: "test", dryRun: false }; }
 
 function fakeFacts(id: string, title: string, overrides: Partial<{
-  market: string;
-  platforms: import("@prisma/client").PlatformCode[];
-  publishedAt: string;
-  authorityEventId: string | null;
-  effectiveAt: string | null;
+  market: string; platforms: import("@prisma/client").PlatformCode[];
+  publishedAt: string; authorityEventId: string | null; effectiveAt: string | null;
 }> = {}) {
   return {
-    id,
-    title,
+    id, title,
     market: (overrides.market ?? "US") as "US",
     platforms: overrides.platforms ?? ([] as import("@prisma/client").PlatformCode[]),
     publishedAt: overrides.publishedAt ?? "2026-07-20T00:00:00.000Z",
@@ -40,80 +29,46 @@ function fakeFacts(id: string, title: string, overrides: Partial<{
 }
 
 function fakeMatch(itemId: string, title: string, overrides?: Parameters<typeof fakeFacts>[2]): MatchedItem {
-  return {
-    itemId,
-    sourceId: `source-${itemId}`,
-    contract: undefined,
-    facts: fakeFacts(itemId, title, overrides),
-  };
+  return { itemId, sourceId: `source-${itemId}`, contract: undefined, facts: fakeFacts(itemId, title, overrides) };
 }
 
-function fakeDeps(overrides: Partial<CanonicalizeDeps> = {}): CanonicalizeDeps {
+function makeCanonicalizer(deps: Partial<CanonicalizeDeps> = {}) {
   const clusters = new Map<string, string>();
   const members = new Map<string, Set<string>>();
-  let clusterSeq = 0;
-  let runSeq = 0;
+  let clusterSeq = 0, runSeq = 0;
 
-  return {
-    async selectOrphans(limit) {
-      return overrides.selectOrphans?.(limit) ?? [];
-    },
+  return createCanonicalizeBatch({
+    async selectOrphans(limit) { return deps.selectOrphans?.(limit) ?? []; },
     async upsertCluster(fp) {
-      if (overrides.upsertCluster) return overrides.upsertCluster(fp);
+      if (deps.upsertCluster) return deps.upsertCluster(fp);
       let cid = clusters.get(fp);
-      if (!cid) {
-        cid = `cluster-${++clusterSeq}`;
-        clusters.set(fp, cid);
-        members.set(cid, new Set());
-      }
+      if (!cid) { cid = `cluster-${++clusterSeq}`; clusters.set(fp, cid); members.set(cid, new Set()); }
       return cid;
     },
     async upsertMember(clusterId, itemId, _role) {
-      if (overrides.upsertMember) return overrides.upsertMember(clusterId, itemId, _role);
-      const set = members.get(clusterId);
-      if (!set) throw new Error(`cluster ${clusterId} not found`);
-      if (set.has(itemId)) return false;
-      set.add(itemId);
-      return true;
+      if (deps.upsertMember) return deps.upsertMember(clusterId, itemId, _role);
+      const s = members.get(clusterId)!; if (s.has(itemId)) return false; s.add(itemId); return true;
     },
-    async beginRun(_input) {
-      return overrides.beginRun?.(_input) ?? `run-${++runSeq}`;
-    },
-    async finishRun(_runId, _summary) {
-      if (overrides.finishRun) return overrides.finishRun(_runId, _summary);
-    },
-  };
+    async beginRun(_input) { return deps.beginRun?.(_input) ?? `run-${++runSeq}`; },
+    async finishRun(_rid, _summary) { if (deps.finishRun) return deps.finishRun(_rid, _summary); },
+    async existingItemCount(_runId) { return deps.existingItemCount?.(_runId) ?? 0; },
+  });
 }
 
-// ================================================================
-// 200-item cap (BLOCKER 4d — assert exact count)
-// ================================================================
+// ============================ 200 cap ===========================
 
 describe("canonicalizeBatch — 200-item cap", () => {
   it("honours the 200-item cap on selectOrphans", async () => {
-    // Verify that exactly `limit` items are passed to selectOrphans.
-    const returnedCount = 200;
-    const manyItems: MatchedItem[] = Array.from({ length: returnedCount }, (_, i) =>
-      fakeMatch(`cap-${i}`, `item-${i}`),
-    );
-
     let receivedLimit = 0;
-    const deps = fakeDeps({
-      selectOrphans: async (limit) => {
-        receivedLimit = limit;
-        return manyItems;
-      },
+    const call = makeCanonicalizer({
+      selectOrphans: async (limit) => { receivedLimit = limit; return []; },
     });
-
-    await canonicalizeBatch(baseArgs(), deps);
+    await call(baseArgs());
     expect(receivedLimit).toBe(200);
-    // The impl passes MAX_ITEMS_PER_RUN=200 to selectOrphans.
   }, 10000);
 });
 
-// ================================================================
-// Replay idempotency
-// ================================================================
+// ============================ replay idempotency ================
 
 describe("canonicalizeBatch — replay idempotency", () => {
   it("replay produces no duplicate members and preserves cluster id", async () => {
@@ -122,196 +77,159 @@ describe("canonicalizeBatch — replay idempotency", () => {
       fakeMatch("item-b", "Tariff on electronics imposed by US"),
       fakeMatch("item-c", "FDA recalls peanut butter"),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const first = await canonicalizeBatch(baseArgs(), deps);
+    let persisted = 0;
+    const call = makeCanonicalizer({
+      selectOrphans: async () => items,
+      finishRun: async (_rid, s) => { persisted = s.itemCount; },
+      existingItemCount: async () => persisted,
+    });
+    const first = await call(baseArgs());
     expect(first.itemCount).toBe(3);
-
-    // Same items re-presented — upsertMember returns false → 0 new members.
-    const second = await canonicalizeBatch(baseArgs(), deps);
-    expect(second.itemCount).toBe(0);
-    // Same cluster count because fingerprints are unchanged.
+    const second = await call(baseArgs());
+    expect(second.itemCount).toBe(3); // BLOCKER 5: persisted count preserved on replay
     expect(second.attempted).toBe(first.attempted);
   }, 10000);
+
+  it("replay preserves the prior run itemCount (does not overwrite with 0)", async () => {
+    const items = [fakeMatch("item-x", "Some item")];
+    const call = makeCanonicalizer({
+      selectOrphans: async () => items,
+    });
+    const first = await call(baseArgs());
+    expect(first.itemCount).toBe(1);
+
+    // Simulate replay: beginRun returns the same runId because of same slot key.
+    // existingItemCount should return the prior count.
+    // The factory's logic: when totalItems is 0 (all members already exist),
+    // it reads existingItemCount to preserve the prior count.
+    // But our fake deps first run writes 1, and second run should preserve it.
+    // The fake's upsertMember returns false on duplicate, so totalItems=0,
+    // and existingItemCount returns... 0 (our mock returns 0 by default).
+    // We need to inject a counter.
+    let persistedCount = 0;
+    const call2 = makeCanonicalizer({
+      selectOrphans: async () => items,
+      existingItemCount: async () => persistedCount,
+      finishRun: async (_rid, summary) => { persistedCount = summary.itemCount; },
+    });
+    const f = await call2(baseArgs());
+    expect(f.itemCount).toBe(1);
+    // Replay with same items — all already members. Should preserve previous count.
+    const s = await call2(baseArgs());
+    expect(s.itemCount).toBe(1); // preserved, not overwritten with 0
+  }, 10000);
 });
 
-// ================================================================
-// Per-cluster failure does not poison the batch
-// ================================================================
+// ============================ per-cluster failure ===============
 
 describe("canonicalizeBatch — per-cluster failure", () => {
-  it("reports PARTIAL when one cluster fails, continues to process others", async () => {
-    const items = [
-      fakeMatch("item-good", "Normal product change"),
-      fakeMatch("item-bad", "This cluster will fail"),
-    ];
-
-    let call = 0;
-    const deps = fakeDeps({
+  it("reports PARTIAL when one cluster fails", async () => {
+    const items = [fakeMatch("good", "Normal"), fakeMatch("bad", "Fail")];
+    let callCount = 0;
+    const call = makeCanonicalizer({
       selectOrphans: async () => items,
       upsertCluster: async (fp) => {
-        call++;
-        if (call === 2) throw new Error("simulated cluster write failure");
-        return `cluster-${fp.slice(0, 8)}`;
+        callCount++;
+        if (callCount === 2) throw new Error("simulated failure");
+        return `c-${fp.slice(0,8)}`;
       },
     });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    expect(result.failed).toBeGreaterThanOrEqual(1);
-    expect(result.status).toBe("PARTIAL");
-    expect(result.exitCode).toBe(1);
+    const r = await call(baseArgs());
+    expect(r.failed).toBeGreaterThanOrEqual(1);
+    expect(r.status).toBe("PARTIAL");
+    expect(r.exitCode).toBe(1);
   }, 10000);
 });
 
-// ================================================================
-// BLOCKER A — finishRun receives exactly the returned summary
-// ================================================================
+// ============================ BLOCKER A: finishRun summary =====
 
 describe("canonicalizeBatch — finishRun summary", () => {
-  it("calls finishRun with the same status/itemCount/attempted/succeeded/failed as the returned JobResult", async () => {
-    const items = [
-      fakeMatch("item-s1", "Amazon increases seller fees"),
-      fakeMatch("item-s2", "Amazon seller fee increase announced"),
-    ];
-
-    let capturedSummary: any = null;
-    const deps = fakeDeps({
+  it("calls finishRun with the same summary the result carries", async () => {
+    const items = [fakeMatch("s1", "Amazon increases fees"), fakeMatch("s2", "Amazon seller fee increase")];
+    let captured: any = null;
+    const call = makeCanonicalizer({
       selectOrphans: async () => items,
-      finishRun: async (_runId, summary) => {
-        capturedSummary = summary;
-      },
+      finishRun: async (_rid, s) => { captured = s; },
     });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-
-    expect(capturedSummary).not.toBeNull();
-    expect(capturedSummary.status).toBe(result.status);
-    expect(capturedSummary.itemCount).toBe(result.itemCount);
-    expect(capturedSummary.attempted).toBe(result.attempted);
-    expect(capturedSummary.succeeded).toBe(result.succeeded);
-    expect(capturedSummary.failed).toBe(result.failed);
+    const r = await call(baseArgs());
+    expect(captured).not.toBeNull();
+    expect(captured.status).toBe(r.status);
+    expect(captured.itemCount).toBe(r.itemCount);
+    expect(captured.attempted).toBe(r.attempted);
+    expect(captured.succeeded).toBe(r.succeeded);
+    expect(captured.failed).toBe(r.failed);
   }, 10000);
 });
 
-// ================================================================
-// decideCluster cross-fingerprint merging (BLOCKER 4c — real branches)
-// ================================================================
+// ============================ decideCluster branches ============
 
 describe("canonicalizeBatch — decideCluster merging", () => {
-  it("merges different-fingerprint items with high trigram similarity", async () => {
-    // Two items with different titles that produce DIFFERENT fingerprints
-    // but have high trigram similarity (≥0.75). decideCluster should merge
-    // them into one cluster.
+  it("merges different-fp items with high trigram similarity", async () => {
     const items = [
-      fakeMatch("item-1a", "Amazon increases seller fees for electronics"),
-      fakeMatch("item-1b", "Amazon increases electronics seller fees"), // different fingerprint, high trigram
+      fakeMatch("1a", "Amazon increases seller fees for electronics"),
+      fakeMatch("1b", "Amazon increases electronics seller fees"),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    // decideCluster merges them → one cluster, not two.
-    expect(result.attempted).toBe(1);
-    expect(result.itemCount).toBe(2);
+    const call = makeCanonicalizer({ selectOrphans: async () => items });
+    const r = await call(baseArgs());
+    expect(r.attempted).toBe(1);
+    expect(r.itemCount).toBe(2);
   }, 10000);
 
   it("separates items with different official event ids", async () => {
-    // Two items with DIFFERENT authorityEventIds should be kept separate
-    // regardless of title similarity (official-id dominance rule).
     const items = [
-      fakeMatch("item-o1", "Product recall notice", {
-        authorityEventId: "RECALL-2026-001",
-      }),
-      fakeMatch("item-o2", "Product recall notice", {
-        authorityEventId: "RECALL-2026-002", // different ID → SEPARATE
-      }),
+      fakeMatch("o1", "Product recall notice", { authorityEventId: "RECALL-2026-001" }),
+      fakeMatch("o2", "Product recall notice", { authorityEventId: "RECALL-2026-002" }),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    expect(result.attempted).toBe(2);
-    // Each gets its own cluster despite identical titles.
+    const call = makeCanonicalizer({ selectOrphans: async () => items });
+    const r = await call(baseArgs());
+    expect(r.attempted).toBe(2);
   }, 10000);
 
-  it("separates items with completely different titles (low trigram similarity)", async () => {
+  it("separates items with different titles (low trigram similarity)", async () => {
     const items = [
-      fakeMatch("item-l1", "Amazon increases seller fees"),
-      fakeMatch("item-l2", "FDA approves new medical device classification"),
+      fakeMatch("l1", "Amazon increases seller fees"),
+      fakeMatch("l2", "FDA approves new medical device classification"),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    // Low trigram similarity → SEPARATE.
-    expect(result.attempted).toBe(2);
+    const call = makeCanonicalizer({ selectOrphans: async () => items });
+    const r = await call(baseArgs());
+    expect(r.attempted).toBe(2);
   }, 10000);
 
   it("separates items with >7 days between published dates", async () => {
     const items = [
-      fakeMatch("item-d1", "New safety standard released", {
-        publishedAt: "2026-07-01T00:00:00.000Z",
-      }),
-      fakeMatch("item-d2", "New safety standard released", {
-        publishedAt: "2026-07-10T00:00:00.000Z", // 9 days apart
-      }),
+      fakeMatch("d1", "New safety standard released", { publishedAt: "2026-07-01T00:00:00.000Z" }),
+      fakeMatch("d2", "New safety standard released", { publishedAt: "2026-07-10T00:00:00.000Z" }),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    // Date window exceeded → SEPARATE.
-    expect(result.attempted).toBe(2);
+    const call = makeCanonicalizer({ selectOrphans: async () => items });
+    const r = await call(baseArgs());
+    expect(r.attempted).toBe(2);
   }, 10000);
 
   it("separates items with incompatible platforms", async () => {
     const items = [
-      fakeMatch("item-p1", "Amazon platform policy update", {
-        platforms: ["AMAZON" as import("@prisma/client").PlatformCode],
-      }),
-      fakeMatch("item-p2", "Shopify platform policy update", {
-        platforms: ["SHOPIFY" as import("@prisma/client").PlatformCode],
-      }),
+      fakeMatch("p1", "Amazon platform policy update", { platforms: ["AMAZON" as import("@prisma/client").PlatformCode] }),
+      fakeMatch("p2", "Shopify platform policy update", { platforms: ["SHOPIFY" as import("@prisma/client").PlatformCode] }),
     ];
-
-    const deps = fakeDeps({ selectOrphans: async () => items });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
-    // Different titles → different fingerprints → decideCluster runs.
-    // Platform mismatch → SEPARATE → two clusters.
-    expect(result.attempted).toBe(2);
+    const call = makeCanonicalizer({ selectOrphans: async () => items });
+    const r = await call(baseArgs());
+    expect(r.attempted).toBe(2);
   }, 10000);
 });
 
-// ================================================================
-// BLOCKER 4b — no version / publication writes
-// ================================================================
+// ============================ no version publication ============
 
 describe("canonicalizeBatch — no version publication", () => {
   it("creates EvidenceCluster and members but never touches CanonicalChange", async () => {
-    const items = [fakeMatch("item-v", "A new regulation is published")];
-
-    let clusterCreated = false;
-    let memberCreated = false;
-
-    const deps = fakeDeps({
+    const items = [fakeMatch("v", "New regulation published")];
+    let clusterCreated = false, memberCreated = false;
+    const call = makeCanonicalizer({
       selectOrphans: async () => items,
-      upsertCluster: async (fp) => {
-        clusterCreated = true;
-        return `cluster-v-${fp.slice(0, 8)}`;
-      },
-      upsertMember: async () => {
-        memberCreated = true;
-        return true;
-      },
+      upsertCluster: async (fp) => { clusterCreated = true; return `cv-${fp.slice(0,8)}`; },
+      upsertMember: async () => { memberCreated = true; return true; },
     });
-
-    const result = await canonicalizeBatch(baseArgs(), deps);
+    const r = await call(baseArgs());
     expect(clusterCreated).toBe(true);
     expect(memberCreated).toBe(true);
-    // The canonicalizeBatch never calls any publish() or create Version.
-    // We verify this by the fact that the deps interface has no publish method.
-    expect(result.attempted).toBe(1);
+    expect(r.attempted).toBe(1);
   }, 10000);
 });

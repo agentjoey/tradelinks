@@ -1,15 +1,12 @@
 /**
  * Phase 1 canonicalization batch — finite path (Operations Task 2).
  *
- * canonicalizeBatch(args, deps) selects at most 200 items lacking an
- * EvidenceClusterMember, fingerprints each, clusters using
- * decideCluster (official-id dominance + market/platform/date guards +
- * trigram similarity) for cross-fingerprint merges, and creates
- * EvidenceCluster / EvidenceClusterMember records idempotently.
- * Does NOT publish versions — that is Task 3 behaviour.
+ * Exports:
+ *   createCanonicalizeBatch(deps) → (args) => Promise<JobResult>
+ *   canonicalizeBatch(args) — production, exactly 1 parameter
  *
- * CanonicalizeDeps decouples data access so credential-free tests can
- * inject fake item selection and cluster storage.
+ * The factory is for credential-free tests; the one-param function is the
+ * registered job handler.
  */
 
 import type { EvidenceRole } from "@prisma/client";
@@ -25,7 +22,6 @@ import { registerJob } from "./registry.js";
 
 const MAX_ITEMS_PER_RUN = 200;
 
-/** Minimum facts we can derive from an Item + its SourceContract. */
 export interface MatchedItem {
   itemId: string;
   sourceId: string;
@@ -36,29 +32,26 @@ export interface MatchedItem {
 // ---- injectable deps ----
 
 export interface CanonicalizeDeps {
-  /** Return up to `limit` orphan items (no EvidenceClusterMember). */
   selectOrphans(limit: number): Promise<MatchedItem[]>;
-  /** Find an existing cluster by fingerprint, or create one. Returns cluster id. */
   upsertCluster(fingerprint: string): Promise<string>;
-  /** Create a cluster member if it doesn't already exist. Returns true when newly created. */
   upsertMember(
     clusterId: string,
     itemId: string,
     role: EvidenceRole,
   ): Promise<boolean>;
-  /** Begin a run for this batch. Returns runId. */
   beginRun(input: {
     scopeKey: string;
     scheduledFor: Date;
     runnerVersion: string;
   }): Promise<string>;
-  /** Finish the run with the derived completion summary. The implementation
-   *  must persist the summary to the PipelineRun so the persisted row matches
-   *  the returned JobResult. */
   finishRun(
     runId: string,
     summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number },
   ): Promise<void>;
+  /** Read the existing PipelineRun itemCount — used on replay to avoid
+   *  overwriting a prior run's count with 0. Returns 0 if the run does
+   *  not exist. */
+  existingItemCount?(runId: string): Promise<number>;
 }
 
 // ---- production deps ----
@@ -101,8 +94,6 @@ const REAL_DEPS: CanonicalizeDeps = {
   },
   async upsertMember(clusterId: string, itemId: string, role: EvidenceRole) {
     const { prisma: db } = await import("../db/client.js");
-    // Use create with try/catch for P2002 (unique violation) to avoid
-    // a separate findUnique round-trip.
     try {
       await db.evidenceClusterMember.create({
         data: { clusterId, itemId, role },
@@ -134,6 +125,14 @@ const REAL_DEPS: CanonicalizeDeps = {
       },
     });
   },
+  async existingItemCount(runId: string) {
+    const { prisma: db } = await import("../db/client.js");
+    const run = await db.pipelineRun.findUnique({
+      where: { id: runId },
+      select: { itemCount: true },
+    });
+    return run?.itemCount ?? 0;
+  },
 };
 
 // ---- facts derivation ----
@@ -149,6 +148,9 @@ function factsFromItem(
     platforms: contract?.platforms ?? [],
     publishedAt: item.publishedAt.toISOString(),
     productCategories: contract?.categories,
+    // authorityEventId and effectiveAt are not carried by Item DB rows.
+    // decideCluster's official-id and effective-date guards can only fire
+    // when upstream enrichments add those fields — deferred to a later task.
   };
 }
 
@@ -165,127 +167,126 @@ function deriveRole(contract: SourceContract | undefined): EvidenceRole {
   return "SECONDARY_CONTEXT";
 }
 
-export async function canonicalizeBatch(
-  args: JobArgs,
-  deps: Partial<CanonicalizeDeps> = {},
-): Promise<JobResult> {
-  const d: CanonicalizeDeps = {
-    selectOrphans: deps.selectOrphans ?? REAL_DEPS.selectOrphans,
-    upsertCluster: deps.upsertCluster ?? REAL_DEPS.upsertCluster,
-    upsertMember: deps.upsertMember ?? REAL_DEPS.upsertMember,
-    beginRun: deps.beginRun ?? REAL_DEPS.beginRun,
-    finishRun: deps.finishRun ?? REAL_DEPS.finishRun,
-  };
+// ---- factory ----
 
-  const scopeKey = "canonicalize";
-  const runId = await d.beginRun({
-    scopeKey,
-    scheduledFor: args.scheduledFor,
-    runnerVersion: args.runnerVersion,
-  });
+export function createCanonicalizeBatch(
+  deps: CanonicalizeDeps,
+): (args: JobArgs) => Promise<JobResult> {
+  return async (args: JobArgs): Promise<JobResult> => {
+    const scopeKey = "canonicalize";
+    const runId = await deps.beginRun({
+      scopeKey,
+      scheduledFor: args.scheduledFor,
+      runnerVersion: args.runnerVersion,
+    });
 
-  const orphans = await d.selectOrphans(MAX_ITEMS_PER_RUN);
-  let attempted = 0;
-  let succeeded = 0;
-  let totalItems = 0;
+    const orphans = await deps.selectOrphans(MAX_ITEMS_PER_RUN);
+    let attempted = 0;
+    let succeeded = 0;
+    let totalItems = 0;
 
-  // Step 1: group by exact fingerprint (bucket = all items with same fp)
-  const buckets = new Map<string, MatchedItem[]>();
-  for (const o of orphans) {
-    const fp = candidateFingerprint(o.facts);
-    const group = buckets.get(fp) ?? [];
-    group.push(o);
-    buckets.set(fp, group);
-  }
+    const buckets = new Map<string, MatchedItem[]>();
+    for (const o of orphans) {
+      const fp = candidateFingerprint(o.facts);
+      const group = buckets.get(fp) ?? [];
+      group.push(o);
+      buckets.set(fp, group);
+    }
 
-  // Step 2: cross-fingerprint merging via decideCluster.
-  // Compare each bucket's representative with every other bucket.
-  const representatives = new Map(
-    [...buckets.entries()].map(([fp, members]) => [fp, members[0]!]),
-  );
-  const mergedInto = new Map<string, string>(); // fp → target fp
+    const representatives = new Map(
+      [...buckets.entries()].map(([fp, members]) => [fp, members[0]!]),
+    );
+    const mergedInto = new Map<string, string>();
 
-  const fpList = [...buckets.keys()];
-  for (let i = 0; i < fpList.length; i++) {
-    const fpI = fpList[i]!;
-    if (mergedInto.has(fpI)) continue;
-    for (let j = i + 1; j < fpList.length; j++) {
-      const fpJ = fpList[j]!;
-      if (mergedInto.has(fpJ)) continue;
-      const repI = representatives.get(fpI)!;
-      const repJ = representatives.get(fpJ)!;
-      const decision = await decideCluster({
-        left: repI.facts,
-        right: repJ.facts,
-      });
-      if (decision.decision === "MERGE") {
-        // Merge the smaller bucket into the larger.
-        const membersI = buckets.get(fpI)!;
-        const membersJ = buckets.get(fpJ)!;
-        if (membersI.length >= membersJ.length) {
-          membersI.push(...membersJ);
-          mergedInto.set(fpJ, fpI);
-        } else {
-          membersJ.push(...membersI);
-          mergedInto.set(fpI, fpJ);
+    const fpList = [...buckets.keys()];
+    for (let i = 0; i < fpList.length; i++) {
+      const fpI = fpList[i]!;
+      if (mergedInto.has(fpI)) continue;
+      for (let j = i + 1; j < fpList.length; j++) {
+        const fpJ = fpList[j]!;
+        if (mergedInto.has(fpJ)) continue;
+        const repI = representatives.get(fpI)!;
+        const repJ = representatives.get(fpJ)!;
+        const decision = await decideCluster({
+          left: repI.facts,
+          right: repJ.facts,
+        });
+        if (decision.decision === "MERGE") {
+          const membersI = buckets.get(fpI)!;
+          const membersJ = buckets.get(fpJ)!;
+          if (membersI.length >= membersJ.length) {
+            membersI.push(...membersJ);
+            mergedInto.set(fpJ, fpI);
+          } else {
+            membersJ.push(...membersI);
+            mergedInto.set(fpI, fpJ);
+          }
+          break;
         }
-        break; // fpI's bucket absorbed fpJ; fpJ is done.
       }
     }
-  }
 
-  // Step 3: persist clusters.
-  for (const [fingerprint, members] of buckets) {
-    if (mergedInto.has(fingerprint)) continue; // absorbed by another bucket
-    attempted++;
-    try {
-      const clusterId = await d.upsertCluster(fingerprint);
-      let created = 0;
-      for (const m of members) {
-        const newlyAdded = await d.upsertMember(
-          clusterId,
-          m.itemId,
-          deriveRole(m.contract),
-        );
-        if (newlyAdded) created++;
+    for (const [fingerprint, members] of buckets) {
+      if (mergedInto.has(fingerprint)) continue;
+      attempted++;
+      try {
+        const clusterId = await deps.upsertCluster(fingerprint);
+        let created = 0;
+        for (const m of members) {
+          const newlyAdded = await deps.upsertMember(
+            clusterId,
+            m.itemId,
+            deriveRole(m.contract),
+          );
+          if (newlyAdded) created++;
+        }
+        totalItems += created;
+        succeeded++;
+      } catch {
+        // Individual cluster failures don't poison the batch.
       }
-      totalItems += created;
-      succeeded++;
-    } catch {
-      // Individual cluster failures don't poison the batch.
     }
-  }
 
-  const status: JobStatus =
-    attempted === 0
-      ? "SUCCEEDED_EMPTY"
-      : succeeded === attempted
-        ? totalItems > 0
-          ? "SUCCEEDED_ITEMS"
-          : "SUCCEEDED_EMPTY"
-        : "PARTIAL";
+    const status: JobStatus =
+      attempted === 0
+        ? "SUCCEEDED_EMPTY"
+        : succeeded === attempted
+          ? totalItems > 0
+            ? "SUCCEEDED_ITEMS"
+            : "SUCCEEDED_EMPTY"
+          : "PARTIAL";
 
-  const failed = attempted - succeeded;
+    const failed = attempted - succeeded;
 
-  // Persist the completion summary so the PipelineRun row matches what we return.
-  await d.finishRun(runId, {
-    status,
-    itemCount: totalItems,
-    attempted,
-    succeeded,
-    failed,
-  });
+    // BLOCKER 5 fix: on replay (totalItems === 0), read the existing
+    // PipelineRun itemCount and preserve it instead of overwriting with 0.
+    let persistedItemCount = totalItems;
+    if (totalItems === 0 && deps.existingItemCount) {
+      persistedItemCount = await deps.existingItemCount(runId);
+    }
 
-  return {
-    runId,
-    status,
-    attempted,
-    succeeded,
-    failed,
-    itemCount: totalItems,
-    exitCode: failed > 0 ? 1 : 0,
+    await deps.finishRun(runId, {
+      status,
+      itemCount: persistedItemCount,
+      attempted,
+      succeeded,
+      failed,
+    });
+
+    return {
+      runId,
+      status,
+      attempted,
+      succeeded,
+      failed,
+      itemCount: persistedItemCount,
+      exitCode: failed > 0 ? 1 : 0,
+    };
   };
 }
+
+/** Production one-parameter entry point — exactly the spec shape. */
+export const canonicalizeBatch = createCanonicalizeBatch(REAL_DEPS);
 
 // ---- job registration ----
 

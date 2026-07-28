@@ -1,14 +1,12 @@
 /**
  * Phase 1 resumable collection batch — finite path (Operations Task 2).
  *
- * collectBatch(group, args, deps) resolves every enabled source contract to
- * its real SourceConfig, fetches via buildAdapter + toFetchOutcome (RSS /
- * fetch / JSON) or callScraper (SCRAPER), records per-source outcomes in the
- * idempotent run ledger, and returns a JobResult that reflects the **persisted**
- * run — not just current-invocation counts.
+ * Exports:
+ *   createCollectBatch(deps) → (group, args) => Promise<JobResult>
+ *   collectBatch(group, args) — production, exactly 2 parameters
  *
- * The BatchLedger interface decouples the orchestration from the database so
- * credential-free tests can inject a fake ledger.
+ * The factory is for credential-free tests; the two-param function is the
+ * registered job handler.
  */
 
 import { createHash } from "node:crypto";
@@ -63,7 +61,6 @@ export interface BatchLedger {
     sourceId: string,
     outcome: FetchOutcome,
   ): Promise<{ status: string; itemCount: number }>;
-  /** Close and derive the persisted run summary including cumulative check counts. */
   finishRun(
     runId: string,
   ): Promise<{
@@ -102,17 +99,18 @@ const DB_LEDGER: BatchLedger = {
   },
   async finishRun(runId) {
     const run = await finishRun(runId);
-    // Count checks across all statuses for cumulative attempted/succeeded/failed.
     const { prisma } = await import("../db/client.js");
     const checks = await prisma.sourceCheck.findMany({
       where: { runId },
       select: { status: true },
     });
-    const succeededCount = checks.filter((c: { status: string }) =>
-      c.status === "SUCCEEDED_ITEMS" || c.status === "SUCCEEDED_EMPTY",
+    const succeededCount = checks.filter(
+      (c: { status: string }) =>
+        c.status === "SUCCEEDED_ITEMS" || c.status === "SUCCEEDED_EMPTY",
     ).length;
-    const failedCount = checks.filter((c: { status: string }) =>
-      c.status === "FAILED" || c.status === "BLOCKED",
+    const failedCount = checks.filter(
+      (c: { status: string }) =>
+        c.status === "FAILED" || c.status === "BLOCKED",
     ).length;
     return {
       status: run.status,
@@ -131,12 +129,6 @@ export interface CollectBatchDeps {
   fetchSource: (source: SourceContract) => Promise<FetchOutcome>;
   ledger: BatchLedger;
 }
-
-export const DEFAULT_DEPS: CollectBatchDeps = {
-  getSources: getSourcesForGroup,
-  fetchSource: fetchSourceViaRegistry,
-  ledger: DB_LEDGER,
-};
 
 // ---- cron-to-group mapping ----
 
@@ -163,28 +155,23 @@ export function getSourcesForGroup(group: CollectionGroup): SourceContract[] {
 
 // ---- fetchSourceViaRegistry — production path via existing registry ----
 
-/**
- * Resolve a SourceContract to its real SourceConfig and fetch via the
- * existing buildAdapter + toFetchOutcome pipeline. Enabled sources that
- * cannot be resolved fail closed as a non-retryable invariant.
- */
 async function fetchSourceViaRegistry(source: SourceContract): Promise<FetchOutcome> {
   const config = SOURCES_BY_ID.get(source.id);
   if (!config) {
     return { kind: "failed", code: "INVARIANT: no SourceConfig", retryable: false };
   }
 
-  // SCRAPER / scrapling sources: route to the Python bridge.
   if (config.adapter === "scrapling") {
     return fetchViaScraper(source, config);
   }
 
   // PAGE_DIFF: fetch the page, return empty items + contentHash for auditing.
+  // Diff detection is deferred to a future task; currently this records
+  // SUCCEEDED_EMPTY every slot for the AMZ-PRICING-PAGE source.
   if (source.fetchMethod === "PAGE_DIFF") {
-    return fetchPageDiffImpl(source, config);
+    return fetchPageDiffImpl(source);
   }
 
-  // RSS / fetch / JSON: use the TS adapter + toFetchOutcome.
   const adapter = buildAdapter(config);
   if (!adapter) {
     return { kind: "failed", code: "INVARIANT: unresolvable adapter", retryable: false };
@@ -228,13 +215,7 @@ async function fetchViaScraper(
   }
 }
 
-async function fetchPageDiffImpl(
-  source: SourceContract,
-  _config: { url: string },
-): Promise<FetchOutcome> {
-  // Fetch the page to compute a content hash. No items — this is a change-
-  // detection source. PAGE_DIFF diff logic is deferred; currently records
-  // SUCCEEDED_EMPTY with the hash for auditing in every slot.
+async function fetchPageDiffImpl(source: SourceContract): Promise<FetchOutcome> {
   try {
     const res = await fetch(source.url, {
       headers: {
@@ -316,95 +297,105 @@ async function mapWithLimit<T, R>(
   return results.filter((r): r is R => r !== undefined);
 }
 
-// ---- collectBatch ----
+// ---- factories (acceptance pin 1) ----
 
-export async function collectBatch(
+/** Create a production collectBatch with the default deps wired in. */
+export function createCollectBatch(
+  deps: CollectBatchDeps,
+): (
   group: CollectionGroup,
   args: JobArgs,
-  deps: Partial<CollectBatchDeps> = {},
-): Promise<JobResult> {
-  const d: CollectBatchDeps = {
-    getSources: deps.getSources ?? DEFAULT_DEPS.getSources,
-    fetchSource: deps.fetchSource ?? DEFAULT_DEPS.fetchSource,
-    ledger: deps.ledger ?? DEFAULT_DEPS.ledger,
-  };
+) => Promise<JobResult> {
+  return async (
+    group: CollectionGroup,
+    args: JobArgs,
+  ): Promise<JobResult> => {
+    const sources = deps.getSources(group);
+    const scopeKey = `collect-${group.toLowerCase()}`;
 
-  const sources = d.getSources(group);
-  const scopeKey = `collect-${group.toLowerCase()}`;
-
-  const runId = await d.ledger.beginRun({
-    jobType: "COLLECT",
-    scopeKey,
-    scheduledFor: args.scheduledFor,
-    runnerVersion: args.runnerVersion,
-  });
-
-  const skipIds = await d.ledger.alreadySucceeded(runId);
-  const pendingSources = sources.filter((s) => !skipIds.has(s.id));
-
-  let attempted = 0;
-  let succeeded = 0;
-  let failed = 0;
-
-  await mapWithLimit(pendingSources, 5, async (source) => {
-    attempted++;
-    const retryResult = await retryUnit({
-      maxAttempts: 3,
-      baseDelayMs: 1000,
-      execute: async () => {
-        const outcome = await d.fetchSource(source);
-        return branchOnOutcome(outcome);
-      },
-      isRetryable: isRetryableThrownError,
+    const runId = await deps.ledger.beginRun({
+      jobType: "COLLECT",
+      scopeKey,
+      scheduledFor: args.scheduledFor,
+      runnerVersion: args.runnerVersion,
     });
 
-    if (retryResult.status === "OK") {
-      const outcome = retryResult.value!;
-      try {
-        const check = await d.ledger.recordOutcome(runId, source.id, outcome);
-        if (
-          check.status === "SUCCEEDED_ITEMS" ||
-          check.status === "SUCCEEDED_EMPTY"
-        ) {
-          succeeded++;
-        } else {
-          failed++;
+    const skipIds = await deps.ledger.alreadySucceeded(runId);
+    const pendingSources = sources.filter((s) => !skipIds.has(s.id));
+
+    // Track in-invocation failures that never reached the ledger (BLOCKER 2 fix).
+    let unreportedFailures = 0;
+
+    await mapWithLimit(pendingSources, 5, async (source) => {
+      const retryResult = await retryUnit({
+        maxAttempts: 3,
+        baseDelayMs: 1000,
+        execute: async () => {
+          const outcome = await deps.fetchSource(source);
+          return branchOnOutcome(outcome);
+        },
+        isRetryable: isRetryableThrownError,
+      });
+
+      if (retryResult.status === "OK") {
+        const outcome = retryResult.value!;
+        try {
+          await deps.ledger.recordOutcome(runId, source.id, outcome);
+        } catch {
+          // Ledger write rejected — source was reached but the check was
+          // not persisted. Count it so it doesn't silently vanish (BLOCKER 2).
+          unreportedFailures++;
         }
-      } catch {
-        // Ledger write rejected → count as failed (BLOCKER 3 fix).
-        failed++;
+      } else {
+        const lastOutcome = outcomeFromError(retryResult.error);
+        const code =
+          retryResult.status === "EXHAUSTED"
+            ? "RETRY_EXHAUSTED"
+            : "INVARIANT_FAILURE";
+        try {
+          await deps.ledger.recordOutcome(runId, source.id, lastOutcome ?? {
+            kind: "failed",
+            code,
+            retryable: false,
+          });
+        } catch {
+          unreportedFailures++;
+        }
       }
-    } else {
-      // Exhausted or invariant failure — record a structured diagnostic check.
-      const lastOutcome = outcomeFromError(retryResult.error);
-      const code =
-        retryResult.status === "EXHAUSTED" ? "RETRY_EXHAUSTED" : "INVARIANT_FAILURE";
-      try {
-        await d.ledger.recordOutcome(runId, source.id, lastOutcome ?? {
-          kind: "failed",
-          code,
-          retryable: false,
-        });
-      } catch {
-        // best-effort diagnostic — failure already counted below
-      }
-      failed++;
+    });
+
+    // Derive the persisted status and cumulative counts from finishRun.
+    const finished = await deps.ledger.finishRun(runId);
+
+    // Reconcile: if any source was reached but the check never persisted,
+    // the persisted failed count undercounts. Surface at least the
+    // unreported failures.
+    const reconciledFailed = Math.max(finished.failed, unreportedFailures);
+    // If we know about failures the persisted run doesn't, the run is at
+    // best PARTIAL.
+    let status = finished.status as JobStatus;
+    if (unreportedFailures > 0 && status !== "FAILED") {
+      status = finished.attempted > 0 || finished.failed > 0 ? "PARTIAL" : "FAILED";
     }
-  });
 
-  // Derive the persisted status and cumulative counts from finishRun.
-  const finished = await d.ledger.finishRun(runId);
-
-  return {
-    runId,
-    status: finished.status as JobStatus,
-    attempted: finished.attempted,
-    succeeded: finished.succeeded,
-    failed: finished.failed,
-    itemCount: finished.itemCount,
-    exitCode: finished.failed > 0 ? 1 : 0,
+    return {
+      runId,
+      status,
+      attempted: Math.max(finished.attempted, pendingSources.length),
+      succeeded: finished.succeeded,
+      failed: reconciledFailed,
+      itemCount: finished.itemCount,
+      exitCode: reconciledFailed > 0 ? 1 : 0,
+    };
   };
 }
+
+/** Production two-parameter entry point — exactly the spec shape. */
+export const collectBatch = createCollectBatch({
+  getSources: getSourcesForGroup,
+  fetchSource: fetchSourceViaRegistry,
+  ledger: DB_LEDGER,
+});
 
 // ---- job registration ----
 
