@@ -76,3 +76,10 @@ features:
         reviewer: claude
         spec: .pact/tasks/phase1-operations-finite-dispatch.md
         evidence: null
+      - id: resumable-batches
+        owner: opencode
+        status: assigned
+        reviewer: claude
+        spec: .pact/tasks/phase1-operations-resumable-batches.md
+        evidence: null
+        deps: [finite-dispatch]
