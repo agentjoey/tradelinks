@@ -6,6 +6,15 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 
 - This is Operations Task 1. It establishes finite runtime primitives consumed by Task 2.
 - Preserve the plan's exact `JobName`, `JobArgs`, `JobResult`, status, and exit-code contract.
+- The exact contract is:
+
+```ts
+export type JobName = "collect-fast" | "collect-standard" | "collect-slow" | "canonicalize" | "publish" | "public-briefing" | "health" | "cost-report";
+export type JobArgs = { scheduledFor: Date; runnerVersion: string; dryRun: boolean };
+export type JobResult = { runId: string; status: "SUCCEEDED_EMPTY" | "SUCCEEDED_ITEMS" | "PARTIAL" | "FAILED" | "BLOCKED"; attempted: number; succeeded: number; failed: number; itemCount: number; exitCode: 0 | 1 | 2 };
+```
+
+  Exit 0 is completed (including empty), exit 1 means retryable units remain, and exit 2 is lock/config/schema/invariant operator action. Keep the public `runJob(name, args)` signature; do not add a separate dry-run option or alternate status vocabulary.
 - Use TDD: create the specified tests, run them and record the expected RED caused by missing modules, then implement the minimum GREEN behavior and refactor only while green.
 - A pooled Prisma/Neon connection must not use session advisory lock acquire/unlock calls that can land on different connections. Hold a transaction-scoped PostgreSQL advisory lock for the full callback lifetime, or otherwise prove acquire/callback/release share one connection. Automatic release on thrown callbacks is required.
 - The `health --dry-run` command must perform no writes and emit exactly one JSON `JobResult`. A future job without a non-dry-run handler fails closed; do not invent Task 3–4 behavior.
@@ -14,6 +23,10 @@ Read first: `.superpowers/sdd/2026-07-23-tradelinks-phase1-operations-cost/task-
 - Do not remove pg-boss or persistent workers; retirement belongs to Operations Task 5.
 - Never read `.env*`, secret files, process credential values, or external secret directories. Worker and reviewer verification must be dependency-injected and credential-free. The Codex orchestrator alone runs the real Neon staging integration gate after checkpoint, using unique test data with cleanup, and records only the redacted command/result summary in Pact evidence.
 - The credential-free lock suite must not instantiate the real Prisma client. Keep the public two-argument `withJobLock(key, fn)` contract and add an internal/exported factory or mockable transaction adapter for deterministic unit tests. A separate integration test may be environment-gated so it skips with no `DATABASE_URL` and runs only under the orchestrator's staging gate.
+- Rework must exercise the production Prisma adapter through a mocked transaction boundary (query result, callback lifetime, rollback/release, and transaction options), not replace it with an in-memory lock implementation. The transaction timeout must exceed the plan's longest 20-minute Railway job maximum so the lock cannot expire while a supported callback is still running.
+- Build the lock key only from typed slot identity (`name` plus canonical `scheduledFor`), not `Object.values`, delimiter-joined arbitrary values, or property insertion order. Tests must cover reordered/non-slot input and delimiter-like values.
+- Make the 1s/4s/16s production retry ladder explicit and test its exact delay values. Registered runnable jobs must not silently default to a single attempt.
+- Populate every field required by the exact `JobResult` contract on every return path. Remove the out-of-scope `opencode.json` schema addition in the rework commit.
 
 ## Verification
 
