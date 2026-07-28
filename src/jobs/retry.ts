@@ -20,8 +20,8 @@ export function defaultDelay(attempt: number, baseDelayMs: number): Promise<void
 
 /**
  * Every job retries up to 4 times (initial + 3 retries) with
- * 1 s / 4 s / 16 s backoff. The retry budget fits within the
- * 5-minute transaction timeout (4×16 s = 64 s worst-case).
+ * 1 s / 4 s / 16 s backoff. The retry budget (21 s) fits within
+ * the 21-minute transaction timeout (MAX_JOB_DURATION_MS).
  */
 export const DEFAULT_MAX_ATTEMPTS = 4;
 

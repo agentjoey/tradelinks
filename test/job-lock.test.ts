@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { bigintFromStableHash, setLockAdapter } from "../src/jobs/lock.js";
 import { createPrismaLockAdapter, MAX_JOB_DURATION_MS } from "../src/jobs/prisma-adapter.js";
 import { buildSlotKey, runJob } from "../src/jobs/run.js";
-import { registerJob } from "../src/jobs/registry.js";
+import { registerJob, unregisterJob } from "../src/jobs/registry.js";
 import { DEFAULT_MAX_ATTEMPTS } from "../src/jobs/retry.js";
+import type { JobResult } from "../src/jobs/types.js";
 
 /* ------------------------------------------------------------------ */
 /*  Fake Prisma — models pg_try_advisory_xact_lock lifecycle            */
@@ -174,24 +175,20 @@ describe("createPrismaLockAdapter", () => {
     const { db, adapter } = makeAdapter();
     const { work, release } = deferredWorkPair();
 
-    // tx1 holds the lock
     const tx1 = db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_try_advisory_xact_lock(${bigintFromStableHash("key-x")}) AS locked`;
       return work();
     });
 
-    // tx2 tries the same lock — denied
     const locked = await adapter.acquire("key-x", async () => "no");
     expect(locked).toBe("LOCKED");
 
-    // tx3 tries the same lock — must still be denied (tx1 still holds it)
     const lockedAgain = await adapter.acquire("key-x", async () => "still no");
     expect(lockedAgain).toBe("LOCKED");
 
     release();
     await tx1;
 
-    // after tx1 releases, acquire succeeds
     const now = await adapter.acquire("key-x", async () => "finally");
     expect(now).toBe("finally");
   });
@@ -248,38 +245,135 @@ describe("buildSlotKey", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  runJob default retry ladder                                        */
+/*  runJob — handler contract & exit codes                             */
 /* ------------------------------------------------------------------ */
 
-describe("runJob default retry ladder", () => {
-  it("retries up to DEFAULT_MAX_ATTEMPTS when run handler throws", async () => {
-    expect(DEFAULT_MAX_ATTEMPTS).toBe(4);
+function memoryAdapter() {
+  return {
+    async acquire<T>(_key: string, fn: () => Promise<T>): Promise<T | "LOCKED"> {
+      return fn();
+    },
+  };
+}
 
+function testArgs(overrides?: Partial<{ scheduledFor: Date; dryRun: boolean }>) {
+  return {
+    scheduledFor: overrides?.scheduledFor ?? new Date("2026-07-23T08:00:00.000Z"),
+    runnerVersion: "test",
+    dryRun: overrides?.dryRun ?? false,
+  };
+}
+
+const DEFAULT_JOB_RESULT: JobResult = {
+  runId: "pipe-abc-123",
+  status: "SUCCEEDED_ITEMS",
+  attempted: 5,
+  succeeded: 4,
+  failed: 1,
+  itemCount: 12,
+  exitCode: 0,
+};
+
+describe("runJob", () => {
+  afterEach(() => {
+    unregisterJob("health");
+  });
+
+  it("returns handler-supplied JobResult unchanged on success", async () => {
+    registerJob({ name: "health", run: async () => DEFAULT_JOB_RESULT });
+    setLockAdapter(memoryAdapter());
+
+    const result = await runJob("health", testArgs());
+    expect(result).toEqual(DEFAULT_JOB_RESULT);
+  });
+
+  it("handler runId survives runJob unchanged", async () => {
+    const customId = "pipeline-xyz-999";
+    registerJob({
+      name: "health",
+      run: async () => ({ ...DEFAULT_JOB_RESULT, runId: customId }),
+    });
+    setLockAdapter(memoryAdapter());
+
+    const result = await runJob("health", testArgs());
+    expect(result.runId).toBe(customId);
+  });
+
+  it("retryable exhaustion → FAILED with exit 1", async () => {
     let calls = 0;
     registerJob({
       name: "health",
       run: async () => {
         calls++;
-        throw new Error("retryable");
+        throw new Error("always retryable");
       },
       delay: async () => {},
     });
+    setLockAdapter(memoryAdapter());
 
-    // Use a memory adapter so no real Prisma needed
-    setLockAdapter({
-      async acquire<T>(_key: string, fn: () => Promise<T>): Promise<T | "LOCKED"> {
-        return fn();
+    const result = await runJob("health", testArgs());
+
+    expect(result.status).toBe("FAILED");
+    expect(result.exitCode).toBe(1);
+    expect(result.attempted).toBe(0);
+    expect(result.succeeded).toBe(0);
+    expect(result.failed).toBe(0);
+    expect(result.itemCount).toBe(0);
+    expect(calls).toBe(DEFAULT_MAX_ATTEMPTS);
+  });
+
+  it("non-retryable failure → FAILED with exit 2", async () => {
+    registerJob({
+      name: "health",
+      run: async () => {
+        throw Object.assign(new Error("fatal"), { code: "CONFIG" });
       },
+      isRetryable: (e: unknown) => (e as { code?: string }).code !== "CONFIG",
+      delay: async () => {},
     });
+    setLockAdapter(memoryAdapter());
 
-    const result = await runJob("health", {
-      scheduledFor: new Date("2026-07-23T08:00:00.000Z"),
-      runnerVersion: "test",
-      dryRun: false,
-    });
+    const result = await runJob("health", testArgs());
 
     expect(result.status).toBe("FAILED");
     expect(result.exitCode).toBe(2);
-    expect(calls).toBe(4);
+  });
+
+  it("dry-run handler provides its own runId and status", async () => {
+    registerJob({
+      name: "health",
+      dryRun: async () => ({
+        runId: "dry-abc",
+        status: "SUCCEEDED_EMPTY",
+        attempted: 0,
+        succeeded: 0,
+        failed: 0,
+        itemCount: 0,
+        exitCode: 0,
+      }),
+    });
+    setLockAdapter(memoryAdapter());
+
+    const result = await runJob("health", testArgs({ dryRun: true }));
+    expect(result.runId).toBe("dry-abc");
+    expect(result.status).toBe("SUCCEEDED_EMPTY");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("unknown job → FAILED exit 2", async () => {
+    const result = await runJob(
+      "cost-report" as "health",
+      testArgs(),
+    );
+    expect(result.status).toBe("FAILED");
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("no run handler → FAILED exit 2 (fails closed)", async () => {
+    // health has no 'run' by default, only dryRun
+    setLockAdapter(memoryAdapter());
+    const result = await runJob("health", testArgs());
+    expect(result.status).toBe("FAILED");
+    expect(result.exitCode).toBe(2);
   });
 });

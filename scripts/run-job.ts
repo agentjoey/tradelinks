@@ -1,10 +1,9 @@
 import { setLockAdapter } from "../src/jobs/lock.js";
 import { prismaLockAdapter } from "../src/jobs/default-adapter.js";
-
-setLockAdapter(prismaLockAdapter);
-
 import { runJob } from "../src/jobs/run.js";
 import type { JobName } from "../src/jobs/types.js";
+
+setLockAdapter(prismaLockAdapter);
 
 function parseArgs(argv: string[]) {
   const nameIdx = argv.indexOf("--name");
