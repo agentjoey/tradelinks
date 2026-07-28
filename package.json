@@ -13,6 +13,7 @@
     "worker": "tsx src/workers/index.ts",
     "worker:run-once": "tsx src/workers/run-once.ts",
     "patrol": "tsx scripts/patrol.ts",
+    "job": "tsx scripts/run-job.ts",
     "db:gen": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:prod": "DOTENV_CONFIG_PATH=.env.production node -r dotenv/config node_modules/prisma/build/index.js migrate deploy",
