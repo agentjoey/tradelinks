@@ -1,7 +1,7 @@
 # Railway Setup — worker + scraper (2 services, 1 repo)
 
 > One Railway **project** contains TWO **services**, both deployed from the SAME
-> GitHub repo (`agentjoey/tradelinks-mvp`). You do NOT need separate repos and
+> GitHub repo (`agentjoey/tradelinks`). You do NOT need separate repos and
 > you do NOT recreate the worker — a repo-based service is correct; you just set
 > the right Root Directory / Build / Start per service.
 
@@ -20,7 +20,7 @@ Neon (external) = production branch · Vercel (external) = web
 This is your existing service. Fix its settings:
 
 **Settings → Source**
-- Repo: `agentjoey/tradelinks-mvp`, branch `main`
+- Repo: `agentjoey/tradelinks`, branch `main`
 - **Root Directory:** (empty / `/`) — the repo root
 
 **Settings → Build**
@@ -59,7 +59,7 @@ MAX_ITEMS_PER_CRAWL = 12
 
 New service, **same repo**, rooted at `scraper-py/`.
 
-1. Project → **+ New** → **GitHub Repo** → pick `agentjoey/tradelinks-mvp` again.
+1. Project → **+ New** → **GitHub Repo** → pick `agentjoey/tradelinks` again.
 2. Open the new service → **Settings → Source → Root Directory:** `scraper-py`
 3. **Build:** Railway auto-detects `scraper-py/Dockerfile` (Builder = Dockerfile).
    - The Dockerfile installs `scrapling[fetchers]` + `patchright install chromium`

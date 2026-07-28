@@ -1,6 +1,6 @@
 # TradeLinks — Operations Manual
 
-> Last updated: 2026-07-21 v0.12.x
+> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation (not deployed)
 
 ## Environment matrix
 
@@ -16,13 +16,23 @@
 
 Local `.env` points to dev; staging/production require explicit commands (`pnpm db:migrate:staging` / `pnpm db:migrate:prod`).
 
+## Phase 1 Foundation rollout status
+
+- Repository: complete; 8/8 Pact tasks accepted; Draft PR [#3](https://github.com/agentjoey/tradelinks/pull/3).
+- Database: migrations `0011` and `0012` plus legacy backfill verified only on approved isolated branch `br-plain-shadow-aoknpdf3`.
+- Production: unchanged. Do not run the Foundation backfill or migrations against production from this document.
+- Next operational gate: merge/review Public Intelligence and the Railway Cron/short-lived worker cutover, then complete seven consecutive days of source-SLA and global-gap monitoring before P0 acceptance.
+- The checkpoint branch expires on 2026-07-30; any later rollout requires a fresh Neon backup/branch checkpoint rather than treating the old branch as a durable backup.
+
 ## Source health dashboard
 
 **`/admin/sources`** is the primary health view — every source with its data flow,
 cadence and a 0–100 score, worst-first. Tiers: 🟢 Healthy / 🟡 Degraded / 🔴 Unhealthy /
 💀 **Silent** (active but 0 items — the "200 OK but empty" detector) / ⏸ Disabled.
 A daily `source-health-tick` (02:30 UTC) snapshots health and Telegram-pings any source
-newly crossing into 🔴/💀. ⚠️ `/admin/*` has no auth yet — add before exposing.
+newly crossing into 🔴/💀. `/admin/*` is protected by Neon Auth / Better Auth and the
+`ADMIN_EMAILS` allowlist; do not expose review data through a route that bypasses
+`requireAdmin()` or the admin middleware probe.
 
 ## Ops scripts
 
@@ -59,7 +69,7 @@ The script and skill live in git; the only thing not in git is `.env` (secrets).
 
 ```bash
 # one-time
-git clone https://github.com/agentjoey/tradelinks-mvp.git && cd tradelinks-mvp
+git clone https://github.com/agentjoey/tradelinks.git && cd tradelinks
 pnpm install                       # Node ≥20 + pnpm
 cp .env.example .env               # then set DATABASE_URL (+ DIRECT_URL) — patrol only hard-needs DATABASE_URL.
                                    # Use the Neon `dev` branch URLs by default.
@@ -87,11 +97,13 @@ Notes:
 
 ## Cost Monitoring
 
+- Phase 1 free-validation target for core infrastructure: **about $25–50/month**.
 - LLM target: <$15/week (≈$60/month)
 - If DeepSeek cost spikes: check for crawl loop bug or runaway retries in pg-boss
-- **Neon compute (ADR-004):** queue lives in Postgres now (pg-boss), and the
-  `scheduler-tick` polls every minute → Neon never scales to zero while workers run.
-  Monitor compute-hours; the pg-boss poll interval can be widened if cost is an issue.
+- **Neon compute (ADR-004):** the current production queue still lives in Postgres.
+  Long-lived pg-boss fallback polling can prevent scale-to-zero. The Phase 1 operations
+  plan therefore prefers Railway Cron batches, short-lived workers, a sleepable scraper,
+  and cached/ISR public reads; that cutover is not implemented by Foundation alone.
 - pg-boss maintenance: it auto-archives/expires completed jobs in its `pgboss`
   schema; watch table growth if dead jobs accumulate.
 - **Prisma connection pool (Neon):** the pooled `DATABASE_URL` should carry

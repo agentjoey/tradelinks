@@ -1,18 +1,19 @@
 # Current Status — TradeLinks
 
-Version:        v0.12.0
-Sprint:         006 (Ops hardening + Source-health monitoring)
-Sprint Status:  ✅ 全链路稳定化 + 内容再平衡 + 源监控页上线
-Last Updated:   2026-07-28 by Task 8 worker/Codex (Phase 1 Foundation legacy backfill 最终验证完成，待 reviewer 接受)
-Sprint File:    .agent/sprints/sprint-005.md
+Version:        v0.12.0 + Phase 1 Foundation（未发布）
+Sprint:         Phase 1 Product Refresh — Foundation
+Sprint Status:  ✅ 8/8 Pact tasks accepted · Draft PR #3 · 未部署
+Last Updated:   2026-07-28 by Codex (Foundation 文档、验收与 PR 状态收口)
+Sprint File:    docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md
 
 ## Phase 1 Foundation 状态（2026-07-28，未部署）
 
-- Prisma migration `0011_phase1_intelligence_foundation` 已在获批的非生产 Neon 隔离分支验证；未变更生产数据库、云端配置或部署。
+- Pact feature `phase1-foundation` 的 8 个任务已全部由 Claude Opus 5 独立接受；实现分支为 `feat-phase1-foundation`，Draft PR 为 [#3](https://github.com/agentjoey/tradelinks/pull/3)。本地 `main` 已 fast-forward 验证，远端 `main` 尚未合并。
+- Prisma migrations `0011_phase1_intelligence_foundation` 与 `0012_phase1_publication_review_fields` 已在获批的非生产 Neon 隔离分支验证；未变更生产数据库、云端配置或部署。
 - Legacy backfill 重复 dry-run 指纹稳定为 `7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332`；五项待写入计数均为 0；显式拒绝 18 行，原因均为 `SOURCE_NOT_FOUND`。
 - 隔离分支 apply/replay 幂等；回填草稿保持 `EXPERIMENTAL` / `IN_REVIEW` / 非 current，证据保持 `SECONDARY_CONTEXT`。中断测试夹具已按唯一 runId 精确清理并确认五类记录零残留。
 - 最终门禁：Prisma schema valid、TypeScript lint 通过、53 个测试文件 / 426 个测试通过、Next.js production build 成功。
-- Public Intelligence cutover 尚未开始；旧公开页面、生产流量与部署状态均未切换。
+- Public Intelligence cutover 尚未开始；旧公开页面、生产流量与部署状态均未切换。下一执行入口是 `docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md`，P0 仍要求连续 7 天稳定运行。
 
 ## 🆕 本轮新增（2026-07-19）：BL-045 前端重设计（已上线 main `17aa648`，frontend-harness-workflow Tier 3 全流程）
 
@@ -105,7 +106,7 @@ Sprint File:    .agent/sprints/sprint-005.md
 
 ## 🚀 LIVE
 - **生产**: https://tradelinks-mvp.vercel.app （Wire `/` · Radar `/trends` · **每日 `/daily`** · 审核台 `/admin/review` · 源监控 `/admin/sources`）
-- **GitHub**: agentjoey/tradelinks-mvp（main）
+- **GitHub**: agentjoey/tradelinks（远端生产基线仍为 `main`；Foundation 见 Draft PR #3）
 - **DB**: Neon **production** branch `ep-mute-base-aotkza3n` / `neondb`
   - `DIRECT_URL` 也用 **pooled host**；pg-boss 连接已 pin `sslmode=verify-full`
   - **History retention 调低（~0–1h）** 控制计费存储；**勿在 Neon 上 VACUUM FULL**（会增 history/WAL）

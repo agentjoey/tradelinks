@@ -1,6 +1,8 @@
 # 环境拆分方案（dev / staging / prod）（2026-07-21）
 
-> 现状（CLAUDE.md §Single environment MVP）："dev" = 本地 repo；GitHub/Vercel/Railway/Neon 全是生产；本地 `.env` 的 `DATABASE_URL`/`DIRECT_URL` **直连生产库**，本地写脚本（翻译、backfill）直接写生产。本文规划如何低成本拆出 dev + staging 环境。
+> **状态更新（2026-07-28）：repo 侧已实施。** `db:migrate:dev/staging/prod`、三环境 env 约定、`main → staging` workflow 以及 `staging` / `production` Git 分支均已存在。provider 侧绑定仍应在每次发布前从 Neon/Vercel/Railway 控制台核验；权威运行说明见 `docs/operations.md` 与 `docs/deployment.md`。下文保留规划前问题与实施步骤作为决策记录。
+
+> 规划前现状（原 CLAUDE.md §Single environment MVP）："dev" = 本地 repo；GitHub/Vercel/Railway/Neon 全是生产；本地 `.env` 的 `DATABASE_URL`/`DIRECT_URL` 直连生产库，本地写脚本会直接写生产。
 
 ## 1. 目标与原则
 

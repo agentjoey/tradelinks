@@ -8,36 +8,61 @@ product
 
 web
 
-## Users
-
-The primary user is an authenticated TradeLinks administrator/editor reviewing canonical intelligence before publication. They work at a desk, in a focused, verification-oriented state of mind: every publication is immutable, so the cost of a mistake is a permanent public record that can only be corrected forward. They review version differences, source readiness, structured evidence, effective-date provenance, classification confidence, and the action template before publishing, correcting, or rejecting a canonical change.
-
 ## Product Purpose
 
-TradeLinks turns scattered regulatory, platform, and market signals into canonical, deduplicated intelligence that cross-border sellers can trust. The admin review surface exists so that nothing reaches publication without an editor who has seen the evidence and the consequences. Success means Verified publication is impossible without reviewed `PRIMARY_OFFICIAL` evidence, every rejection carries an explicit persisted reason, corrections preserve the full version history, and the reviewer can inspect every field used downstream before acting.
+TradeLinks 帮助跨境卖家判断如何进入并运营美国市场。它把分散的政府规则、平台政策、合规变化、物流信息和有限的市场信号整理成可追溯的规范化情报，再根据卖家的经营阶段、平台和商品大类提供相关性排序与行动提示。
+
+产品不把“商品趋势”作为主承诺。政策、合规、平台规则和市场进入判断必须明确区分来源 authority、readiness、证据强度和已知缺口。
+
+## Users
+
+### Public seller visitor
+
+正在评估或经营美国市场的跨境卖家。他们需要无需登录即可阅读、搜索和引用的市场、平台、政策、合规及类目事实，并能追溯每条结论的来源与生效时间。
+
+### Authenticated seller
+
+免费 Seller Profile 用户。Profile 保持简化：经营阶段、美国目标市场、Amazon/Shopify 平台，以及最多两个商品品类。用户需要聚焦自身情况的 Briefing、Actions 和邮件，而不是更多通用资讯。
+
+### Administrator / editor
+
+负责来源契约、coverage readiness、证据审核和规范化内容发布的 TradeLinks 编辑。发布记录不可原地改写；纠错通过新版本向前推进，因此审核界面必须同时显示版本差异、结构化证据、有效日期、分类置信度和行动模板状态。
 
 ## Positioning
 
-The intelligence desk where publication is a deliberate, evidence-backed act: the reviewer always sees the basis and the consequences before anything becomes immutable.
+**Evidence-backed market entry intelligence for cross-border sellers.**
 
-## Brand Personality
+- **Public Intelligence** 建立公开、可索引、可追溯的事实与判断层。
+- **Private Relevance** 用 Seller Profile 过滤并排序 Briefing、Actions 与邮件。
+- 后续 Plus 销售个性化、行动建议、速度与深度，目标价格 `$5–15/月`；公开事实、RSS 与基础内容保持免费。
 
-Restrained, precise, high-density. An intelligence desk, not a marketing site: quiet surfaces, exact data, no decoration competing with the record. Voice is factual and unambiguous — labels say what a control does and what it costs.
+## Phase 1 Scope
 
-## Anti-references
+- 市场：United States。
+- 平台：Amazon US、Shopify US。
+- 首发公开类目：Consumer Electronics、Pet Supplies、Beauty & Personal Care、Toys & Children's Products、Home & Kitchen、Apparel & Accessories。
+- Public 页面必须为 SEO、RSS 和未来广告变现保留性能空间，但 Google Ads 不属于当前开发范围。
+- 跨境开店/运营 Agent 属于 Phase 2，不进入 Phase 1。
 
-- Consumer news or social feeds: infinite scroll, engagement chrome, emotional framing.
-- Generic SaaS dashboards: hero metrics, decorative charts, gradient accents, rounded card grids.
-- Over-decorated "AI" tooling: glass panels, decorative motion, invented affordances for standard review tasks.
+## Promise Boundaries
+
+- `MONITORED` 或 `VERIFIED` coverage 才能支撑公开解释。
+- `VERIFIED` 结论必须具有已审核的 `PRIMARY_OFFICIAL` 证据。
+- 行动建议必须同时具备 Verified evidence 与已审核 action template。
+- Amazon 商品需求/BSR 在当前阶段最多是 `EXPERIMENTAL`，不能表述为保证销量、确定机会或完整市场覆盖。
+- source 不可用时必须显示降级、已知缺口或拒绝原因，不能用模型补造事实。
+
+## Current Delivery State — 2026-07-28
+
+Phase 1 Foundation 已开发并由独立 reviewer 接受：taxonomy、source contracts、collection runs、canonicalization、immutable publication、coverage readiness 与 legacy backfill 均已完成。Draft PR 为 [#3](https://github.com/agentjoey/tradelinks/pull/3)。
+
+Foundation 尚未部署；Public Intelligence 与 Private Relevance 尚未切换。现有 Wire/Radar/Daily 公开体验继续服务线上流量，直到后续公开产品计划通过迁移、SEO、性能和连续 7 天稳定性门禁。
 
 ## Design Principles
 
-- Evidence before action: immutable version history and `PRIMARY_OFFICIAL` evidence sit adjacent to the publication control so the basis and the consequences are visible at the moment of decision.
-- Persisted or unavailable, never invented: only persisted `classificationConfidence` and `rejectionReason` render; older null values show as clearly unavailable, never as a synthesized score or reason.
-- One invariant-checked path: publication, correction, rejection, and template review each have exactly one control with explicit requirements and consequences.
-- Familiar product vocabulary: reuse the existing TradeLinks tokens and admin primitives; state feedback only, CSS-first motion with a `prefers-reduced-motion` fallback.
-- Reference qualities: GitHub Review's inspectable diffs and history, Stripe Dashboard's risk/action clarity, Linear's focused information density.
-
-## Accessibility & Inclusion
-
-WCAG AA as the floor: keyboard-operable review controls with visible focus, authenticated access reveals no review data to unauthenticated or unauthorized visitors, all motion limited to state feedback with a `prefers-reduced-motion` fallback, and both existing themes supported across mobile, intermediate, and desktop widths.
+- **Evidence before action**：证据、readiness、已知缺口和后果在行动控制附近可见。
+- **Public facts, private relevance**：公开事实可搜索、可引用；登录只用于相关性与分发，不把基础事实锁进付费墙。
+- **Persisted or unavailable, never invented**：只显示已持久化字段；旧数据缺失时明确显示 unavailable。
+- **Forward-only correction**：发布历史不可改写；纠错创建新版本并保留旧版本。
+- **Quiet intelligence desk**：高密度、克制、精确，不使用娱乐化 feed 或装饰性 AI 视觉。
+- **Accessible by default**：WCAG AA、键盘可操作、明确焦点、reduced-motion、暗色与亮色主题、响应式布局。

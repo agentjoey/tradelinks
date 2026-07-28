@@ -383,7 +383,7 @@ PACT_AGENT_ID=codex pactify plan \
 pactify plan apply phase1-public-intelligence
 ```
 
-Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 4.8 reviews. The T3 UI implementation owner cannot review or verify Tasks 2–5; use a clean worktree and a fresh Claude Code session for independent review and browser verification. Task 9 depends on all preceding tasks plus a passing P0 report.
+Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 5 reviews, following the owner's 2026-07-28 reviewer-model decision. The T3 UI implementation owner cannot review or verify Tasks 2–5; use a clean worktree and a fresh Claude Code session for independent review and browser verification. Task 9 depends on all preceding tasks plus a passing P0 report.
 
 ### Task 1: Add Public Content Schema and One Canonical Read Model
 

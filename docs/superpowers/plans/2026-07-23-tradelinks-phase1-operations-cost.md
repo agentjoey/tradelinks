@@ -202,7 +202,7 @@ PACT_AGENT_ID=codex pactify plan \
 pactify plan apply phase1-operations
 ```
 
-Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 4.8 reviews in a fresh independent session. Set task dependencies so runtime Tasks 1–4 precede cloud Task 5, and Task 6 cannot start until seven real production days exist. The Kimi worker cannot accept its Pactify task or serve as its independent burn-in verifier.
+Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 5 reviews in a fresh independent session, following the owner's 2026-07-28 reviewer-model decision. Set task dependencies so runtime Tasks 1–4 precede cloud Task 5, and Task 6 cannot start until seven real production days exist. The Kimi worker cannot accept its Pactify task or serve as its independent burn-in verifier.
 
 ### Task 1: Implement Finite Dispatch, Locks, and Retry
 

@@ -1,6 +1,12 @@
 # TradeLinks — Deployment Guide
 
-> Last updated: 2026-07-21 v0.12.x | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
+> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation | Infra: ADR-003/004 (Neon + Railway + Vercel, no Redis)
+
+> **Foundation release boundary:** Draft PR #3 is not deployed. Migrations `0011` and
+> `0012` and the legacy backfill were validated only on an isolated Neon branch. Before
+> any staging or production rollout, create a fresh Neon backup/branch checkpoint,
+> apply migrations forward in staging, rerun the dry-run/rejection audit, and obtain a
+> separate deployment approval. Never use a down migration for rollback.
 
 ## Stack Overview
 
@@ -37,7 +43,7 @@ rather than being mixed into the generic "Preview" tier.
 
 ### 1. Production project (`tradelinks-mvp-production`)
 
-1. Create a new Vercel project and import `agentjoey/tradelinks-mvp`.
+1. Create a new Vercel project and import `agentjoey/tradelinks`.
 2. Settings → Git → **Production Branch** = `production`.
 3. Build command: `prisma generate && next build` (same as `vercel.json`).
 4. Environment Variables (Production scope only):
@@ -89,13 +95,14 @@ QWEN_API_KEY=...
 # Python scraper service
 SCRAPER_SERVICE_URL=http://scraper.railway.internal:8000
 
-# (Sprint 003+) Email / Push / Auth / Stripe
+# Email / Push / Auth
 RESEND_API_KEY=...
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
 SLACK_SIGNING_SECRET=...
-NEXTAUTH_SECRET=...
-STRIPE_SECRET_KEY=...
+NEON_AUTH_BASE_URL=...
+NEON_AUTH_COOKIE_SECRET=...
+ADMIN_EMAILS=editor@example.com
 
 # Safety switches — dev defaults OFF; staging/production defaults ON
 X_ENABLED=false
@@ -182,6 +189,6 @@ railway up                 # Node worker service
 - [ ] Vercel: configure Production Branches (`staging` / `production`) and env vars
 - [ ] GitHub: ensure `staging` and `production` branches exist
 - [ ] GitHub Action `.github/workflows/promote-main-to-staging.yml` enabled
-- [ ] `pnpm db:migrate:prod` against Neon production (runs 0001_init + 0002_trgm)
+- [ ] `pnpm db:migrate:prod` against Neon production only after reviewing the complete forward migration set and taking a fresh checkpoint
 - [ ] `pnpm worker:run-once --source=A02` → rows appear in Neon (Prisma Studio)
 - [ ] Start worker → pg-boss creates `pgboss` schema; logs "workers online"

@@ -462,7 +462,7 @@ PACT_AGENT_ID=codex pactify plan \
 pactify plan apply phase1-private-relevance
 ```
 
-Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 4.8 reviews. Security review and final verification use fresh Claude Code sessions with no implementation context; no task can be self-accepted. Task 8 depends on Tasks 1–7 and a fresh production-shaped migration branch.
+Codex 5.6 Sol orchestrates, Kimi Code K3 implements, and Claude Code Opus 5 reviews, following the owner's 2026-07-28 reviewer-model decision. Security review and final verification use fresh Claude Code sessions with no implementation context; no task can be self-accepted. Task 8 depends on Tasks 1–7 and a fresh production-shaped migration branch.
 
 ### Task 1: Add the Private Schema and Privacy Boundaries
 

@@ -1,50 +1,69 @@
-# TradeLinks MVP
+# TradeLinks
 
-全球跨境电商情报平台 — 预警 + 趋势预测。面向全球卖家、服务商、投研机构。
+TradeLinks 正在从“跨境电商信号/趋势站”翻新为面向卖家的美国市场开店与运营情报工具。
 
-> Sprint 001 (v0.2.0 目标): 数据摄取基础设施。详见 `.agent/CURRENT.md`。
+Phase 1 的产品结构是：
 
-## 文档
+- **Public Intelligence**：公开、可索引、证据可追溯的市场、平台、政策、合规与类目情报。
+- **Private Relevance**：由免费 Seller Profile 驱动的个性化 Briefing、Actions 与邮件体验。
+- **首发范围**：美国市场，Amazon US 与 Shopify US；首发六个商品大类以产品 spec 为准。
+
+当前仓库已完成 **Phase 1 Foundation**：来源契约、readiness、采集账本、规范化聚类、不可变版本、证据门禁、覆盖能力与 legacy backfill。公开页面和个性化产品尚未切换；线上仍运行原有 Wire/Radar/Daily 体验。
+
+## 当前交付状态
+
+- Pact feature `phase1-foundation`：8/8 tasks accepted。
+- Draft PR：[Phase 1 foundation: evidence-ready intelligence model](https://github.com/agentjoey/tradelinks/pull/3)。
+- 验证：Prisma schema、TypeScript、53 个测试文件 / 426 个测试、Next.js production build 全部通过。
+- 数据库验证仅发生在批准的非生产 Neon 隔离分支；没有生产数据库、云端配置或部署变更。
+- 下一阶段：Public Intelligence；P0 验收包含连续 7 天稳定运行。
+
+## 文档入口
 
 | 文档 | 内容 |
 |------|------|
-| [CLAUDE.md](CLAUDE.md) | 技术上下文、栈、dev 命令 |
-| [docs/architecture.md](docs/architecture.md) | 系统架构 |
-| [docs/specs/sources.md](docs/specs/sources.md) | 58 个信息源清单 |
-| [docs/specs/data-model.md](docs/specs/data-model.md) | 数据模型 SPEC |
-| [docs/specs/crawler-contract.md](docs/specs/crawler-contract.md) | 爬虫契约 SPEC |
-| [docs/specs/ai-pipeline.md](docs/specs/ai-pipeline.md) | AI 管道 SPEC |
-| [docs/specs/IMPL-PLAN-sprint-001.md](docs/specs/IMPL-PLAN-sprint-001.md) | Sprint 001 实施计划 |
+| [.agent/CURRENT.md](.agent/CURRENT.md) | 当前任务、发布与风险状态 |
+| [PRODUCT.md](PRODUCT.md) | 产品用户、承诺与 Phase 1 边界 |
+| [CLAUDE.md](CLAUDE.md) | 技术上下文、环境与开发命令 |
+| [docs/architecture.md](docs/architecture.md) | 当前系统与 Phase 1 Foundation 架构 |
+| [Phase 1 product spec](docs/superpowers/specs/2026-07-23-tradelinks-phase-1-product-structure-design.md) | 产品结构与范围 |
+| [Foundation plan](docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md) | 已完成的 Foundation 实施计划 |
+| [Foundation verification](docs/superpowers/verification/2026-07-28-tradelinks-phase1-foundation-verification.md) | 验收证据与安全边界 |
+| [Public Intelligence plan](docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md) | 下一阶段公开产品计划 |
+| [Private Relevance plan](docs/superpowers/plans/2026-07-23-tradelinks-phase1-private-relevance.md) | 后续个性化产品计划 |
+| [Operations & Cost plan](docs/superpowers/plans/2026-07-23-tradelinks-phase1-operations-cost.md) | 成本、调度与 7 天稳定性计划 |
 
 ## Quickstart
 
 ```bash
 pnpm install
-cp .env.example .env          # 填入 Neon DATABASE_URL+DIRECT_URL / API keys
-pnpm db:gen                   # 生成 Prisma Client（无需 DB）
-pnpm db:validate              # 校验 schema
-pnpm test                     # 单元测试（adapters / blocked / AI stage1，无需 DB）
-
-# 本地调试单个 RSS 源（dry-run，无需 DB/Redis）
-pnpm worker:run-once --source=A02
-
-# 迁移到 Neon dev 分支（用 DIRECT_URL）
-pnpm db:migrate
-
-# 启动 worker（需要 Neon 连接串；队列用 pg-boss，无需 Redis）
-pnpm worker
+cp .env.example .env          # 默认指向 Neon dev；不要复用生产连接串
+pnpm db:gen
+pnpm db:validate
+pnpm lint
+pnpm test
+pnpm build
 ```
 
-> 基础设施：Neon(PG + pg-boss 队列) + Railway(workers) + Vercel(前端)，无 Redis，见 ADR-003/004 / docs/deployment.md。
-> 本地无需安装 Postgres——连 Neon dev 分支即可。
+部分 Foundation 测试使用 PostgreSQL。运行数据库测试前必须确认 `DATABASE_URL` / `DIRECT_URL` 指向获批的非生产 Neon 分支；backfill apply 还会在代码内校验批准的隔离 endpoint。
 
-## 架构速览（ADR-002 混合爬虫）
+常用开发命令：
 
-- **Node/TS worker**: RSS + fetch 源（~50%），blocked-detection 检测 bot-wall
-- **Python Scrapling 服务**（`scraper-py/`, T6）: 反爬源 + Google Trends
-- **AI 管道**: DeepSeek V3.2（粗筛/翻译）→ DeepSeek V4 Pro（打分，Sprint 002）
-- **存储**: PostgreSQL 16 + pg_trgm
+```bash
+pnpm dev                      # Next.js App Router
+pnpm worker                   # 本地按需启动 pg-boss worker
+pnpm worker:run-once --source=A02
+pnpm db:migrate:dev           # 仅 Neon dev
+pnpm patrol                   # 日常信号源与内容巡检
+```
 
-## 当前状态
+## 技术栈
 
-见 [`.agent/CURRENT.md`](.agent/CURRENT.md)。
+- Next.js 14 App Router + TypeScript + Tailwind CSS
+- Prisma + PostgreSQL 16 on Neon
+- pg-boss 队列；Railway 运行 Node worker 与 Python Scrapling 服务
+- Vercel 提供前端、Route Handlers、RSS 与受保护的 admin surfaces
+- Neon Auth / Better Auth + Google OAuth 管理 admin 身份
+- Resend、Telegram 与 Slack 复用为现有分发能力
+
+基础设施目标保持 Neon + Railway + Vercel、无 Redis；Phase 1 免费验证期核心 infra 预算约 `$25–50/月`。

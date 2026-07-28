@@ -1,10 +1,22 @@
 # TradeLinks — System Architecture
 
-> Last updated: 2026-06-05 v0.7.0
+> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation (Draft PR #3, not deployed)
 
 ## Overview
 
-TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管道系统，加上 Web 前端和多渠道推送。
+TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**的 legacy 管道；Phase 1 Foundation 在同一 schema 中以 additive、forward-only 方式加入来源契约、采集账本、规范化情报、结构化证据、不可变版本与 coverage readiness。Public Intelligence 和 Private Relevance 尚未切换读写路径。
+
+## Implementation Status
+
+| Layer | Repository state | Production state |
+|-------|------------------|------------------|
+| Legacy Wire / Radar / Daily | Preserved for current traffic | Live |
+| Phase 1 Foundation | Complete; 8/8 Pact tasks accepted; Draft PR #3 | Not deployed |
+| Public Intelligence | Detailed plan only | Not started |
+| Private Relevance | Detailed plan only | Not started |
+| Operations / cost cutover | Detailed plan only | Not started |
+
+Foundation validation uses the approved non-production Neon branch only. Migrations `0011` and `0012`, legacy backfill apply/replay, 426 tests, and the production build passed there; production data and cloud configuration were not changed.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -47,7 +59,7 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 └────────────────────────┬────────────────────────────────────────┘
                          │ processed items / alerts / trends
 ┌────────────────────────▼────────────────────────────────────────┐
-│  STORAGE LAYER (PostgreSQL 16 on Railway)                       │
+│  STORAGE LAYER (PostgreSQL 16 on Neon)                          │
 │                                                                 │
 │  sources          — source registry (25 active / 16 disabled)   │
 │  items            — all ingested items (trigram GIN; url canon.) │
@@ -55,6 +67,11 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 │  trend_snapshots  — time-series: region × category × date rank  │
 │  trend_signals    — cross-region diffusion signals              │
 │  source_health_snapshots — daily per-source health (monitoring) │
+│  pipeline_runs/source_checks — explicit run + per-source outcome │
+│  EvidenceCluster/Member — deterministic evidence grouping       │
+│  CanonicalChange/Version — immutable canonical intelligence     │
+│  EvidenceRecord — role/authority/access/review provenance       │
+│  CoverageCapability/CapabilitySource — truthful promise ceiling │
 │  users            — auth + subscription tiers                   │
 │  keyword_watches  — user-defined keyword monitors               │
 └────────────────────────┬────────────────────────────────────────┘
@@ -65,8 +82,8 @@ TradeLinks 是一个**数据摄取 → AI 处理 → 精选分发**的 3 层管�
 │  Website (Vercel / Next.js)                                     │
 │    /          — Wire: alert timeline (region/category filter)   │
 │    /trends    — Radar: Bestsellers board + diffusion signals    │
-│    /admin/review  — editor review queue (≥ threshold alerts)    │
-│    /admin/sources — source-health dashboard (monitoring)        │
+│    /admin/review  — canonical version/evidence review desk      │
+│    /admin/sources — source health + coverage readiness          │
 │    /api/public/* — REST API                                     │
 │                                                                 │
 │  Push (urgencyScore ≥ 4 → immediate)                            │
@@ -184,7 +201,7 @@ reachability(40) + cadence(20) + productivity(20) + quality(20), mapped to a tie
 **canonicalizes Amazon `/dp/<ASIN>`** (any TLD) — the per-crawl `/ref=…/<session-id>`
 suffix otherwise defeats dedup and re-stores the same products every crawl.
 
-## Phase 1 Intelligence Foundation (additive, 2026-07-23)
+## Phase 1 Intelligence Foundation (accepted, additive, not deployed)
 
 Migration `0011_phase1_intelligence_foundation` adds the forward-only canonical
 content chain alongside the legacy tables above (nothing dropped or renamed).
@@ -211,6 +228,14 @@ SourceCheck and PipelineRun record checks independently from new-item volume.
 - `CoverageCapability`/`CapabilitySource` record what TradeLinks can truthfully
   promise per market/platform/category, and which sources back each promise.
 
+Implementation also includes:
+
+- `PipelineRun` and `SourceCheck`, which distinguish successful-empty checks from failures and make replay/idempotency explicit.
+- typed market/platform/stage/signal/category/risk/policy dimensions rather than overloading the legacy `Category` enum.
+- deterministic clustering and classification with manual-review thresholds and gold fixtures.
+- a conservative legacy backfill: generated versions are `EXPERIMENTAL`, `IN_REVIEW`, non-current, and all inherited evidence is `SECONDARY_CONTEXT`.
+- `CoverageCapability` seeding and one-way degradation to `STALE`; source recovery never silently promotes a capability without human review.
+
 Migration `0012_phase1_publication_review_fields` (task 6, additive and
 forward-only — `0011` is never edited or replayed) adds two nullable review
 facts to `CanonicalChangeVersion` that `0011` could not represent:
@@ -236,3 +261,5 @@ branch's current mutable head, which has since received migrations and test
 writes. Investigation restores create a **new branch** from that historical
 point (or from the untouched production parent as appropriate); never overwrite
 production in place.
+
+**Accepted verification snapshot (2026-07-28).** Repeated backfill dry-runs produced fingerprint `7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332`, all five pending-write counters were zero after apply/replay, and 18 legacy Alerts were explicitly rejected as `SOURCE_NOT_FOUND`. The integrated gate passed Prisma validation, TypeScript, 53 test files / 426 tests, and the Next.js production build. See `docs/superpowers/verification/2026-07-28-tradelinks-phase1-foundation-verification.md`.

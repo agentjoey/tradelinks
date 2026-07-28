@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Execution status — completed 2026-07-28.** Pact feature `phase1-foundation`
+> finished with 8/8 tasks accepted by independent Claude Opus 5 review. Draft PR:
+> [#3](https://github.com/agentjoey/tradelinks/pull/3). The checkboxes below are the
+> original planning artifact; `.pact/STATE.yml` and the verification record are the
+> authoritative execution ledger. Foundation is not deployed, and the Public
+> Intelligence cutover has not started.
+
 **Goal:** Replace the Wire/Radar/Daily content core with a versioned, evidence-first US market intelligence foundation whose taxonomy, source readiness, canonical changes, and review gates can support every later public and private surface.
 
 **Architecture:** Keep the existing adapters, source observations, Prisma client, dedup utilities, queue retry knowledge, and review UI patterns, but introduce explicit domain contracts around them. `Source` and immutable `SourceItem` records feed `EvidenceCluster`, versioned `CanonicalChange`, structured `EvidenceRecord`, and `CoverageCapability`; only reviewed versions cross readiness gates. The first migration is additive and forward-only, while a later public cutover migration retires obsolete Alert/Cluster/Daily structures after their replacements are live.
@@ -101,7 +108,7 @@ PACT_AGENT_ID=codex pactify plan \
 pactify plan apply phase1-foundation
 ```
 
-Codex 5.6 Sol is the orchestrator/planner, Kimi Code K3 owns every implementation task, and Claude Code Opus 4.8 independently reviews every task. Every acting seat uses a separate worktree, the worker cannot self-accept, and a new reviewer session is used for each task. The feature cannot be accepted until `pnpm db:validate && pnpm lint && pnpm test && pnpm build` passes on the integrated branch.
+Codex 5.6 Sol was the orchestrator/planner. Kimi Code was the designated worker (later set to K2.7), and Claude Code Opus 5 independently reviewed every task. Kimi's provider returned HTTP 403 quota exhaustion during the final Task 8 rework, so a fresh Codex 5.6 Sol fallback worker made only the bounded test-concurrency correction; that attribution is preserved in the Pact evidence. Workers never self-accepted. The feature was accepted only after `pnpm db:validate && pnpm lint && pnpm test && pnpm build` passed on the integrated branch.
 
 ## File Map
 

@@ -4,6 +4,26 @@ All notable changes to TradeLinks. Format loosely follows [Keep a Changelog];
 versioning is [SemVer]. `package.json` is the canonical version; each release is
 git-tagged `vX.Y.Z` via `./scripts/release.sh`.
 
+## [Unreleased] — Phase 1 Foundation
+
+### Added
+
+- Typed Phase 1 intelligence taxonomy for the United States, Amazon, Shopify, operating stages, signal types, product categories, risk attributes, and policy topics.
+- Source contracts with authority, readiness, freshness SLA, fetch/degradation behavior, user-promise boundaries, offline parser fixtures, and structured fetch outcomes.
+- Idempotent `PipelineRun` / `SourceCheck` accounting that distinguishes successful-empty checks from failures and preserves source freshness semantics.
+- Deterministic evidence clustering and canonical classification with gold merge/separate fixtures and explicit manual-review thresholds.
+- Forward-only migrations `0011_phase1_intelligence_foundation` and `0012_phase1_publication_review_fields` for evidence clusters, immutable canonical versions, evidence provenance, capability coverage, classification confidence, and rejection reasons.
+- Evidence-gated canonical publication, rejection, action-template review, and forward-only correction flows in the authenticated admin desk.
+- Coverage capability seeding, automatic stale degradation, known-gap visibility, and source/capability monitoring on `/admin/sources`.
+- Deterministic legacy Alert backfill with dry-run fingerprinting, exact approved-endpoint enforcement, explicit rejection accounting, bounded bulk writes, and idempotent replay.
+
+### Verification and release boundary
+
+- All eight Pact tasks were independently accepted by Claude Opus 5.
+- Integrated gate passed Prisma validation, TypeScript, 53 test files / 426 tests, and the Next.js production build.
+- Database migrations and backfill were validated only on the approved non-production Neon branch; no production database, deployment, cloud configuration, or public-route cutover is part of this change.
+- Draft PR: [#3](https://github.com/agentjoey/tradelinks/pull/3). Public Intelligence and Private Relevance remain subsequent delivery phases.
+
 ## [0.12.0] — 2026-06-08
 
 ### Added
