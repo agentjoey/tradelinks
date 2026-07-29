@@ -28,17 +28,19 @@ export { evaluateCostGuardrail } from "../monitoring/cost.js";
  * Consumed by collect-batch.ts to decide suppression.
  * PipelineRun metadata is the ONLY source of truth — no process-local cache.
  */
-export async function readLatestCostDecision(): Promise<CostDecision | null> {
-  const { prisma: db } = await import("../db/client.js");
+export async function readLatestCostDecision(
+  _prisma?: { pipelineRun: { findFirst: (args: any) => Promise<{ metadata: unknown } | null> } },
+): Promise<CostDecision | null> {
+  const db = _prisma ?? (await import("../db/client.js")).prisma;
   const run = await db.pipelineRun.findFirst({
     where: { jobType: "HEALTH", scopeKey: "cost-report", finishedAt: { not: null } },
     orderBy: { finishedAt: "desc" },
     select: { metadata: true },
-  });
+  }) as { metadata: unknown } | null;
   if (!run?.metadata) return null;
   const meta = run.metadata as {
     level?: string; suppress?: string[]; projectedTotalUsd?: number;
-    message?: string; breakdown?: Record<string, number>;
+    message?: string;
   } | null;
   if (!meta?.level) return null;
   return {
@@ -53,8 +55,10 @@ export async function readLatestCostDecision(): Promise<CostDecision | null> {
  * Durable reader for Task 5: returns true when model enrichment is
  * suppressed by the latest HARD_CAP decision.
  */
-export async function readModelEnrichmentSuppressed(): Promise<boolean> {
-  const d = await readLatestCostDecision();
+export async function readModelEnrichmentSuppressed(
+  _prisma?: { pipelineRun: { findFirst: (args: any) => Promise<{ metadata: unknown } | null> } },
+): Promise<boolean> {
+  const d = await readLatestCostDecision(_prisma as any);
   return d != null && d.suppress.includes("model-enrichment");
 }
 

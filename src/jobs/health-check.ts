@@ -261,8 +261,14 @@ export async function detectFailures(
   // ---- 4. BRIEFING_ABSENT ----
   const briefingStatus = await deps.getBriefingStatus(now);
   if (briefingStatus.absent) {
-    detections.push({ code: "BRIEFING_ABSENT", subjectId: "weekly" });
-    const key = { code: "BRIEFING_ABSENT", subjectId: "weekly", bucket };
+    // Use Monday date as subjectId (consistent with briefing-batch)
+    const mondayOfWeek = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(),
+      now.getUTCDate() - ((now.getUTCDay() + 6) % 7),
+    ));
+    const subjectId = mondayOfWeek.toISOString().slice(0, 10);
+    detections.push({ code: "BRIEFING_ABSENT", subjectId });
+    const key = { code: "BRIEFING_ABSENT", subjectId, bucket };
     if (!(await loadOperationalAlert(key))) {
       await deps.recordOperationalAlert(key);
     }

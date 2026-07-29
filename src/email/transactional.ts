@@ -88,9 +88,26 @@ export function createDeliveryAdapter(opts?: {
       });
       if (existing?.finishedAt != null) return; // already sent, skip
 
-      const result = await send(
-        buildOpsAlertText(key.code, key.subjectId),
-      );
+      let result: "sent" | "skipped" | "failed";
+      try {
+        result = await send(
+          buildOpsAlertText(key.code, key.subjectId),
+        );
+      } catch (err) {
+        // Telegram outage must not abort the health job.
+        // Row stays unfinished → retryable on next run.
+        console.error("[delivery-adapter] sendOpsAlert threw:", err);
+        if (!existing) {
+          await db.pipelineRun.create({
+            data: {
+              jobType: "HEALTH", scopeKey, scheduledFor,
+              status: "FAILED", itemCount: 0,
+              runnerVersion: "delivery-adapter",
+            },
+          }).catch(() => { /* race on concurrent delivery ok */ });
+        }
+        return;
+      }
 
       if (existing) {
         // Row exists but unfinished (previous skipped/failed) — update it

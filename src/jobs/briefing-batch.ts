@@ -24,22 +24,8 @@ import { registerJob } from "./registry.js";
 const MAX_VERSIONS = 1000;
 const QUALIFIED_READINESS = ["MONITORED", "VERIFIED"] as const;
 
-// ---- operational alert injection ----
-
-export interface OperationalAlertStore {
-  record(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
-  load(key: { code: string; subjectId: string; bucket: string }): Promise<boolean>;
-}
-
-let alertStore: OperationalAlertStore | null = null;
-
-export function setOperationalAlertStore(s: OperationalAlertStore): void {
-  alertStore = s;
-}
-
-export async function loadOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<boolean> {
-  return alertStore?.load(key) ?? false;
-}
+// ---- operational alert injection (tests inject via deps) ----
+// The production path (REAL_DEPS) uses createDeliveryAdapter directly.
 
 // ---- briefing deps ----
 

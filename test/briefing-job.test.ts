@@ -11,9 +11,7 @@ import { createHash } from "node:crypto";
 import type { JobArgs } from "../src/jobs/types.js";
 import {
   createBriefingBatch,
-  setOperationalAlertStore,
   type BriefingBatchDeps,
-  type OperationalAlertStore,
 } from "../src/jobs/briefing-batch.js";
 
 function baseArgs(overrides?: Partial<JobArgs>): JobArgs {
@@ -40,19 +38,13 @@ function sundayArgs(): JobArgs {
   return baseArgs({ scheduledFor: new Date("2026-08-02T08:00:00Z") });
 }
 
-class InMemoryAlertStore implements OperationalAlertStore {
+class AlertLedger {
   readonly alerts = new Map<string, boolean>();
   readonly recordCounts = new Map<string, number>();
-  private toKey(k: { code: string; subjectId: string; bucket: string }): string {
-    return `${k.code}:${k.subjectId}:${k.bucket}`;
-  }
-  async record(key: { code: string; subjectId: string; bucket: string }) {
-    const sk = this.toKey(key);
+  record(key: { code: string; subjectId: string; bucket: string }) {
+    const sk = `${key.code}:${key.subjectId}:${key.bucket}`;
     this.alerts.set(sk, true);
     this.recordCounts.set(sk, (this.recordCounts.get(sk) ?? 0) + 1);
-  }
-  async load(key: { code: string; subjectId: string; bucket: string }) {
-    return this.alerts.has(this.toKey(key));
   }
   hasByCode(code: string): boolean {
     for (const k of this.alerts.keys()) {
@@ -70,8 +62,7 @@ class InMemoryAlertStore implements OperationalAlertStore {
 }
 
 function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
-  const alertStore = new InMemoryAlertStore();
-  setOperationalAlertStore(alertStore);
+  const alertStore = new AlertLedger();
 
   let nextRunId = 1;
   const runStore = new Map<

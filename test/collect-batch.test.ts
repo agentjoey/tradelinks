@@ -519,23 +519,82 @@ describe("collectBatch — cost suppression", () => {
   });
 
   it("shouldSkipAtHardCap skips EXPERIMENTAL when reader returns HARD_CAP with experimental-demand suppressed", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const { shouldSkipAtHardCap, clearSuppressionCache } = await import("../src/jobs/collect-batch.js");
+    clearSuppressionCache();
     const source = testSourceContract("exp-skip-test", { readiness: "EXPERIMENTAL" });
-    const reader = async () => ({ level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] });
-    expect(await shouldSkipAtHardCap(source, reader)).toBe(true);
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(true);
   });
 
   it("shouldSkipAtHardCap does NOT skip MONITORED even at HARD_CAP", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const { shouldSkipAtHardCap, clearSuppressionCache } = await import("../src/jobs/collect-batch.js");
+    clearSuppressionCache();
     const source = testSourceContract("mon-skip-test", { readiness: "MONITORED" });
-    const reader = async () => ({ level: "HARD_CAP", suppress: ["experimental-demand"] });
-    expect(await shouldSkipAtHardCap(source, reader)).toBe(false);
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(false);
   });
 
   it("shouldSkipAtHardCap does NOT skip when level is not HARD_CAP", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const { shouldSkipAtHardCap, clearSuppressionCache } = await import("../src/jobs/collect-batch.js");
+    clearSuppressionCache();
     const source = testSourceContract("exp-review-test", { readiness: "EXPERIMENTAL" });
-    const reader = async () => ({ level: "REVIEW", suppress: [] });
-    expect(await shouldSkipAtHardCap(source, reader)).toBe(false);
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "REVIEW", suppress: [], projectedTotalUsd: 42, message: "" },
+        }),
+      },
+    };
+    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(false);
+  });
+});
+
+// ============================ BLOCKER 1: readModelEnrichmentSuppressed ====
+
+describe("readModelEnrichmentSuppressed", () => {
+  it("returns true when HARD_CAP suppresses model-enrichment", async () => {
+    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(true);
+  });
+
+  it("returns false when model-enrichment is not suppressed", async () => {
+    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(false);
+  });
+
+  it("returns false when no decision exists", async () => {
+    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => null,
+      },
+    };
+    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(false);
   });
 });

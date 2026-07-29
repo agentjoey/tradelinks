@@ -220,6 +220,26 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
     await call(baseArgs({ scheduledFor: now }));
     expect(store.has({ code: "CONTENT_COLLAPSE", subjectId: "B01", bucket })).toBe(false);
   });
+
+  it("does NOT fire when fewer than 4 previous successful checks exist", async () => {
+    const now = new Date("2026-07-30T12:00:00Z");
+    const bucket = dateHour(now);
+    // Only 2 previous successful checks — baseline.length < 4
+    const checks: FakeSourceCheck[] = [
+      { sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo(12) },
+      { sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo(18) },
+    ];
+    // Current empty
+    checks.unshift({ sourceId: "B01", status: "SUCCEEDED_EMPTY", itemCount: 0, checkedAt: hoursAgo(1) });
+    const { call, store } = await makeHandler({
+      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
+      getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(1) } }),
+      getSourceChecks: async () => checks,
+      now: () => now,
+    });
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.has({ code: "CONTENT_COLLAPSE", subjectId: "B01", bucket })).toBe(false);
+  });
 });
 
 // ============================ BRIEFING_ABSENT ===========================
@@ -228,7 +248,7 @@ describe("healthCheck — BRIEFING_ABSENT", () => {
   it("emits BRIEFING_ABSENT on Monday when no briefing was produced", async () => {
     const now = new Date("2026-07-27T08:00:00Z"); // Monday UTC
     const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "BRIEFING_ABSENT", subjectId: "weekly", bucket };
+    const key: AlertDeliveryKey = { code: "BRIEFING_ABSENT", subjectId: "2026-07-27", bucket };
     const { call, store } = await makeHandler({
       getBriefingStatus: async () => ({ absent: true }),
       now: () => now,
@@ -245,7 +265,7 @@ describe("healthCheck — BRIEFING_ABSENT", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "BRIEFING_ABSENT", subjectId: "weekly", bucket })).toBe(false);
+    expect(store.has({ code: "BRIEFING_ABSENT", subjectId: "2026-07-27", bucket })).toBe(false);
   });
 });
 
@@ -446,5 +466,41 @@ describe("delivery adapter — finishedAt only on 'sent'", () => {
 
     findResult = null;
     expect(await adapter.load(key)).toBe(false);
+  });
+
+  it("leaves row unfinished when sendOpsAlert throws (create path)", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const createdRows: any[] = [];
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => null,
+          create: async (args: any) => { createdRows.push(args.data); return { id: "r-throw" }; },
+          update: async () => {},
+        },
+      },
+      sendOpsAlert: async () => { throw new Error("Telegram down"); },
+    });
+    await adapter.record(key);
+    expect(createdRows).toHaveLength(1);
+    expect(createdRows[0].finishedAt).toBeUndefined();
+    expect(createdRows[0].status).toBe("FAILED");
+  });
+
+  it("leaves row unfinished when sendOpsAlert throws (existing-unfinished path)", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    let updateCalled = false;
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => ({ id: "r-unfinished", finishedAt: null }),
+          create: async () => { throw new Error("should not create"); },
+          update: async () => { updateCalled = true; },
+        },
+      },
+      sendOpsAlert: async () => { throw new Error("Telegram down"); },
+    });
+    await adapter.record(key);
+    expect(updateCalled).toBe(false); // update only on "sent", throw skips send
   });
 });
