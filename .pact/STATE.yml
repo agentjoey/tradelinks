@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: REWORK v6 — all 3 round-6 blockers + NBs resolved. BLOCKER 1: deleted _cachedDecision/clearSuppressionCache from collect-batch.ts — no process-local suppression state. BLOCKER 2: BRIEFING_ABSENT subjectId unified to PREVIOUS Monday in both health-check and briefing-batch; briefing-job.test.ts uses exact key assertions (hasExact/countExact, not prefix matching). BLOCKER 3: task-4-report.md updated through round 6 with all commits, RED/GREEN evidence, files, concerns section. NB2: deleted alertStore/setOperationalAlertStore/loadOperationalAlert seam from health-check.ts; detectFailures calls deps.recordOperationalAlert directly; adapter handles dedup internally. NB3: removed stale loadOperationalAlert/setOperationalAlertStore from briefing-batch header. NB4: added .catch() on create path in delivery adapter non-throw branch for P2002 race. NB1/NB5/NB6 recorded as concerns in report. GATES: pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts test/collect-batch.test.ts test/briefing-job.test.ts -> 6 files / 115 tests passed. pnpm lint exit 0. Scope: 7 production files + 4 test files; no schema/migration/deployment/UI changes.
