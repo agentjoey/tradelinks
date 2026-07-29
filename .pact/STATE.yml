@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: RED (before impl): pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts -> 2 failed suites, 'Failed to load url ../src/jobs/health-check.js / cost-report.js ... Does the file exist?' (missing modules). GREEN (exact gate): pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts -> Test Files 4 passed (4), Tests 56 passed (56). pnpm lint (tsc --noEmit) exit 0. Regression: pnpm vitest run test/job-lock.test.ts test/job-retry.test.ts -> 2 passed, 36 passed. Scope: 6 spec-listed files (src/jobs/health-check.ts, src/jobs/cost-report.ts, src/monitoring/health.ts, src/email/transactional.ts, test/health-check.test.ts, test/cost-guardrail.test.ts) created/modified; no schema/migration/deployment/UI changes.
