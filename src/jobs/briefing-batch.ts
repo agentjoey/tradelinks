@@ -341,9 +341,18 @@ const REAL_DEPS: BriefingBatchDeps = {
     };
   },
   async recordOperationalAlert(key: string) {
-    if (alertStore) {
-      await alertStore.record(key);
-    }
+    const { createDeliveryAdapter } = await import("../email/transactional.js");
+    const adapter = createDeliveryAdapter();
+    // Parse the key into structured form for the delivery adapter.
+    // Key format from detectFailures: "${code}:${subjectId}:${bucket}"
+    const lastColon = key.lastIndexOf(":");
+    if (lastColon === -1) return;
+    const bucket = key.slice(lastColon + 1);
+    const prefix = key.slice(0, lastColon);
+    const firstColon = prefix.indexOf(":");
+    const code = firstColon === -1 ? prefix : prefix.slice(0, firstColon);
+    const subjectId = firstColon === -1 ? prefix : prefix.slice(firstColon + 1);
+    await adapter.record({ code, subjectId, bucket });
   },
 };
 

@@ -15,7 +15,7 @@ import {
   recomputeAllCapabilityReadiness,
 } from "../canonicalize/coverage.js";
 import type { ReadinessLevel } from "../domain/intelligence/taxonomy.js";
-export { evaluateOperationalHealth } from "../jobs/health-check.js";
+import type { HealthReport } from "../jobs/health-check.js";
 
 export type HealthTier = "healthy" | "degraded" | "unhealthy" | "silent" | "disabled";
 
@@ -288,4 +288,15 @@ export async function getCoverageOverview(now = new Date()): Promise<CoverageOve
   views.sort((a, b) => READINESS_RANK[a.readiness] - READINESS_RANK[b.readiness] || a.key.localeCompare(b.key));
 
   return { capabilities: views, bySource };
+}
+
+// ---- operational health (re-export without side effects) ----
+
+/**
+ * Evaluate operational health without triggering the job-registration
+ * side effects of a static import from health-check.ts.
+ */
+export async function evaluateOperationalHealth(now: Date): Promise<HealthReport> {
+  const { evaluateOperationalHealth: impl } = await import("../jobs/health-check.js");
+  return impl(now);
 }

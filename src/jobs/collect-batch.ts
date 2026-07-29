@@ -128,6 +128,23 @@ export interface CollectBatchDeps {
   getSources: (group: CollectionGroup) => SourceContract[];
   fetchSource: (source: SourceContract) => Promise<FetchOutcome>;
   ledger: BatchLedger;
+  /** Optional: return true to skip a source (e.g. EXPERIMENTAL at HARD_CAP). */
+  shouldSkip?: (source: SourceContract) => Promise<boolean>;
+}
+
+// ---- cost suppression reader (production, consumed by collect-batch) ----
+
+async function shouldSkipAtHardCap(source: SourceContract): Promise<boolean> {
+  try {
+    const { readLatestCostDecision } = await import("./cost-report.js");
+    const decision = await readLatestCostDecision();
+    if (decision?.level === "HARD_CAP" && decision.suppress.includes("experimental-demand")) {
+      return source.readiness === "EXPERIMENTAL";
+    }
+  } catch {
+    // cost-report not available — proceed without suppression
+  }
+  return false;
 }
 
 // ---- cron-to-group mapping ----
@@ -348,8 +365,20 @@ export function createCollectBatch(
       runnerVersion: args.runnerVersion,
     });
 
+    // Apply cost suppression: skip EXPERIMENTAL demand sources at HARD_CAP
+    let pendingSources: SourceContract[];
+    if (deps.shouldSkip) {
+      const skipFlags = await Promise.all(sources.map(async (s) => ({
+        source: s,
+        skip: await deps.shouldSkip!(s),
+      })));
+      pendingSources = skipFlags.filter((f) => !f.skip).map((f) => f.source);
+    } else {
+      pendingSources = sources;
+    }
+
     const skipIds = await deps.ledger.alreadySucceeded(runId);
-    const pendingSources = sources.filter((s) => !skipIds.has(s.id));
+    pendingSources = pendingSources.filter((s) => !skipIds.has(s.id));
 
     // Track in-invocation failures that never reached the ledger (BLOCKER 2 fix).
     let unreportedFailures = 0;
@@ -423,6 +452,7 @@ export const collectBatch = createCollectBatch({
   getSources: getSourcesForGroup,
   fetchSource: fetchSourceViaRegistry,
   ledger: DB_LEDGER,
+  shouldSkip: shouldSkipAtHardCap,
 });
 
 // ---- job registration ----

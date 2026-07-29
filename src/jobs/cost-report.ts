@@ -5,110 +5,76 @@
  *   evaluateCostGuardrail(input) → CostDecision   (pure, credential-free)
  *   createCostReport(deps) → (args) => Promise<JobResult>
  *   costReport(args) — production, exactly 1 parameter
- *   setSuppressedJobs / getSuppressedJobs — dispatcher consumption
+ *   readLatestCostDecision / readModelEnrichmentSuppressed — durable readers
  *
- * Thresholds (spec says "above $40" and "above $50"):
+ * Thresholds (spec: "above $40" → REVIEW, "above $50" → HARD_CAP):
  *   ≤ $40  NORMAL     — no suppression
  *   > $40  REVIEW     — operator review needed
- *   > $50  HARD_CAP   — suppress experimental-demand, model-enrichment;
- *                        official collection is never suppressed.
+ *   > $50  HARD_CAP   — suppress experimental-demand, model-enrichment
  */
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
+import type { CostDecision } from "../monitoring/cost.js";
 import { registerJob } from "./registry.js";
+import { dateHourBucket } from "../monitoring/cost.js";
 
-export type CostLevel = "NORMAL" | "REVIEW" | "HARD_CAP";
+export { evaluateCostGuardrail } from "../monitoring/cost.js";
 
-export interface CostInputs {
-  projectedTotalUsd: number;
+// ---- durable cost decision readers (consumed by collect-batch, model jobs) ----
+
+let latestCostDecision: CostDecision | null = null;
+
+function persistDecision(d: CostDecision): void {
+  latestCostDecision = d;
 }
 
-export interface CostDecision {
-  level: CostLevel;
-  suppress: string[];
-  message: string;
+/**
+ * Read the latest accepted cost decision from the most recent completed
+ * cost-report PipelineRun. Returns null when no decision exists.
+ * Consumed by collect-batch.ts to decide suppression.
+ */
+export async function readLatestCostDecision(): Promise<CostDecision | null> {
+  const { prisma: db } = await import("../db/client.js");
+  const run = await db.pipelineRun.findFirst({
+    where: { jobType: "HEALTH", scopeKey: "cost-report", finishedAt: { not: null } },
+    orderBy: { finishedAt: "desc" },
+    select: { metadata: true },
+  });
+  if (!run?.metadata) return latestCostDecision;
+  const meta = run.metadata as { level?: string; suppress?: string[]; projectedTotalUsd?: number; message?: string } | null;
+  if (!meta?.level) return latestCostDecision;
+  return {
+    level: meta.level as CostDecision["level"],
+    suppress: meta.suppress ?? [],
+    message: meta.message ?? "",
+    projectedTotalUsd: meta.projectedTotalUsd ?? 0,
+    breakdown: {},
+  };
 }
 
-// ---- suppressed jobs (dispatcher consumption) ----
-
-let suppressedJobs: string[] = [];
-
-export function setSuppressedJobs(jobs: string[]): void {
-  suppressedJobs = jobs;
-}
-
-export function getSuppressedJobs(): readonly string[] {
-  return suppressedJobs;
+/**
+ * Durable reader for Task 5: returns true when model enrichment is
+ * suppressed by the latest HARD_CAP decision.
+ */
+export async function readModelEnrichmentSuppressed(): Promise<boolean> {
+  const d = await readLatestCostDecision();
+  return d != null && d.suppress.includes("model-enrichment");
 }
 
 // ---- cost report deps ----
 
 export interface CostReportDeps {
-  beginRun(input: {
-    scopeKey: string;
-    scheduledFor: Date;
-    runnerVersion: string;
-  }): Promise<string>;
-  finishRun(
-    runId: string,
-    summary: {
-      status: string;
-      itemCount: number;
-      attempted: number;
-      succeeded: number;
-      failed: number;
-      metadata: unknown;
-      outputFingerprint: string;
-    },
-  ): Promise<void>;
+  beginRun(input: { scopeKey: string; scheduledFor: Date; runnerVersion: string }): Promise<string>;
+  finishRun(runId: string, summary: {
+    status: string; itemCount: number; attempted: number;
+    succeeded: number; failed: number; metadata: unknown; outputFingerprint: string;
+  }): Promise<void>;
   existingSummary?(runId: string): Promise<{
-    status: string;
-    itemCount: number;
-    attempted: number;
-    succeeded: number;
-    failed: number;
-    finished: boolean;
+    status: string; itemCount: number; attempted: number;
+    succeeded: number; failed: number; finished: boolean;
   } | null>;
-  getProjectedCost(): Promise<number>;
-  recordOperationalAlert(key: string): Promise<void>;
-}
-
-// ---- pure guardrail ----
-
-/**
- * Evaluate cost guardrail thresholds. Official-source collection is never
- * suppressed — only experimental demand and model enrichment are affected
- * at HARD_CAP. Boundary: "above $40" → REVIEW, "above $50" → HARD_CAP.
- */
-export function evaluateCostGuardrail(input: CostInputs): CostDecision {
-  const projected = input.projectedTotalUsd;
-
-  if (projected > 50) {
-    return {
-      level: "HARD_CAP",
-      suppress: ["experimental-demand", "model-enrichment"],
-      message:
-        `Projected monthly cost $${projected.toFixed(2)} exceeds hard cap. ` +
-        `Experimental demand and model enrichment suppressed. ` +
-        `Official collection and health checks remain enabled.`,
-    };
-  }
-
-  if (projected > 40) {
-    return {
-      level: "REVIEW",
-      suppress: [],
-      message:
-        `Projected monthly cost $${projected.toFixed(2)} requires review. ` +
-        `No jobs suppressed yet — operator should assess cost drivers.`,
-    };
-  }
-
-  return {
-    level: "NORMAL",
-    suppress: [],
-    message: `Projected monthly cost $${projected.toFixed(2)} is within budget.`,
-  };
+  getProjectedCost(): Promise<{ total: number; breakdown: Record<string, number> }>;
+  recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
 }
 
 // ---- factory ----
@@ -118,59 +84,44 @@ export function createCostReport(
 ): (args: JobArgs) => Promise<JobResult> {
   return async (args: JobArgs): Promise<JobResult> => {
     const scopeKey = "cost-report";
-    const runId = await deps.beginRun({
-      scopeKey,
-      scheduledFor: args.scheduledFor,
-      runnerVersion: args.runnerVersion,
-    });
+    const runId = await deps.beginRun({ scopeKey, scheduledFor: args.scheduledFor, runnerVersion: args.runnerVersion });
 
     if (deps.existingSummary) {
       const prior = await deps.existingSummary(runId);
       if (prior) {
         const priorStatus = prior.status as JobStatus;
-        return {
-          runId,
-          status: priorStatus,
-          attempted: prior.attempted,
-          succeeded: prior.succeeded,
-          failed: prior.failed,
-          itemCount: prior.itemCount,
-          exitCode: priorStatus === "BLOCKED" ? 2 : 0,
-        };
+        return { runId, status: priorStatus, attempted: prior.attempted, succeeded: prior.succeeded,
+                 failed: prior.failed, itemCount: prior.itemCount,
+                 exitCode: priorStatus === "BLOCKED" ? 2 : 0 };
       }
     }
 
-    const projectedTotalUsd = await deps.getProjectedCost();
+    const { total: projectedTotalUsd, breakdown } = await deps.getProjectedCost();
+    const { evaluateCostGuardrail } = await import("../monitoring/cost.js");
     const decision = evaluateCostGuardrail({ projectedTotalUsd });
 
     if (decision.level === "HARD_CAP") {
-      await deps.recordOperationalAlert("HARD_CAP");
+      const bucket = dateHourBucket(args.scheduledFor);
+      await deps.recordOperationalAlert({ code: "HARD_CAP", subjectId: "cost", bucket });
     }
+
+    persistDecision(decision);
 
     await deps.finishRun(runId, {
       status: "SUCCEEDED_ITEMS",
-      itemCount: 1,
-      attempted: 1,
-      succeeded: 1,
-      failed: 0,
+      itemCount: 1, attempted: 1, succeeded: 1, failed: 0,
       metadata: {
         level: decision.level,
         projectedTotalUsd,
+        breakdown,
         suppress: decision.suppress,
         message: decision.message,
       },
       outputFingerprint: String(projectedTotalUsd),
     });
 
-    return {
-      runId,
-      status: "SUCCEEDED_ITEMS" as const,
-      attempted: 1,
-      succeeded: 1,
-      failed: 0,
-      itemCount: 1,
-      exitCode: 0,
-    };
+    return { runId, status: "SUCCEEDED_ITEMS" as const,
+             attempted: 1, succeeded: 1, failed: 0, itemCount: 1, exitCode: 0 };
   };
 }
 
@@ -179,32 +130,18 @@ export function createCostReport(
 const REAL_DEPS: CostReportDeps = {
   async beginRun(input) {
     const { beginRun: br } = await import("../collection/run.js");
-    const run = await br({
-      jobType: "HEALTH",
-      scopeKey: input.scopeKey,
-      scheduledFor: input.scheduledFor,
-      runnerVersion: input.runnerVersion,
-    });
+    const run = await br({ jobType: "HEALTH", scopeKey: input.scopeKey, scheduledFor: input.scheduledFor, runnerVersion: input.runnerVersion });
     return run.id;
   },
   async finishRun(runId, summary) {
     const { prisma: db } = await import("../db/client.js");
-    const meta = summary.metadata as { level?: string; suppress?: string[] } | null;
-    if (meta?.level === "HARD_CAP" && meta.suppress) {
-      setSuppressedJobs([...meta.suppress]);
-    }
     await db.pipelineRun.update({
       where: { id: runId },
       data: {
         status: summary.status as import("@prisma/client").RunStatus,
         itemCount: summary.itemCount,
         outputFingerprint: summary.outputFingerprint || null,
-        metadata: {
-          ...((meta) as Record<string, unknown>),
-          attempted: summary.attempted,
-          succeeded: summary.succeeded,
-          failed: summary.failed,
-        },
+        metadata: { ...((summary.metadata) as Record<string, unknown>), attempted: summary.attempted, succeeded: summary.succeeded, failed: summary.failed },
         finishedAt: new Date(),
       },
     });
@@ -213,64 +150,29 @@ const REAL_DEPS: CostReportDeps = {
     const { prisma: db } = await import("../db/client.js");
     const run = await db.pipelineRun.findUnique({
       where: { id: runId },
-      select: {
-        finishedAt: true,
-        status: true,
-        itemCount: true,
-        metadata: true,
-      },
+      select: { finishedAt: true, status: true, itemCount: true, metadata: true },
     });
     if (!run || !run.finishedAt) return null;
-    const meta = run.metadata as {
-      attempted?: number;
-      succeeded?: number;
-      failed?: number;
-    } | null;
-    return {
-      status: run.status,
-      itemCount: run.itemCount,
-      attempted: meta?.attempted ?? 0,
-      succeeded: meta?.succeeded ?? 0,
-      failed: meta?.failed ?? 0,
-      finished: true,
-    };
+    const meta = run.metadata as { attempted?: number; succeeded?: number; failed?: number } | null;
+    return { status: run.status, itemCount: run.itemCount, attempted: meta?.attempted ?? 0, succeeded: meta?.succeeded ?? 0, failed: meta?.failed ?? 0, finished: true };
   },
   async getProjectedCost() {
-    try {
-      const { getProjectedCost: fetchCost } = await import("../monitoring/cost.js");
-      return await fetchCost();
-    } catch {
-      return 0;
-    }
+    const { getProjectedCost: fetchCost } = await import("../monitoring/cost.js");
+    return fetchCost();
   },
-  async recordOperationalAlert(key: string) {
-    try {
-      const { recordOpsAlert } = await import("../email/transactional.js");
-      await recordOpsAlert(key);
-    } catch {
-      // delivery failure non-fatal
-    }
+  async recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }) {
+    const { createDeliveryAdapter } = await import("../email/transactional.js");
+    const adapter = createDeliveryAdapter();
+    await adapter.record(key);
   },
 };
 
-/** Production one-parameter entry point — exactly the spec shape. */
 export const costReport = createCostReport(REAL_DEPS);
 
-// ---- job registration ----
-
 registerJob({
-  name: "cost-report",
-  maxAttempts: 1,
-  run: costReport,
-  dryRun: async (_args: JobArgs): Promise<JobResult> => {
-    return {
-      runId: crypto.randomUUID(),
-      status: "SUCCEEDED_EMPTY",
-      attempted: 0,
-      succeeded: 0,
-      failed: 0,
-      itemCount: 0,
-      exitCode: 0,
-    };
-  },
+  name: "cost-report", maxAttempts: 1, run: costReport,
+  dryRun: async (_args: JobArgs): Promise<JobResult> => ({
+    runId: crypto.randomUUID(),
+    status: "SUCCEEDED_EMPTY", attempted: 0, succeeded: 0, failed: 0, itemCount: 0, exitCode: 0,
+  }),
 });

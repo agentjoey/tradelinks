@@ -1,5 +1,5 @@
 // BL-043 — 事务邮件（确认 / 欢迎）。纯文本+极简 HTML。
-// Phase 1 — 运维告警 (Operational Alerts) 幂等投递桥接 Telegram。
+// Phase 1 — 运维告警 (Operational Alert) 投递桥梁 (Task 4 durable delivery pin).
 
 export interface BuiltEmail {
   subject: string;
@@ -23,33 +23,29 @@ export function welcomeEmail(unsubUrl: string): BuiltEmail {
   };
 }
 
-// ---- operational alert delivery ----
+// ---- operational alert delivery adapter ----
 
-/** Idempotent in-memory store for operational alerts within this process. */
-const sentOpsAlerts = new Set<string>();
-
-/**
- * Parse an operational alert key into its components.
- * Key format: ${code}:${subjectId}:${YYYY-MM-DDTHH}
- * SubjectId may contain colons (e.g. "market:us", "platform:shopify-us").
- * The date bucket at the end is always 13 chars (YYYY-MM-DDTHH).
- */
-function parseAlertKey(key: string): { code: string; subjectId: string; bucket: string } | null {
-  const bucketMatch = key.match(/(\d{4}-\d{2}-\d{2}T\d{2})$/);
-  if (!bucketMatch || !bucketMatch[1] || !bucketMatch.index) return null;
-  const bucket = bucketMatch[1];
-  const prefix = key.slice(0, bucketMatch.index - 1); // drop trailing ":"
-  const firstColon = prefix.indexOf(":");
-  if (firstColon === -1) return null;
-  const code = prefix.slice(0, firstColon);
-  const subjectId = prefix.slice(firstColon + 1);
-  return { code, subjectId, bucket };
+export interface AlertDeliveryKey {
+  code: string;
+  subjectId: string;
+  bucket: string; // YYYY-MM-DDTHH
 }
 
 /**
- * Build a human-readable alert text for a given failure class and subject.
- * The key is `${code}:${subjectId}:${YYYY-MM-DDTHH}`.
+ * Delivery adapter. `record` sends the alert to Telegram (via sendOpsAlert)
+ * and records the result in a PipelineRun ledger row. The row is finished
+ * ONLY when sendOpsAlert returns "sent"; "skipped"/"failed"/thrown errors
+ * leave the row retryable. `load` checks whether a finished delivery
+ * already exists for this key — used for delivery-level idempotency.
+ *
+ * Tests inject their own adapter via dependency injection.
  */
+export interface DeliveryAdapter {
+  record(key: AlertDeliveryKey): Promise<void>;
+  load(key: AlertDeliveryKey): Promise<boolean>;
+}
+
+/** Build a human-readable alert text for a given failure class and subject. */
 export function buildOpsAlertText(code: string, subjectId: string): string {
   const labels: Record<string, string> = {
     GLOBAL_GAP: "[Global Gap]",
@@ -63,29 +59,78 @@ export function buildOpsAlertText(code: string, subjectId: string): string {
 }
 
 /**
- * Record an operational alert key and deliver via Telegram if it is new.
- * The key format is `${code}:${subjectId}:${YYYY-MM-DDTHH}` — this ensures at most
- * one delivery per UTC date-hour window.
- *
- * Returns `true` if the alert was newly recorded and sent; `false` if it was
- * already seen (idempotent suppression).
+ * Production delivery adapter backed by PipelineRun rows.
+ * Each alert key is stored as a PipelineRun with jobType="HEALTH",
+ * scopeKey="${code}:${subjectId}:${bucket}", scheduledFor set to the bucket
+ * date. The row is upserted on record; finishedAt is only set when
+ * sendOpsAlert returns "sent".
  */
-export async function recordOpsAlert(key: string): Promise<boolean> {
-  if (sentOpsAlerts.has(key)) return false;
-  sentOpsAlerts.add(key);
+export function createDeliveryAdapter(): DeliveryAdapter {
+  return {
+    async record(key: AlertDeliveryKey) {
+      const { prisma: db } = await import("../db/client.js");
+      const { sendOpsAlert } = await import("../push/send.js");
 
-  try {
-    const { sendOpsAlert } = await import("../push/send.js");
-    const parsed = parseAlertKey(key);
-    if (parsed) {
-      const text = buildOpsAlertText(parsed.code, parsed.subjectId);
-      await sendOpsAlert(text);
-    } else {
-      await sendOpsAlert(key);
-    }
-  } catch {
-    // delivery failure is non-fatal — the idempotency guard prevents re-sends
-  }
+      const scopeKey = `${key.code}:${key.subjectId}:${key.bucket}`;
+      const scheduledFor = bucketToDate(key.bucket);
 
-  return true;
+      // Use raw upsert (no beginRun — this is a delivery row, not a job run)
+      const row = await db.pipelineRun.upsert({
+        where: {
+          jobType_scopeKey_scheduledFor: {
+            jobType: "HEALTH",
+            scopeKey,
+            scheduledFor,
+          },
+        },
+        update: { startedAt: new Date() },
+        create: {
+          jobType: "HEALTH",
+          scopeKey,
+          scheduledFor,
+          status: "FAILED",
+          itemCount: 0,
+          runnerVersion: "delivery-adapter",
+        },
+      });
+
+      const result = await sendOpsAlert(
+        buildOpsAlertText(key.code, key.subjectId),
+      );
+
+      if (result === "sent") {
+        await db.pipelineRun.update({
+          where: { id: row.id },
+          data: {
+            status: "SUCCEEDED_EMPTY",
+            finishedAt: new Date(),
+          },
+        });
+      }
+      // On "skipped" or "failed": leave the row unfinished so the next
+      // health-check run retries delivery.
+    },
+
+    async load(key: AlertDeliveryKey) {
+      const { prisma: db } = await import("../db/client.js");
+      const scopeKey = `${key.code}:${key.subjectId}:${key.bucket}`;
+      const scheduledFor = bucketToDate(key.bucket);
+      const row = await db.pipelineRun.findUnique({
+        where: {
+          jobType_scopeKey_scheduledFor: {
+            jobType: "HEALTH",
+            scopeKey,
+            scheduledFor,
+          },
+        },
+        select: { finishedAt: true },
+      });
+      return row?.finishedAt != null;
+    },
+  };
+}
+
+function bucketToDate(bucket: string): Date {
+  // "2026-07-30T12" → new Date("2026-07-30T12:00:00Z")
+  return new Date(`${bucket}:00:00Z`);
 }

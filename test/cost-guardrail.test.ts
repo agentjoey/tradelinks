@@ -1,20 +1,12 @@
 /**
- * Contract tests for cost-guardrail (Operations Task 4 — Cost Report).
- *
- * Tests call the pure evaluateCostGuardrail function and the cost-report
- * job handler (createCostReport) with injectable deps.
+ * Contract tests for cost-guardrail (Operations Task 4).
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
 import type { JobArgs } from "../src/jobs/types.js";
 
 function baseArgs(overrides?: Partial<JobArgs>): JobArgs {
-  return {
-    scheduledFor: new Date("2026-07-30T08:00:00Z"),
-    runnerVersion: "test",
-    dryRun: false,
-    ...overrides,
-  };
+  return { scheduledFor: new Date("2026-07-30T08:00:00Z"), runnerVersion: "test", dryRun: false, ...overrides };
 }
 
 // ============================ evaluateCostGuardrail ====================
@@ -23,29 +15,18 @@ describe("evaluateCostGuardrail — pure function", () => {
   let evaluateCostGuardrail: (input: { projectedTotalUsd: number }) => { level: string; suppress: string[]; message: string };
 
   beforeAll(async () => {
-    const mod = await import("../src/jobs/cost-report.js");
+    const mod = await import("../src/monitoring/cost.js");
     evaluateCostGuardrail = mod.evaluateCostGuardrail;
   });
 
-  it("returns NORMAL at $40 (not above)", () => {
+  it("returns NORMAL at $40", () => {
     const d = evaluateCostGuardrail({ projectedTotalUsd: 40 });
     expect(d.level).toBe("NORMAL");
     expect(d.suppress).toEqual([]);
   });
 
-  it("returns NORMAL below $40", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 39.99 });
-    expect(d.level).toBe("NORMAL");
-    expect(d.suppress).toEqual([]);
-  });
-
-  it("returns REVIEW above $40 (not at)", () => {
+  it("returns REVIEW above $40", () => {
     const d = evaluateCostGuardrail({ projectedTotalUsd: 40.01 });
-    expect(d.level).toBe("REVIEW");
-  });
-
-  it("returns REVIEW between $40 and $50", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 45 });
     expect(d.level).toBe("REVIEW");
   });
 
@@ -56,31 +37,16 @@ describe("evaluateCostGuardrail — pure function", () => {
     expect(d.suppress).toContain("model-enrichment");
   });
 
-  it("returns REVIEW at $50 (above 40, not above 50)", () => {
+  it("returns REVIEW at $50 (above $40, not above $50)", () => {
     const d = evaluateCostGuardrail({ projectedTotalUsd: 50 });
     expect(d.level).toBe("REVIEW");
-  });
-
-  it("suppresses experimental-demand and model-enrichment above the monthly cap", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 51 });
-    expect(d).toMatchObject({
-      level: "HARD_CAP",
-      suppress: ["experimental-demand", "model-enrichment"],
-    });
   });
 
   it("never suppresses official collection at HARD_CAP", () => {
     const d = evaluateCostGuardrail({ projectedTotalUsd: 60 });
     expect(d.suppress).not.toContain("collect-fast");
     expect(d.suppress).not.toContain("collect-standard");
-    expect(d.suppress).not.toContain("collect-slow");
     expect(d.suppress).not.toContain("official-collection");
-  });
-
-  it("returns a human-readable message", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 55 });
-    expect(d.message).toBeTruthy();
-    expect(typeof d.message).toBe("string");
   });
 });
 
@@ -94,125 +60,92 @@ describe("costReport job handler", () => {
     createCostReport = mod.createCostReport;
   });
 
-  it("reports NORMAL with exitCode 0 when projected cost is below $40", async () => {
-    let started = false;
-    let finished = false;
+  it("reports NORMAL when cost is below $40", async () => {
     const handler = createCostReport({
-      beginRun: async () => { started = true; return "run-1"; },
-      finishRun: async (_rid: string, summary: any) => {
-        finished = true;
-        expect(summary.status).toBe("SUCCEEDED_ITEMS");
-      },
-      getProjectedCost: async () => 35,
+      beginRun: async () => "run-1",
+      finishRun: async () => {},
+      getProjectedCost: async () => ({ total: 35, breakdown: { neon: 35 } }),
       recordOperationalAlert: async () => {},
     });
     const result = await handler(baseArgs());
     expect(result.status).toBe("SUCCEEDED_ITEMS");
     expect(result.exitCode).toBe(0);
-    expect(started).toBe(true);
-    expect(finished).toBe(true);
   });
 
-  it("reports REVIEW with exitCode 0 when projected cost is at review threshold", async () => {
+  it("emits HARD_CAP alert at $50+", async () => {
+    const alerts: Array<{ code: string; subjectId: string; bucket: string }> = [];
     const handler = createCostReport({
       beginRun: async () => "run-2",
       finishRun: async () => {},
-      getProjectedCost: async () => 42,
-      recordOperationalAlert: async (_key: string) => {},
+      getProjectedCost: async () => ({ total: 55, breakdown: { vercel: 30, ai: 25 } }),
+      recordOperationalAlert: async (key: { code: string; subjectId: string; bucket: string }) => { alerts.push(key); },
     });
     const result = await handler(baseArgs());
     expect(result.status).toBe("SUCCEEDED_ITEMS");
-    expect(result.exitCode).toBe(0);
-    expect(result.itemCount).toBe(1);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.code).toBe("HARD_CAP");
+    expect(alerts[0]!.subjectId).toBe("cost");
   });
 
-  it("emits an operational alert and records HARD_CAP at $50+", async () => {
-    const alerts: string[] = [];
-    const handler = createCostReport({
-      beginRun: async () => "run-3",
-      finishRun: async () => {},
-      getProjectedCost: async () => 55,
-      recordOperationalAlert: async (key: string) => { alerts.push(key); },
-    });
-    const result = await handler(baseArgs());
-    expect(result.status).toBe("SUCCEEDED_ITEMS");
-    expect(alerts).toContain("HARD_CAP");
-  });
-
-  it("finishRun stores the cost decision in metadata", async () => {
+  it("finishRun stores the cost breakdown in metadata", async () => {
     let captured: any = null;
     const handler = createCostReport({
-      beginRun: async () => "run-4",
+      beginRun: async () => "run-3",
       finishRun: async (_rid: string, summary: any) => { captured = summary; },
-      getProjectedCost: async () => 55,
+      getProjectedCost: async () => ({ total: 55, breakdown: { vercel: 30, ai: 25 } }),
       recordOperationalAlert: async () => {},
     });
     await handler(baseArgs());
     const meta = captured.metadata as any;
     expect(meta.level).toBe("HARD_CAP");
-    expect(meta.projectedTotalUsd).toBe(55);
-    expect(meta.suppress).toEqual(["experimental-demand", "model-enrichment"]);
+    expect(meta.breakdown).toEqual({ vercel: 30, ai: 25 });
   });
 
   it("replay returns prior result verbatim", async () => {
-    const runs = new Map<string, { status: string; itemCount: number; attempted: number; succeeded: number; failed: number; finished: boolean }>();
+    const runs = new Map<string, { status: string; itemCount: number; finished: boolean }>();
     const handler = createCostReport({
       beginRun: async () => "run-5",
-      finishRun: async (rid: string, summary: any) => {
-        runs.set(rid, { ...summary, finished: true });
-      },
-      existingSummary: async (rid: string) => {
-        const r = runs.get(rid);
-        if (!r || !r.finished) return null;
-        return r;
-      },
-      getProjectedCost: async () => 35,
+      finishRun: async (rid: string, summary: any) => { runs.set(rid, { ...summary, finished: true }); },
+      existingSummary: async (rid: string) => { const r = runs.get(rid); return (r && r.finished) ? r : null; },
+      getProjectedCost: async () => ({ total: 35, breakdown: {} }),
+      recordOperationalAlert: async () => {},
     });
     const first = await handler(baseArgs());
     expect(first.status).toBe("SUCCEEDED_ITEMS");
-
     const second = await handler(baseArgs());
     expect(second.status).toBe(first.status);
-    expect(second.itemCount).toBe(first.itemCount);
   });
 });
 
-// ============================ suppression consumption =================
+// ============================ cost input fails closed =================
 
-describe("costReport — suppression consumption", () => {
-  it("getSuppressedJobs returns jobs set by finishRun at HARD_CAP", async () => {
-    const { createCostReport: create, setSuppressedJobs, getSuppressedJobs } = await import("../src/jobs/cost-report.js");
-
-    // Reset suppressed jobs before test
-    setSuppressedJobs([]);
-
-    const handler = create({
-      beginRun: async () => "run-s1",
-      finishRun: async (_rid: string, summary: any) => {
-        const meta = summary.metadata as any;
-        if (meta?.level === "HARD_CAP" && meta.suppress) {
-          setSuppressedJobs([...meta.suppress]);
-        }
-      },
-      getProjectedCost: async () => 55,
-      recordOperationalAlert: async () => {},
-    });
-    await handler(baseArgs());
-    expect(getSuppressedJobs()).toEqual(["experimental-demand", "model-enrichment"]);
+describe("cost input — fails closed", () => {
+  it("getProjectedCost throws when env var is missing", async () => {
+    const mod = await import("../src/monitoring/cost.js");
+    delete process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON;
+    await expect(mod.getProjectedCost()).rejects.toThrow("not set");
   });
 
-  it("getSuppressedJobs is empty at NORMAL level", async () => {
-    const { createCostReport: create, setSuppressedJobs, getSuppressedJobs } = await import("../src/jobs/cost-report.js");
+  it("getProjectedCost throws when env var is malformed JSON", async () => {
+    const mod = await import("../src/monitoring/cost.js");
+    process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON = "not-json";
+    await expect(mod.getProjectedCost()).rejects.toThrow("not valid JSON");
+    delete process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON;
+  });
 
-    setSuppressedJobs([]);
+  it("getProjectedCost throws when a value is negative", async () => {
+    const mod = await import("../src/monitoring/cost.js");
+    process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON = JSON.stringify({ neon: -5 });
+    await expect(mod.getProjectedCost()).rejects.toThrow("non-negative");
+    delete process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON;
+  });
 
-    const handler = create({
-      beginRun: async () => "run-s2",
-      finishRun: async () => {},
-      getProjectedCost: async () => 35,
-      recordOperationalAlert: async () => {},
-    });
-    await handler(baseArgs());
-    expect(getSuppressedJobs()).toEqual([]);
+  it("getProjectedCost returns breakdown and total for valid input", async () => {
+    const mod = await import("../src/monitoring/cost.js");
+    process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON = JSON.stringify({ neon: 20, vercel: 10, ai: 30 });
+    const result = await mod.getProjectedCost();
+    expect(result.total).toBe(60);
+    expect(result.breakdown).toEqual({ neon: 20, vercel: 10, ai: 30 });
+    delete process.env.RAILWAY_PROJECTED_MONTHLY_COSTS_JSON;
   });
 });

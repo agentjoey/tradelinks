@@ -116,6 +116,7 @@ function makeCollector(deps: Partial<CollectBatchDeps> = {}) {
       getSources: deps.getSources ?? (() => []),
       fetchSource: deps.fetchSource ?? (async () => successOutcome("x")),
       ledger: deps.ledger ?? ledger,
+      shouldSkip: deps.shouldSkip,
     }),
   };
 }
@@ -474,7 +475,6 @@ describe("collectBatch — scraper retry via injected fetchSource", () => {
       getSources: () => [source],
       fetchSource: async (s) => {
         counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
-        // Simulate the fail-closed path: buildAdapter throws → INVARIANT → non-retryable.
         return { kind: "failed", code: "INVARIANT: Source X json=true but missing jsonShape", retryable: false };
       },
     });
@@ -482,4 +482,39 @@ describe("collectBatch — scraper retry via injected fetchSource", () => {
     expect(counts.get(source.id)).toBe(1);
     expect(r.failed).toBe(1);
   }, 10000);
+});
+
+// ============================ cost suppression (BLOCKER 4 pin) =========
+
+describe("collectBatch — cost suppression", () => {
+  it("skips EXPERIMENTAL demand sources when experimental-demand is suppressed", async () => {
+    const experimental = testSourceContract("exp-src", { readiness: "EXPERIMENTAL" });
+    const monitored = testSourceContract("mon-src", { readiness: "MONITORED" });
+    const allSources = [experimental, monitored];
+
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => allSources,
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      shouldSkip: async (s) => s.readiness === "EXPERIMENTAL",
+    });
+
+    const r = await call("FAST", baseArgs());
+    expect(fetched).toContain("mon-src");    // monitored → still collected
+    expect(fetched).not.toContain("exp-src"); // experimental → skipped
+    expect(r.status).toBe("SUCCEEDED_ITEMS");
+  });
+
+  it("does not skip EXPERIMENTAL sources when suppression is not active", async () => {
+    const experimental = testSourceContract("exp-src2", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      shouldSkip: async () => false,
+    });
+    const r = await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src2");
+    expect(r.status).toBe("SUCCEEDED_ITEMS");
+  });
 });
