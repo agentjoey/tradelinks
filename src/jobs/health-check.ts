@@ -167,7 +167,7 @@ export function createHealthCheck(
     }
 
     const now = deps.now();
-    const detections = await detectFailures(deps, now);
+    const detections = await detectFailures(deps, now, { deliver: true });
 
     const status: JobStatus = detections.length > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
 
@@ -194,11 +194,17 @@ export function createHealthCheck(
  * Core detection logic — returns ALL currently-detected failures.
  * Delivery dedup is handled internally by createDeliveryAdapter via
  * finishedAt checks on PipelineRun rows — no external guard needed.
+ *
+ * Pass {deliver: true} to invoke the delivery adapter inline (used by
+ * the job handler). Default is {deliver: false} — pure detection only,
+ * with no side effects (used by evaluateOperationalHealth).
  */
 export async function detectFailures(
   deps: HealthCheckDeps,
   now: Date,
+  opts?: { deliver?: boolean },
 ): Promise<Detection[]> {
+  const deliver = opts?.deliver ?? false;
   const bucket = dateHourBucket(now);
   const detections: Detection[] = [];
 
@@ -216,7 +222,7 @@ export async function detectFailures(
     if (!facts) continue;
     if (isSourceStale(facts, now)) {
       detections.push({ code: "SOURCE_STALE", subjectId: sourceId });
-      await deps.recordOperationalAlert({ code: "SOURCE_STALE", subjectId: sourceId, bucket });
+      if (deliver) await deps.recordOperationalAlert({ code: "SOURCE_STALE", subjectId: sourceId, bucket });
     }
   }
 
@@ -226,7 +232,7 @@ export async function detectFailures(
   for (const sourceId of allSourceIds) {
     if (detectContentCollapse(sourceId, checks)) {
       detections.push({ code: "CONTENT_COLLAPSE", subjectId: sourceId });
-      await deps.recordOperationalAlert({ code: "CONTENT_COLLAPSE", subjectId: sourceId, bucket });
+      if (deliver) await deps.recordOperationalAlert({ code: "CONTENT_COLLAPSE", subjectId: sourceId, bucket });
     }
   }
 
@@ -242,7 +248,7 @@ export async function detectFailures(
       return now.getTime() - s.lastOkAt.getTime() > maxSlaMinutes * 60000;
     })) {
       detections.push({ code: "GLOBAL_GAP", subjectId: cap.key });
-      await deps.recordOperationalAlert({ code: "GLOBAL_GAP", subjectId: cap.key, bucket });
+      if (deliver) await deps.recordOperationalAlert({ code: "GLOBAL_GAP", subjectId: cap.key, bucket });
     }
   }
 
@@ -259,7 +265,7 @@ export async function detectFailures(
     previousMonday.setUTCDate(mondayOfWeek.getUTCDate() - 7);
     const subjectId = previousMonday.toISOString().slice(0, 10);
     detections.push({ code: "BRIEFING_ABSENT", subjectId });
-    await deps.recordOperationalAlert({ code: "BRIEFING_ABSENT", subjectId, bucket });
+    if (deliver) await deps.recordOperationalAlert({ code: "BRIEFING_ABSENT", subjectId, bucket });
   }
 
   return detections;

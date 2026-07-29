@@ -134,6 +134,20 @@ export interface CollectBatchDeps {
 
 // ---- cost suppression reader (production, consumed by collect-batch) ----
 
+/**
+ * Pure predicate: returns true when the cost decision is HARD_CAP with
+ * experimental-demand suppressed AND the source readiness is EXPERIMENTAL.
+ * Official sources (MONITORED, VERIFIED) are never suppressed.
+ */
+export function isExperimentalSuppressed(
+  decision: { level: string; suppress: string[] } | null,
+  source: SourceContract,
+): boolean {
+  return decision?.level === "HARD_CAP"
+    && decision.suppress.includes("experimental-demand")
+    && source.readiness === "EXPERIMENTAL";
+}
+
 export async function shouldSkipAtHardCap(
   source: SourceContract,
   _prisma?: any,
@@ -372,13 +386,25 @@ export function createCollectBatch(
       runnerVersion: args.runnerVersion,
     });
 
-    // Apply cost suppression: skip EXPERIMENTAL demand sources at HARD_CAP
+    // Apply cost suppression: read decision once then use pure predicate.
     let pendingSources: SourceContract[];
     if (deps.shouldSkip) {
-      const skipFlags = await Promise.all(sources.map(async (s) => ({
-        source: s,
-        skip: await deps.shouldSkip!(s),
-      })));
+      let decisionPromise: Promise<{ level: string; suppress: string[] } | null> | null = null;
+      const skipFlags = await Promise.all(sources.map(async (s) => {
+        if (!decisionPromise) {
+          decisionPromise = (async () => {
+            try {
+              const { readLatestCostDecision } = await import("./cost-report.js");
+              return await readLatestCostDecision();
+            } catch { return null; }
+          })();
+        }
+        const decision = await decisionPromise;
+        if (decision) {
+          return { source: s, skip: isExperimentalSuppressed(decision, s) };
+        }
+        return { source: s, skip: await deps.shouldSkip!(s) };
+      }));
       pendingSources = skipFlags.filter((f) => !f.skip).map((f) => f.source);
     } else {
       pendingSources = sources;

@@ -505,6 +505,46 @@ describe("delivery adapter — finishedAt only on 'sent'", () => {
   });
 });
 
+// ============================ REWORK 1: pure detection ================
+
+describe("detectFailures — delivery gating", () => {
+  it("does NOT deliver when opts.deliver is false (default)", async () => {
+    const { detectFailures } = await import("../src/jobs/health-check.js");
+    const delivered: AlertDeliveryKey[] = [];
+    const deps = {
+      getCoverageCapabilities: async () => [] as FakeCapability[],
+      getSourceFacts: async () => ({}) as FakeSourceFactsMap,
+      getSourceChecks: async () => [] as FakeSourceCheck[],
+      getBriefingStatus: async () => ({ absent: false }),
+      recordOperationalAlert: async (k: AlertDeliveryKey) => { delivered.push(k); },
+      maxSlaWindowHours: 48,
+      now: () => new Date("2026-07-30T12:00:00Z"),
+    } as any;
+    const detections = await detectFailures(deps, deps.now());
+    expect(detections).toEqual([]);
+    expect(delivered).toEqual([]);
+  });
+
+  it("recordsSOURCE_STALE delivery when opts.deliver is true", async () => {
+    const { detectFailures } = await import("../src/jobs/health-check.js");
+    const delivered: AlertDeliveryKey[] = [];
+    const now = new Date("2026-07-30T12:00:00Z");
+    const deps = {
+      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }] as FakeCapability[],
+      getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(25) } }) as FakeSourceFactsMap,
+      getSourceChecks: async () => [] as FakeSourceCheck[],
+      getBriefingStatus: async () => ({ absent: false }),
+      recordOperationalAlert: async (k: AlertDeliveryKey) => { delivered.push(k); },
+      maxSlaWindowHours: 48,
+      now: () => now,
+    } as any;
+    const detections = await detectFailures(deps, now, { deliver: true });
+    expect(detections.length).toBe(2); // SOURCE_STALE + GLOBAL_GAP
+    expect(delivered.length).toBe(2);
+    expect(delivered.some((d) => d.code === "SOURCE_STALE")).toBe(true);
+  });
+});
+
 // ============================ registration regression ==================
 
 describe("job registration via entry point", () => {

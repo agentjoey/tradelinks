@@ -57,6 +57,7 @@ export function expectedIntervalMin(cron: string): number {
   }
 }
 
+
 /** Pure scoring — no DB, no clock except the injected `now`. */
 export function scoreSource(m: SourceMetrics, now = Date.now()): SourceHealth {
   const reasons: string[] = [];
@@ -290,11 +291,14 @@ export async function getCoverageOverview(now = new Date()): Promise<CoverageOve
   return { capabilities: views, bySource };
 }
 
-// ---- operational health (re-export without side effects) ----
+// ---- operational health (read-only, no delivery side effects) ----
 
 /**
- * Evaluate operational health without triggering the job-registration
- * side effects of a static import from health-check.ts.
+ * Evaluate operational health. Returns a HealthReport with all currently-
+ * detected failure classes. Pure read: detectFailures defaults to
+ * {@code deliver: false}, so no Telegram alerts are sent and no PipelineRun
+ * ledger rows are written. Only the 'health' job handler passes
+ * {@code deliver: true}.
  */
 export async function evaluateOperationalHealth(now: Date): Promise<HealthReport> {
   const { evaluateOperationalHealth: impl } = await import("../jobs/health-check.js");
