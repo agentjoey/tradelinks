@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: REWORK v3 — all 4 round-3 blockers + 3 NB resolved. BLOCKER 1: PipelineRun-backed createDeliveryAdapter() — one row per alert key, only set finishedAt on 'sent', skipped/failed/error leaves row retryable. BLOCKER 2: briefing-batch REAL_DEPS wired to same adapter; cost-report HARD_CAP uses structured key. BLOCKER 3: src/monitoring/cost.ts parses RAILWAY_PROJECTED_MONTHLY_COSTS_JSON, validates object of non-negative numbers, throws on missing/malformed — fail closed. BLOCKER 4: collect-batch shouldSkipAtHardCap reads latest cost-report PipelineRun, filters EXPERIMENTAL sources when experimental-demand suppressed; MONITORED/VERIFIED never suppressed; readModelEnrichmentSuppressed exported for Task 5. NB: structured AlertDeliveryKey, getBriefingStatus uses injected clock (Monday-only), monitoring/health.ts dynamic import. GATES (8 files): pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts test/collect-batch.test.ts test/briefing-job.test.ts test/job-lock.test.ts test/job-retry.test.ts -> Test Files 8 passed (8), Tests 136 passed (136). pnpm lint (tsc --noEmit) exit 0. Scope: 10 files; no schema/migration/deployment/UI changes.
