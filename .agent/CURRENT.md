@@ -1,5 +1,11 @@
 # Current Status — TradeLinks
 
+## 🆕 Public Intelligence Task 1 (2026-07-29)
+
+- **public-content-schema**: ✅ Public content schema and read model implemented. Migration 0013 applied (additive: BriefingKind enum, Guide/GuideEvidence/Briefing/BriefingEntry/LegacyRedirect models). CanonicalPublicRecord DTO, serializer, query, and PUBLIC_CACHE created. 39 new tests pass. Awaiting review by claude (claude-opus-5). Branch: feat-phase1-public-intelligence.
+
+---
+
 Version:        v0.12.0 + Phase 1 Foundation（未发布）
 Sprint:         Phase 1 Product Refresh — Foundation
 Sprint Status:  ✅ 8/8 Pact tasks accepted · Draft PR #3 · staging 已部署 · production 未变更

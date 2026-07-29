@@ -182,6 +182,14 @@ enum PipelineJobType {
   HEALTH
 }
 
+// ---------- Phase 1 public intelligence enums (additive) ----------
+
+enum BriefingKind {
+  WEEKLY
+  MONTHLY
+  DAILY
+}
+
 // ---------- Tables ----------
 
 model Source {
@@ -218,6 +226,7 @@ model Source {
   sourceChecks    SourceCheck[]
   evidenceRecords EvidenceRecord[]
   capabilities    CapabilitySource[]
+  guideEvidence   GuideEvidence[]
 
   @@map("sources")
 }
@@ -610,6 +619,7 @@ model CanonicalChangeVersion {
 
   canonicalChange CanonicalChange  @relation(fields: [canonicalChangeId], references: [id])
   evidence        EvidenceRecord[]
+  briefingEntries BriefingEntry[]
 
   @@unique([canonicalChangeId, version])
 }
@@ -663,4 +673,81 @@ model CapabilitySource {
   source     Source             @relation(fields: [sourceId], references: [id])
 
   @@id([capabilityId, sourceId])
+}
+
+// ---------- Phase 1 public intelligence models (additive) ----------
+
+model Guide {
+  id                String            @id @default(cuid())
+  slug              String            @unique
+  title             String
+  summary           String
+  bodyMarkdown      String
+  market            MarketCode        @default(US)
+  platforms         PlatformCode[]
+  productCategories ProductCategory[]
+  riskAttributes    RiskAttribute[]
+  readiness         ReadinessLevel
+  editorialStatus   EditorialStatus   @default(DRAFT)
+  lastReviewedAt    DateTime
+  reviewedBy        String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  evidence          GuideEvidence[]
+}
+
+model GuideEvidence {
+  id                String         @id @default(cuid())
+  guideId           String
+  sourceId          String
+  url               String
+  authorityLevel    AuthorityLevel
+  access            EvidenceAccess
+  licenseNote       String
+  normalizedSummary String
+  publishedAt       DateTime?
+  reviewedAt        DateTime
+  position          Int
+  guide             Guide          @relation(fields: [guideId], references: [id])
+  source            Source         @relation(fields: [sourceId], references: [id])
+  @@unique([guideId, url])
+  @@unique([guideId, position])
+}
+
+model Briefing {
+  id              String          @id @default(cuid())
+  kind            BriefingKind
+  periodKey       String
+  slug            String          @unique
+  title           String
+  summary         String
+  bodyMarkdown    String
+  readiness       ReadinessLevel
+  editorialStatus EditorialStatus @default(DRAFT)
+  fingerprint     String
+  publishedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  entries         BriefingEntry[]
+  @@unique([kind, periodKey])
+}
+
+model BriefingEntry {
+  briefingId      String
+  changeVersionId String
+  position        Int
+  commentary      String
+  briefing        Briefing               @relation(fields: [briefingId], references: [id])
+  changeVersion   CanonicalChangeVersion @relation(fields: [changeVersionId], references: [id])
+  @@id([briefingId, changeVersionId])
+  @@unique([briefingId, position])
+}
+
+model LegacyRedirect {
+  fromPath  String   @id
+  toPath    String
+  status    Int      @default(308)
+  createdAt DateTime @default(now())
 }
