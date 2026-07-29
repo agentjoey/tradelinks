@@ -25,3 +25,6 @@ design/*.png
 
 # git worktrees
 .worktrees/
+
+# local operational rollback records (redacted IDs only; never commit)
+.agent/private/

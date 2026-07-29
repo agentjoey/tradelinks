@@ -1,10 +1,10 @@
 # TradeLinks — System Architecture
 
-> Last updated: 2026-07-28 · v0.12.0 + Phase 1 Foundation (staging only)
+> Last updated: 2026-07-30 · v0.12.0 + Phase 1 Foundation + Operations preparation
 
 ## Overview
 
-TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**的 legacy 管道；Phase 1 Foundation 在同一 schema 中以 additive、forward-only 方式加入来源契约、采集账本、规范化情报、结构化证据、不可变版本与 coverage readiness。Public Intelligence 和 Private Relevance 尚未切换读写路径。
+TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**的 legacy 管道；Phase 1 Foundation 在同一 schema 中以 additive、forward-only 方式加入来源契约、采集账本、规范化情报、结构化证据、不可变版本与 coverage readiness。Phase 1 Operations 的有限任务入口、重试/锁、发布、briefing、health 与 cost guardrail 已在仓库完成，但 Railway Cron cutover 尚未启用。Public Intelligence 和 Private Relevance 尚未切换读写路径。
 
 ## Implementation Status
 
@@ -14,7 +14,7 @@ TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**�
 | Phase 1 Foundation | Complete; 8/8 Pact tasks accepted; Draft PR #3 | Vercel/Neon staging only; production unchanged |
 | Public Intelligence | Detailed plan only | Not started |
 | Private Relevance | Detailed plan only | Not started |
-| Operations / cost cutover | Detailed plan only | Not started |
+| Operations / cost cutover | Tasks 1–4 accepted; Task 5 Phase A prepared | Legacy worker remains live until controlled cron cutover |
 
 Foundation validation used the approved non-production Neon branch. Migrations `0011` and `0012`, legacy backfill apply/replay, 426 tests, and the production build passed there. The migrations are now also applied on Neon staging and commit `91a7d25` is live on a protected Vercel staging Preview; staging backfill remains dry-run only and production is unchanged.
 
@@ -182,6 +182,12 @@ Daily schedules: trends-tick `0 2 * * *`, source-health-tick `30 2 * * *`.
 scrape queue runs `batchSize: 1`. Without this, ingest jobs (which carry the full
 scraped items array as JSONB) bloated pg-boss to ~300 MB and nearly filled Neon's
 0.5 GB. See operations.md.
+
+### Phase 1 target topology (pending production cutover)
+
+Eight short-lived Railway Cron services will call `pnpm job --name <job>` and exit. `PipelineRun` plus PostgreSQL advisory locks provide stable slot identity and prevent concurrent duplicate work. The target services are `collect-fast`, `collect-standard`, `collect-slow`, `canonicalize`, `publish`, `public-briefing`, `health`, and `cost-report`; exact schedules and rollback steps are in `docs/operations/phase1-runbook.md`.
+
+The target topology is not considered active until the old worker is paused, three manual finite slots pass, and schedules are enabled without overlap. pg-boss and the worker remain the rollback path for the first 72 hours. The pre-cutover Neon checkpoint is `phase1-operations-pre-cron`. Only after the 72-hour evidence is independently accepted may the repository remove pg-boss and the retired runtime files.
 
 ## Monitoring & Source Health
 

@@ -1,5 +1,24 @@
 # Railway Setup — worker + scraper (2 services, 1 repo)
 
+> **Phase 1 cutover status (2026-07-30): prepared, not enabled.** The configuration below remains the current rollback topology. The target topology, exact UTC schedules, and rollback gates are in [`docs/operations/phase1-runbook.md`](operations/phase1-runbook.md). Do not remove or resume this worker while any Phase 1 cron schedule is active.
+
+## Phase 1 target services
+
+All eight services use the same application revision, no public domain or health check, and no restart after exit code 0. Schedules stay disabled until three manual finite-slot probes have stable `PipelineRun` keys and the old worker is paused.
+
+| Service | UTC cron | Start command | Maximum duration |
+|---|---|---|---:|
+| `tradelinks-collect-fast` | `7 */4 * * *` | `pnpm job --name collect-fast` | 15m |
+| `tradelinks-collect-standard` | `23 */12 * * *` | `pnpm job --name collect-standard` | 20m |
+| `tradelinks-collect-slow` | `41 2 * * *` | `pnpm job --name collect-slow` | 20m |
+| `tradelinks-canonicalize` | `17 */4 * * *` | `pnpm job --name canonicalize` | 15m |
+| `tradelinks-publish` | `47 */4 * * *` | `pnpm job --name publish` | 10m |
+| `tradelinks-public-briefing` | `10 3 * * 1` | `pnpm job --name public-briefing` | 20m |
+| `tradelinks-health` | `35 * * * *` | `pnpm job --name health` | 5m |
+| `tradelinks-cost-report` | `15 4 * * *` | `pnpm job --name cost-report` | 5m |
+
+The cron services also require the non-secret `RAILWAY_PROJECTED_MONTHLY_COSTS_JSON` component breakdown. Values belong in Railway only; never copy variables or credentials into git or review evidence. Configure the scraper to scale to zero while idle. Keep the worker paused and recoverable for the full 72-hour observation window.
+
 > One Railway **project** contains TWO **services**, both deployed from the SAME
 > GitHub repo (`agentjoey/tradelinks`). You do NOT need separate repos and
 > you do NOT recreate the worker — a repo-based service is correct; you just set
