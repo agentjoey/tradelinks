@@ -85,10 +85,10 @@ features:
         deps: [finite-dispatch]
       - id: publishing-briefing
         owner: opencode
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-operations-publishing-briefing.md
-        evidence: null
+        evidence: RED: pnpm vitest run test/publish-job.test.ts test/briefing-job.test.ts -> Test Files 2 failed (2), 0 tests collected: "Failed to load url ../src/jobs/publish-batch.js / briefing-batch.js ... Does the file exist?" (missing job handlers).  GREEN: pnpm vitest run test/publish-job.test.ts test/briefing-job.test.ts -> Test Files 2 passed (2), Tests 22 passed (22): publish-batch 9/9 (succeeds-empty, bounded-100, individual-failure-continues, cache-invalidation-changes+coverage-only, skip-null-reviewedBy, cache-not-invalidated-when-empty, only-changes+coverage-tags, all-fail-FAILED, 100-cap-respects-limit); briefing-batch 13/13 (weekly-absence-BLOCKED-exit2+BRIEFING_ABSENT, daily-absence-SUCCEEDED_EMPTY-no-alert, Sunday-absence, qualifies-Monitored+Verified, stores-ordered-versionIds+stable-sha256-fingerprint, Mon-Sun-UTC-window-from-Monday, window-from-mid-week, window-from-Sunday, replay-idempotent-persists-prior, absent-replay-preserves-BLOCKED, zero-qualified-weekly-emits-BRIEFING_ABSENT, mid-week-with-content-no-BRIEFING_ABSENT).  REGRESSION: pnpm vitest run test/job-lock.test.ts test/job-retry.test.ts test/collect-batch.test.ts test/canonicalize-batch.test.ts -> Test Files 4 passed (4), Tests 97 passed (97): job-lock 23/23, job-retry 13/13, collect-batch 28/28, canonicalize-batch 11/11.  LINT: pnpm lint (tsc --noEmit) -> exit 0.  SCOPE: git status shows only the 5 spec-listed files (src/jobs/publish-batch.ts new, src/jobs/briefing-batch.ts new, scripts/run-job.ts modified for side-effect imports, test/publish-job.test.ts new, test/briefing-job.test.ts new). No schema, migration, deployment, UI, or legacy worker changes. All tests credential-free (injectable deps). No env/secret access.
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
