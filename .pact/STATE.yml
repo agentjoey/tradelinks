@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: accepted
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: REWORK v9 — both round-9 blockers resolved. BLOCKER 1: replaced deps.shouldSkip with deps.readCostDecision — read once before source loop, filter every source through pure isExperimentalSuppressed on all branches (no per-source fallback). Deleted shouldSkipAtHardCap — exactly one suppression implementation. 5 collect-batch tests inject readCostDecision at Prisma boundary: HARD_CAP EXPERIMENTAL skip + MONITORED/VERIFIED fetched, NORMAL/REVIEW/null no skip, exactly 1 read per invocation. 4 isExperimentalSuppressed direct tests. BLOCKER 2: _pending_ replaced with ffbd95c; v9 commit ba83400 added; test count updated to 123. NB2: dateHourBucket consolidated — health-check.ts and briefing-batch.ts import from monitoring/cost.ts. NB5: const HOUR moved above detectFailures. GATES: pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts test/collect-batch.test.ts test/briefing-job.test.ts -> 6 files / 123 tests passed. pnpm lint exit 0. Scope: 4 files; no schema/migration/deployment/UI changes.
