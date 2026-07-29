@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: REWORK v7 — all 1 blocker + 4 NB resolved. BLOCKER: added side-effect imports for health-check.js and cost-report.js to scripts/run-job.ts (entry point). NB1: N+1 shouldSkip reads accepted — handler calls deps.shouldSkip per-source; shouldSkipAtHardCap uses single readLatestCostDecision dynamic import which is Node-cached. NB2: shouldSkipAtHardCap fail-open is now documented as deliberate (transient DB must not block official collection). NB3: detectContentCollapse KNOWN LIMITATION documented — SLOW-group sources (\u003e12h cadence) can't reach 4-check baseline within default 48h window. NB4: narrowed .catch() to P2002 unique-violation code only (other create errors propagate). Test: 2 registration regression tests assert getJob('health').run and getJob('cost-report').run are defined after side-effect import. GATES: pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts test/collect-batch.test.ts test/briefing-job.test.ts -> 6 files / 117 tests passed. pnpm lint exit 0. Scope: scripts/run-job.ts + 4 production files + 1 test file; no schema/migration/deployment/UI changes.
