@@ -83,8 +83,7 @@ export interface BriefingBatchDeps {
  * For a Monday run (the weekly cron), selects the PRECEDING completed
  * Monday–Sunday window so the scheduler can qualify the just-finished
  * week. For any other day, the window is the Monday–Sunday that contains
- * scheduledFor — used for daily diagnostic runs where the result is
- * always SUCCEEDED_EMPTY.
+ * scheduledFor.
  */
 function getWeekWindow(date: Date): { start: Date; end: Date } {
   const utcDay = date.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
@@ -219,34 +218,29 @@ export function createBriefingBatch(
     }
 
     // Qualify: sort version IDs deterministically, compute stable fingerprint.
+    // selectQualifiedVersions already bounds to MAX_VERSIONS via 'take', so
+    // the versionIds are safe to use directly.
     const versionIds = versions.map((v) => v.versionId).sort();
     const fingerprint = computeFingerprint(versionIds);
 
-    // Bound to MAX_VERSIONS just in case — shadow-only, no page rendered.
-    const bounded = versionIds.slice(0, MAX_VERSIONS);
-    const boundedFingerprint =
-      bounded.length < versionIds.length
-        ? computeFingerprint(bounded)
-        : fingerprint;
-
     await deps.finishRun(runId, {
       status: "SUCCEEDED_ITEMS",
-      itemCount: bounded.length,
+      itemCount: versionIds.length,
       metadata: {
-        versionIds: bounded,
+        versionIds,
         windowStart: window.start.toISOString(),
         windowEnd: window.end.toISOString(),
       },
-      outputFingerprint: boundedFingerprint,
+      outputFingerprint: fingerprint,
     });
 
     return {
       runId,
       status: "SUCCEEDED_ITEMS" as const,
-      attempted: bounded.length,
-      succeeded: bounded.length,
+      attempted: versionIds.length,
+      succeeded: versionIds.length,
       failed: 0,
-      itemCount: bounded.length,
+      itemCount: versionIds.length,
       exitCode: 0,
     };
   };

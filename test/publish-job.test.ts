@@ -5,7 +5,8 @@
  * publishBatch.  All deps are injectable for credential-free execution.
  *
  * Persists a PUBLISH PipelineRun through beginRun/finishRun deps matching
- * the accepted Tasks 1–2 persisted PipelineRun contract.
+ * the accepted Tasks 1–2 persisted PipelineRun contract.  Same-slot replay
+ * is idempotent.
  */
 
 import { describe, expect, it } from "vitest";
@@ -71,7 +72,12 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
         deps.beginRun ??
         (async () => {
           const id = `run-${nextRunId++}`;
-          runStore.set(id, { id, status: "RUNNING", itemCount: 0, finished: false });
+          runStore.set(id, {
+            id,
+            status: "RUNNING",
+            itemCount: 0,
+            finished: false,
+          });
           return id;
         }),
       finishRun:
@@ -83,6 +89,13 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
             r.itemCount = summary.itemCount;
             r.finished = true;
           }
+        }),
+      existingSummary:
+        deps.existingSummary ??
+        (async (runId) => {
+          const r = runStore.get(runId);
+          if (!r || !r.finished) return null;
+          return { status: r.status, itemCount: r.itemCount };
         }),
     }),
   };
@@ -114,20 +127,65 @@ describe("publishBatch — PipelineRun persistence", () => {
     expect(rec.itemCount).toBe(1);
   }, 10000);
 
-  it("same-slot replay reuses the persisted runId", async () => {
-    const drafts = [fakeDraft("d-1")];
-    const { call } = makePublisher({
-      loadReviewedDrafts: async (limit) => drafts.slice(0, limit),
+  it("same-slot replay preserves persisted cumulative result and does not re-publish", async () => {
+    const drafts = [fakeDraft("d-1"), fakeDraft("d-2"), fakeDraft("d-3")];
+    const returned = new Set<string>();
+
+    // Model production: first call sees 3 publishable drafts, publishes them.
+    // Second call (same slot) sees zero loadable drafts (already published).
+    const persistedRunId = "run-persisted";
+    const { call, runStore, published } = makePublisher({
+      loadReviewedDrafts: async (limit) => {
+        const remaining = drafts.filter((d) => !returned.has(d.id));
+        return remaining.slice(0, limit);
+      },
+      publishDraft: async (draftId) => {
+        published.push(draftId);
+        returned.add(draftId);
+      },
       beginRun: async () => {
-        // Return a stable runId like the real beginRun upsert
-        const id = "run-persisted";
-        return id;
+        if (!runStore.has(persistedRunId)) {
+          runStore.set(persistedRunId, {
+            id: persistedRunId,
+            status: "RUNNING",
+            itemCount: 0,
+            finished: false,
+          });
+        }
+        return persistedRunId;
       },
     });
+
     const r1 = await call(baseArgs());
+    expect(r1.status).toBe("SUCCEEDED_ITEMS");
+    expect(r1.itemCount).toBe(3);
+    expect(r1.attempted).toBe(3);
+    expect(r1.succeeded).toBe(3);
+    expect(r1.failed).toBe(0);
+    expect(r1.exitCode).toBe(0);
+    expect(published.length).toBe(3);
+
+    // Second call: drafts already published, loadReviewedDrafts returns []
+    const publishedBefore = published.length;
     const r2 = await call(baseArgs());
-    expect(r1.runId).toBe(r2.runId);
-    expect(r1.runId).toBe("run-persisted");
+
+    // publishDraft must NOT be called again
+    expect(published.length).toBe(publishedBefore);
+
+    // Result must preserve the original cumulative persisted result
+    expect(r1.runId).toBe(persistedRunId);
+    expect(r2.runId).toBe(persistedRunId);
+    expect(r2.status).toBe("SUCCEEDED_ITEMS");
+    expect(r2.itemCount).toBe(3);
+    expect(r2.succeeded).toBe(3);
+    expect(r2.failed).toBe(0);
+    expect(r2.exitCode).toBe(0);
+
+    // Run record must retain SUCCEEDED_ITEMS/itemCount 3 (NOT overwritten)
+    const rec = runStore.get(r2.runId)!;
+    expect(rec.finished).toBe(true);
+    expect(rec.status).toBe("SUCCEEDED_ITEMS");
+    expect(rec.itemCount).toBe(3);
   }, 10000);
 });
 
@@ -278,7 +336,9 @@ describe("publishBatch — invalidateTag guard", () => {
     const { call } = makePublisher({
       loadReviewedDrafts: async () => drafts,
       invalidateTag: async () => {
-        throw new Error("Invariant: headers() expects to have requestAsyncStorage");
+        throw new Error(
+          "Invariant: headers() expects to have requestAsyncStorage",
+        );
       },
     });
     // Should not throw — invalidateTag failure is isolated

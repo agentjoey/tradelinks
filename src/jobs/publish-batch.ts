@@ -8,7 +8,10 @@
  * The factory is for credential-free tests; the one-param function is the
  * registered job handler.  Persists a PUBLISH PipelineRun through
  * beginRun/finishRun deps (injectable, credential-free) matching the
- * accepted Tasks 1–2 persisted PipelineRun contract.
+ * accepted Tasks 1–2 persisted PipelineRun contract.  Same-slot replay is
+ * idempotent: when no new drafts remain (prior run already published them),
+ * the persisted cumulative result is returned verbatim and the run record
+ * is never overwritten.
  */
 
 import { revalidateTag } from "next/cache";
@@ -44,6 +47,12 @@ export interface PublishBatchDeps {
     runId: string,
     summary: { status: string; itemCount: number },
   ): Promise<void>;
+  /** Read the existing PipelineRun summary to power idempotent replay.
+   *  Returns null when no prior finished run exists. */
+  existingSummary?(runId: string): Promise<{
+    status: string;
+    itemCount: number;
+  } | null>;
 }
 
 export function createPublishBatch(
@@ -60,6 +69,32 @@ export function createPublishBatch(
     const drafts = await deps.loadReviewedDrafts(MAX_DRAFTS);
 
     if (drafts.length === 0) {
+      // Replay: if a prior finished run exists, return its result verbatim.
+      // The real production path reaches here when a prior run published
+      // all drafts, so loadReviewedDrafts returns [] because those versions
+      // are now editorialStatus PUBLISHED and no longer match DRAFT/IN_REVIEW.
+      if (deps.existingSummary) {
+        const prior = await deps.existingSummary(runId);
+        if (prior) {
+          const priorStatus = prior.status as JobStatus;
+          return {
+            runId,
+            status: priorStatus,
+            attempted:
+              priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
+            succeeded:
+              priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
+            failed:
+              priorStatus === "PARTIAL" || priorStatus === "FAILED"
+                ? prior.itemCount
+                : 0,
+            itemCount: prior.itemCount,
+            exitCode:
+              priorStatus === "FAILED" || priorStatus === "PARTIAL" ? 1 : 0,
+          };
+        }
+      }
+
       await deps.finishRun(runId, {
         status: "SUCCEEDED_EMPTY",
         itemCount: 0,
@@ -77,13 +112,9 @@ export function createPublishBatch(
 
     let succeeded = 0;
     let failed = 0;
-    let skipped = 0;
 
     for (const draft of drafts) {
-      if (!draft.reviewedBy) {
-        skipped++;
-        continue;
-      }
+      if (!draft.reviewedBy) continue;
       try {
         await deps.publishDraft(draft.id, draft.reviewedBy);
         succeeded++;
@@ -93,36 +124,82 @@ export function createPublishBatch(
     }
 
     if (succeeded > 0) {
-      try { await deps.invalidateTag("changes"); } catch { /* best-effort */ }
-      try { await deps.invalidateTag("coverage"); } catch { /* best-effort */ }
+      try {
+        await deps.invalidateTag("changes");
+      } catch {
+        /* best-effort */
+      }
+      try {
+        await deps.invalidateTag("coverage");
+      } catch {
+        /* best-effort */
+      }
     }
 
-    const status: JobStatus =
-      failed === 0
-        ? succeeded > 0
-          ? "SUCCEEDED_ITEMS"
-          : "SUCCEEDED_EMPTY"
-        : succeeded > 0
-          ? "PARTIAL"
-          : "FAILED";
+    const attempted = succeeded + failed;
+    let status: JobStatus;
+    if (failed === 0) {
+      status = succeeded > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
+    } else {
+      status = succeeded > 0 ? "PARTIAL" : "FAILED";
+    }
+
+    // On replay with accumulated work: if a prior run exists, accumulate
+    // the new counts onto the prior persisted summary.
+    let persistedStatus: JobStatus = status;
+    let persistedItemCount = succeeded;
+    let persistedSucceeded = succeeded;
+    let persistedFailed = failed;
+    let persistedAttempted = attempted;
+    if (deps.existingSummary) {
+      const prior = await deps.existingSummary(runId);
+      if (prior) {
+        if (succeeded + failed === 0) {
+          // No new work — preserve prior summary verbatim.
+          persistedStatus = prior.status as JobStatus;
+          persistedItemCount = prior.itemCount;
+          persistedSucceeded =
+            prior.status === "SUCCEEDED_ITEMS" ? prior.itemCount : 0;
+          persistedFailed =
+            prior.status === "PARTIAL" || prior.status === "FAILED"
+              ? prior.itemCount
+              : 0;
+          persistedAttempted = persistedSucceeded + persistedFailed;
+        } else {
+          // New work produced — accumulate onto prior.
+          persistedItemCount = prior.itemCount + succeeded;
+          persistedSucceeded =
+            (prior.status === "SUCCEEDED_ITEMS" ? prior.itemCount : 0) +
+            succeeded;
+          persistedFailed =
+            (prior.status === "PARTIAL" || prior.status === "FAILED"
+              ? prior.itemCount
+              : 0) + failed;
+          persistedAttempted = persistedSucceeded + persistedFailed;
+          if (persistedFailed === 0) {
+            persistedStatus =
+              persistedSucceeded > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
+          } else {
+            persistedStatus =
+              persistedSucceeded > 0 ? "PARTIAL" : "FAILED";
+          }
+        }
+      }
+    }
 
     await deps.finishRun(runId, {
-      status,
-      itemCount: succeeded,
+      status: persistedStatus,
+      itemCount: persistedItemCount,
     });
-
-    // Skipped drafts are not attempted work — they were filtered out by
-    // the caller. Only actual publish attempts (succeeded+failed) count.
-    const attempted = succeeded + failed;
 
     return {
       runId,
-      status,
-      attempted,
-      succeeded,
-      failed,
-      itemCount: succeeded,
-      exitCode: failed > 0 ? 1 : 0,
+      status: persistedStatus,
+      attempted: persistedAttempted,
+      succeeded: persistedSucceeded,
+      failed: persistedFailed,
+      itemCount: persistedItemCount,
+      exitCode: persistedFailed > 0 ? 1 : 0,
     };
   };
 }
@@ -174,6 +251,15 @@ const REAL_DEPS: PublishBatchDeps = {
         finishedAt: new Date(),
       },
     });
+  },
+  async existingSummary(runId) {
+    const { prisma: db } = await import("../db/client.js");
+    const run = await db.pipelineRun.findUnique({
+      where: { id: runId },
+      select: { finishedAt: true, status: true, itemCount: true },
+    });
+    if (!run || !run.finishedAt) return null;
+    return { status: run.status, itemCount: run.itemCount };
   },
 };
 
