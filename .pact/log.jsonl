@@ -174,3 +174,4 @@
 {"event_id":"21bdd8733e985c4b91e9c47791230da9","ts":"2026-07-29T18:47:30Z","agent_id":"claude","role":"reviewer","event_type":"accept","task_id":"publishing-briefing","feature":"phase1-operations","payload":{}}
 {"event_id":"8a105fa4dc89a2dff33cc521aada5222","ts":"2026-07-29T18:48:06Z","agent_id":"codex","role":"orchestrator","event_type":"escalate","task_id":"","feature":"phase1-operations","payload":{"reason":"iteration limit exceeded","seat":"codex"}}
 {"event_id":"8943f25d21151a4e7942dd00c28be6b6","ts":"2026-07-29T18:53:55Z","agent_id":"codex","role":"orchestrator","event_type":"start","task_id":"health-cost","feature":"phase1-operations","payload":{"owner":"opencode"}}
+{"event_id":"dbcf8d0057e85627fa9284be05f9c1e4","ts":"2026-07-29T18:54:04Z","agent_id":"opencode","role":"worker","event_type":"join","task_id":"","feature":"","payload":{"client":{"name":"pactify-cli","version":"dev"},"protocol_version":1,"roles":["worker"]}}
