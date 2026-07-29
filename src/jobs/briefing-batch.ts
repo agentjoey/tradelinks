@@ -27,8 +27,8 @@ const QUALIFIED_READINESS = ["MONITORED", "VERIFIED"] as const;
 // ---- operational alert injection ----
 
 export interface OperationalAlertStore {
-  record(key: string): Promise<void>;
-  load(key: string): Promise<boolean>;
+  record(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
+  load(key: { code: string; subjectId: string; bucket: string }): Promise<boolean>;
 }
 
 let alertStore: OperationalAlertStore | null = null;
@@ -37,7 +37,7 @@ export function setOperationalAlertStore(s: OperationalAlertStore): void {
   alertStore = s;
 }
 
-export async function loadOperationalAlert(key: string): Promise<boolean> {
+export async function loadOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<boolean> {
   return alertStore?.load(key) ?? false;
 }
 
@@ -77,12 +77,7 @@ export interface BriefingBatchDeps {
     versionIds: string[];
     outputFingerprint: string;
   } | null>;
-  /** Record an operational alert (e.g. BRIEFING_ABSENT).
-   *  In production this is a no-op: `alertStore` is only ever set by
-   *  test/briefing-job.test.ts via setOperationalAlertStore. The
-   *  durable operational-alert persistence (e.g. Telegram delivery
-   *  with idempotency key) is deferred to Task 4 (health-cost). */
-  recordOperationalAlert(key: string): Promise<void>;
+  recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
 }
 
 // ---- window helpers ----
@@ -132,6 +127,14 @@ function computeFingerprint(versionIds: string[]): string {
   return createHash("sha256").update(versionIds.join(",")).digest("hex");
 }
 
+function dateHourBucket(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  return `${y}-${m}-${day}T${h}`;
+}
+
 // ---- factory ----
 
 export function createBriefingBatch(
@@ -175,7 +178,12 @@ export function createBriefingBatch(
     const weeklyRun = isWeeklyRun(args.scheduledFor);
 
     if (versions.length === 0 && weeklyRun) {
-      await deps.recordOperationalAlert("BRIEFING_ABSENT");
+      const bucket = dateHourBucket(args.scheduledFor);
+      await deps.recordOperationalAlert({
+        code: "BRIEFING_ABSENT",
+        subjectId: window.start.toISOString().slice(0, 10), // Monday date as weekly window id
+        bucket,
+      });
 
       await deps.finishRun(runId, {
         status: "BLOCKED",
@@ -340,19 +348,10 @@ const REAL_DEPS: BriefingBatchDeps = {
       outputFingerprint: run.outputFingerprint ?? "",
     };
   },
-  async recordOperationalAlert(key: string) {
+  async recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }) {
     const { createDeliveryAdapter } = await import("../email/transactional.js");
     const adapter = createDeliveryAdapter();
-    // Parse the key into structured form for the delivery adapter.
-    // Key format from detectFailures: "${code}:${subjectId}:${bucket}"
-    const lastColon = key.lastIndexOf(":");
-    if (lastColon === -1) return;
-    const bucket = key.slice(lastColon + 1);
-    const prefix = key.slice(0, lastColon);
-    const firstColon = prefix.indexOf(":");
-    const code = firstColon === -1 ? prefix : prefix.slice(0, firstColon);
-    const subjectId = firstColon === -1 ? prefix : prefix.slice(firstColon + 1);
-    await adapter.record({ code, subjectId, bucket });
+    await adapter.record(key);
   },
 };
 

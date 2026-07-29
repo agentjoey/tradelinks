@@ -328,3 +328,123 @@ describe("healthCheck — job handler contract", () => {
     expect(second.status).toBe(first.status);
   });
 });
+
+// ============================ delivery adapter (NB1) ===================
+
+describe("delivery adapter — finishedAt only on 'sent'", () => {
+  const key = { code: "SOURCE_STALE", subjectId: "B01", bucket: "2026-07-30T12" };
+
+  it("sets finishedAt on created row when sendOpsAlert returns 'sent'", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const createdRows: any[] = [];
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => null,
+          create: async (args: any) => { createdRows.push(args.data); return { id: "r1" }; },
+          update: async () => {},
+        },
+      },
+      sendOpsAlert: async () => "sent",
+    });
+    await adapter.record(key);
+    expect(createdRows).toHaveLength(1);
+    expect(createdRows[0].finishedAt).not.toBeNull();
+  });
+
+  it("does NOT set finishedAt when sendOpsAlert returns 'skipped'", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const createdRows: any[] = [];
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => null,
+          create: async (args: any) => { createdRows.push(args.data); return { id: "r2" }; },
+          update: async () => {},
+        },
+      },
+      sendOpsAlert: async () => "skipped",
+    });
+    await adapter.record(key);
+    expect(createdRows).toHaveLength(1);
+    expect(createdRows[0].finishedAt).toBeUndefined();
+  });
+
+  it("does NOT set finishedAt when sendOpsAlert returns 'failed'", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const createdRows: any[] = [];
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => null,
+          create: async (args: any) => { createdRows.push(args.data); return { id: "r3" }; },
+          update: async () => {},
+        },
+      },
+      sendOpsAlert: async () => "failed",
+    });
+    await adapter.record(key);
+    expect(createdRows).toHaveLength(1);
+    expect(createdRows[0].finishedAt).toBeUndefined();
+  });
+
+  it("skips sending when a finished row already exists", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    let sendCallCount = 0;
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => ({ id: "r-exists", finishedAt: new Date("2026-07-30T12:00:00Z") }),
+          create: async () => { throw new Error("should not create"); },
+          update: async () => {},
+        },
+      },
+      sendOpsAlert: async () => { sendCallCount++; return "sent"; },
+    });
+    await adapter.record(key);
+    expect(sendCallCount).toBe(0);
+  });
+
+  it("retries sending when a row exists but is unfinished", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    let sendCallCount = 0;
+    const updates: any[] = [];
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => ({ id: "r-unfinished", finishedAt: null }),
+          create: async () => { throw new Error("should not create"); },
+          update: async (args: any) => { updates.push(args.data); },
+        },
+      },
+      sendOpsAlert: async () => { sendCallCount++; return "sent"; },
+    });
+    await adapter.record(key);
+    expect(sendCallCount).toBe(1);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].finishedAt).not.toBeNull();
+  });
+
+  it("load returns true when finished row exists, false otherwise", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    let findResult: { id: string; finishedAt: Date | null } | null = null;
+    const adapter = createDeliveryAdapter({
+      prisma: {
+        pipelineRun: {
+          findUnique: async () => findResult,
+          create: async () => ({ id: "x" }),
+          update: async () => {},
+        },
+      },
+    });
+
+    findResult = { id: "r-finished", finishedAt: new Date() };
+    expect(await adapter.load(key)).toBe(true);
+
+    findResult = { id: "r-unfinished", finishedAt: null };
+    expect(await adapter.load(key)).toBe(false);
+
+    findResult = null;
+    expect(await adapter.load(key)).toBe(false);
+  });
+});

@@ -517,4 +517,25 @@ describe("collectBatch — cost suppression", () => {
     expect(fetched).toContain("exp-src2");
     expect(r.status).toBe("SUCCEEDED_ITEMS");
   });
+
+  it("shouldSkipAtHardCap skips EXPERIMENTAL when reader returns HARD_CAP with experimental-demand suppressed", async () => {
+    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const source = testSourceContract("exp-skip-test", { readiness: "EXPERIMENTAL" });
+    const reader = async () => ({ level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] });
+    expect(await shouldSkipAtHardCap(source, reader)).toBe(true);
+  });
+
+  it("shouldSkipAtHardCap does NOT skip MONITORED even at HARD_CAP", async () => {
+    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const source = testSourceContract("mon-skip-test", { readiness: "MONITORED" });
+    const reader = async () => ({ level: "HARD_CAP", suppress: ["experimental-demand"] });
+    expect(await shouldSkipAtHardCap(source, reader)).toBe(false);
+  });
+
+  it("shouldSkipAtHardCap does NOT skip when level is not HARD_CAP", async () => {
+    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
+    const source = testSourceContract("exp-review-test", { readiness: "EXPERIMENTAL" });
+    const reader = async () => ({ level: "REVIEW", suppress: [] });
+    expect(await shouldSkipAtHardCap(source, reader)).toBe(false);
+  });
 });

@@ -11,7 +11,6 @@ import { createHash } from "node:crypto";
 import type { JobArgs } from "../src/jobs/types.js";
 import {
   createBriefingBatch,
-  loadOperationalAlert,
   setOperationalAlertStore,
   type BriefingBatchDeps,
   type OperationalAlertStore,
@@ -44,12 +43,29 @@ function sundayArgs(): JobArgs {
 class InMemoryAlertStore implements OperationalAlertStore {
   readonly alerts = new Map<string, boolean>();
   readonly recordCounts = new Map<string, number>();
-  async record(key: string) {
-    this.alerts.set(key, true);
-    this.recordCounts.set(key, (this.recordCounts.get(key) ?? 0) + 1);
+  private toKey(k: { code: string; subjectId: string; bucket: string }): string {
+    return `${k.code}:${k.subjectId}:${k.bucket}`;
   }
-  async load(key: string) {
-    return this.alerts.has(key);
+  async record(key: { code: string; subjectId: string; bucket: string }) {
+    const sk = this.toKey(key);
+    this.alerts.set(sk, true);
+    this.recordCounts.set(sk, (this.recordCounts.get(sk) ?? 0) + 1);
+  }
+  async load(key: { code: string; subjectId: string; bucket: string }) {
+    return this.alerts.has(this.toKey(key));
+  }
+  hasByCode(code: string): boolean {
+    for (const k of this.alerts.keys()) {
+      if (k.startsWith(`${code}:`)) return true;
+    }
+    return false;
+  }
+  getCountByCode(code: string): number {
+    let count = 0;
+    for (const [k, n] of this.recordCounts) {
+      if (k.startsWith(`${code}:`)) count = Math.max(count, n);
+    }
+    return count;
   }
 }
 
@@ -109,12 +125,8 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
         }),
       recordOperationalAlert:
         deps.recordOperationalAlert ??
-        (async (key) => {
-          alertStore.alerts.set(key, true);
-          alertStore.recordCounts.set(
-            key,
-            (alertStore.recordCounts.get(key) ?? 0) + 1,
-          );
+        (async (key: { code: string; subjectId: string; bucket: string }) => {
+          await alertStore.record(key);
         }),
     }),
   };
@@ -124,10 +136,10 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
 
 describe("briefingBatch — weekly absence", () => {
   it("records briefing absence when the weekly window has no qualified content", async () => {
-    const { call } = makeBriefinger();
+    const { call, alertStore } = makeBriefinger();
     const result = await call(mondayArgs());
     expect(result).toMatchObject({ status: "BLOCKED", exitCode: 2 });
-    expect(await loadOperationalAlert("BRIEFING_ABSENT")).toBe(true);
+    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(true);
   });
 });
 
@@ -144,11 +156,11 @@ describe("briefingBatch — daily absence", () => {
   });
 
   it("does not record BRIEFING_ABSENT on non-Monday with no qualified content", async () => {
-    const { call } = makeBriefinger();
+    const { call, alertStore } = makeBriefinger();
     await call(
       baseArgs({ scheduledFor: new Date("2026-07-30T08:00:00Z") }),
     );
-    expect(await loadOperationalAlert("BRIEFING_ABSENT")).toBe(false);
+    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(false);
   });
 
   it("returns SUCCEEDED_EMPTY on Sunday with no qualified content", async () => {
@@ -346,11 +358,11 @@ describe("briefingBatch — absent replay", () => {
 
     // First run records the alert
     await call(mondayArgs());
-    expect(alertStore.recordCounts.get("BRIEFING_ABSENT")).toBe(1);
+    expect(alertStore.getCountByCode("BRIEFING_ABSENT")).toBe(1);
 
     // Replay must NOT re-record the alert
     await call(mondayArgs());
-    expect(alertStore.recordCounts.get("BRIEFING_ABSENT")).toBe(1);
+    expect(alertStore.getCountByCode("BRIEFING_ABSENT")).toBe(1);
   }, 10000);
 });
 
@@ -358,14 +370,14 @@ describe("briefingBatch — absent replay", () => {
 
 describe("briefingBatch — zero qualified", () => {
   it("weekly with zero qualified entries emits BRIEFING_ABSENT and BLOCKED", async () => {
-    const { call } = makeBriefinger({
+    const { call, alertStore } = makeBriefinger({
       selectQualifiedVersions: async () => [],
     });
     const result = await call(mondayArgs());
     expect(result.status).toBe("BLOCKED");
     expect(result.exitCode).toBe(2);
     expect(result.itemCount).toBe(0);
-    expect(await loadOperationalAlert("BRIEFING_ABSENT")).toBe(true);
+    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(true);
   }, 10000);
 });
 
@@ -373,12 +385,12 @@ describe("briefingBatch — zero qualified", () => {
 
 describe("briefingBatch — not weekly", () => {
   it("mid-week run with content still qualifies but does not emit BRIEFING_ABSENT", async () => {
-    const { call } = makeBriefinger({
+    const { call, alertStore } = makeBriefinger({
       selectQualifiedVersions: async () => [{ versionId: "v-1" }],
     });
     const result = await call(baseArgs()); // Wednesday
     expect(result.status).toBe("SUCCEEDED_ITEMS");
     expect(result.exitCode).toBe(0);
-    expect(await loadOperationalAlert("BRIEFING_ABSENT")).toBe(false);
+    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(false);
   }, 10000);
 });

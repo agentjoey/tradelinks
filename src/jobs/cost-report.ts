@@ -22,16 +22,11 @@ export { evaluateCostGuardrail } from "../monitoring/cost.js";
 
 // ---- durable cost decision readers (consumed by collect-batch, model jobs) ----
 
-let latestCostDecision: CostDecision | null = null;
-
-function persistDecision(d: CostDecision): void {
-  latestCostDecision = d;
-}
-
 /**
  * Read the latest accepted cost decision from the most recent completed
  * cost-report PipelineRun. Returns null when no decision exists.
  * Consumed by collect-batch.ts to decide suppression.
+ * PipelineRun metadata is the ONLY source of truth — no process-local cache.
  */
 export async function readLatestCostDecision(): Promise<CostDecision | null> {
   const { prisma: db } = await import("../db/client.js");
@@ -40,15 +35,17 @@ export async function readLatestCostDecision(): Promise<CostDecision | null> {
     orderBy: { finishedAt: "desc" },
     select: { metadata: true },
   });
-  if (!run?.metadata) return latestCostDecision;
-  const meta = run.metadata as { level?: string; suppress?: string[]; projectedTotalUsd?: number; message?: string } | null;
-  if (!meta?.level) return latestCostDecision;
+  if (!run?.metadata) return null;
+  const meta = run.metadata as {
+    level?: string; suppress?: string[]; projectedTotalUsd?: number;
+    message?: string; breakdown?: Record<string, number>;
+  } | null;
+  if (!meta?.level) return null;
   return {
     level: meta.level as CostDecision["level"],
     suppress: meta.suppress ?? [],
     message: meta.message ?? "",
     projectedTotalUsd: meta.projectedTotalUsd ?? 0,
-    breakdown: {},
   };
 }
 
@@ -104,8 +101,6 @@ export function createCostReport(
       const bucket = dateHourBucket(args.scheduledFor);
       await deps.recordOperationalAlert({ code: "HARD_CAP", subjectId: "cost", bucket });
     }
-
-    persistDecision(decision);
 
     await deps.finishRun(runId, {
       status: "SUCCEEDED_ITEMS",

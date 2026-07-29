@@ -21,7 +21,6 @@ export interface CostDecision {
   suppress: string[];
   message: string;
   projectedTotalUsd: number;
-  breakdown: Record<string, number>;
 }
 
 export function dateHourBucket(d: Date): string {
@@ -111,7 +110,6 @@ export function evaluateCostGuardrail(input: CostInputs): CostDecision {
         `Experimental demand and model enrichment suppressed. ` +
         `Official collection and health checks remain enabled.`,
       projectedTotalUsd: projected,
-      breakdown: {},
     };
   }
 
@@ -123,7 +121,6 @@ export function evaluateCostGuardrail(input: CostInputs): CostDecision {
         `Projected monthly cost $${projected.toFixed(2)} requires review. ` +
         `No jobs suppressed yet — operator should assess cost drivers.`,
       projectedTotalUsd: projected,
-      breakdown: {},
     };
   }
 
@@ -132,6 +129,5 @@ export function evaluateCostGuardrail(input: CostInputs): CostDecision {
     suppress: [],
     message: `Projected monthly cost $${projected.toFixed(2)} is within budget.`,
     projectedTotalUsd: projected,
-    breakdown: {},
   };
 }

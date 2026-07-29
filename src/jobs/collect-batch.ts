@@ -134,15 +134,21 @@ export interface CollectBatchDeps {
 
 // ---- cost suppression reader (production, consumed by collect-batch) ----
 
-async function shouldSkipAtHardCap(source: SourceContract): Promise<boolean> {
+export async function shouldSkipAtHardCap(
+  source: SourceContract,
+  _reader?: () => Promise<{ level: string; suppress: string[] } | null>,
+): Promise<boolean> {
   try {
-    const { readLatestCostDecision } = await import("./cost-report.js");
-    const decision = await readLatestCostDecision();
+    const reader = _reader ?? (async () => {
+      const { readLatestCostDecision } = await import("./cost-report.js");
+      return readLatestCostDecision();
+    });
+    const decision = await reader();
     if (decision?.level === "HARD_CAP" && decision.suppress.includes("experimental-demand")) {
       return source.readiness === "EXPERIMENTAL";
     }
-  } catch {
-    // cost-report not available — proceed without suppression
+  } catch (err) {
+    console.error("[cost-guardrail] failed to read cost decision for suppression:", err);
   }
   return false;
 }

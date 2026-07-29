@@ -65,54 +65,57 @@ export function buildOpsAlertText(code: string, subjectId: string): string {
  * date. The row is upserted on record; finishedAt is only set when
  * sendOpsAlert returns "sent".
  */
-export function createDeliveryAdapter(): DeliveryAdapter {
+export function createDeliveryAdapter(opts?: {
+  prisma?: { pipelineRun: { findUnique: (args: any) => Promise<{ id: string; finishedAt: Date | null } | null>; create: (args: any) => Promise<{ id: string }>; update: (args: any) => Promise<void> } };
+  sendOpsAlert?: (text: string) => Promise<"sent" | "skipped" | "failed">;
+}): DeliveryAdapter {
   return {
     async record(key: AlertDeliveryKey) {
-      const { prisma: db } = await import("../db/client.js");
-      const { sendOpsAlert } = await import("../push/send.js");
+      const db = opts?.prisma ?? (await import("../db/client.js")).prisma as any;
+      const send = opts?.sendOpsAlert ?? (await import("../push/send.js")).sendOpsAlert;
 
       const scopeKey = `${key.code}:${key.subjectId}:${key.bucket}`;
       const scheduledFor = bucketToDate(key.bucket);
 
-      // Use raw upsert (no beginRun — this is a delivery row, not a job run)
-      const row = await db.pipelineRun.upsert({
+      // Check if already delivered — dedup gate
+      const existing = await db.pipelineRun.findUnique({
         where: {
           jobType_scopeKey_scheduledFor: {
-            jobType: "HEALTH",
-            scopeKey,
-            scheduledFor,
+            jobType: "HEALTH", scopeKey, scheduledFor,
           },
         },
-        update: { startedAt: new Date() },
-        create: {
-          jobType: "HEALTH",
-          scopeKey,
-          scheduledFor,
-          status: "FAILED",
-          itemCount: 0,
-          runnerVersion: "delivery-adapter",
-        },
+        select: { id: true, finishedAt: true },
       });
+      if (existing?.finishedAt != null) return; // already sent, skip
 
-      const result = await sendOpsAlert(
+      const result = await send(
         buildOpsAlertText(key.code, key.subjectId),
       );
 
-      if (result === "sent") {
-        await db.pipelineRun.update({
-          where: { id: row.id },
+      if (existing) {
+        // Row exists but unfinished (previous skipped/failed) — update it
+        if (result === "sent") {
+          await db.pipelineRun.update({
+            where: { id: existing.id },
+            data: { status: "SUCCEEDED_EMPTY", finishedAt: new Date() },
+          });
+        }
+      } else {
+        // First time — create row, only finish on "sent"
+        await db.pipelineRun.create({
           data: {
-            status: "SUCCEEDED_EMPTY",
-            finishedAt: new Date(),
+            jobType: "HEALTH", scopeKey, scheduledFor,
+            status: result === "sent" ? "SUCCEEDED_EMPTY" : "FAILED",
+            itemCount: 0,
+            runnerVersion: "delivery-adapter",
+            finishedAt: result === "sent" ? new Date() : undefined,
           },
         });
       }
-      // On "skipped" or "failed": leave the row unfinished so the next
-      // health-check run retries delivery.
     },
 
     async load(key: AlertDeliveryKey) {
-      const { prisma: db } = await import("../db/client.js");
+      const db = opts?.prisma ?? (await import("../db/client.js")).prisma as any;
       const scopeKey = `${key.code}:${key.subjectId}:${key.bucket}`;
       const scheduledFor = bucketToDate(key.bucket);
       const row = await db.pipelineRun.findUnique({
