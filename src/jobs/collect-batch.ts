@@ -145,7 +145,11 @@ export async function shouldSkipAtHardCap(
       return source.readiness === "EXPERIMENTAL";
     }
   } catch (err) {
-    console.error("[cost-guardrail] failed to read cost decision for suppression:", err);
+    // Deliberate: fail open. A transient DB error must not block official
+    // collection by accidentally suppressing sources. The cost-report job
+    // writes the decision independently; suppression is a cost-optimization
+    // that is safe to miss, while missing an official-source check is not.
+    console.error("[cost-guardrail] failed to read cost decision:", err);
   }
   return false;
 }

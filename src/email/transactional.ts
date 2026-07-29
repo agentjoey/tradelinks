@@ -104,7 +104,9 @@ export function createDeliveryAdapter(opts?: {
               status: "FAILED", itemCount: 0,
               runnerVersion: "delivery-adapter",
             },
-          }).catch(() => { /* race on concurrent delivery ok */ });
+          }).catch((err: any) => {
+            if (err?.code !== "P2002") throw err;
+          });
         }
         return;
       }
@@ -127,7 +129,9 @@ export function createDeliveryAdapter(opts?: {
             runnerVersion: "delivery-adapter",
             finishedAt: result === "sent" ? new Date() : undefined,
           },
-        }).catch(() => { /* race on concurrent delivery ok */ });
+        }).catch((err: any) => {
+          if (err?.code !== "P2002") throw err;
+        });
       }
     },
 

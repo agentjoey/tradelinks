@@ -504,3 +504,26 @@ describe("delivery adapter — finishedAt only on 'sent'", () => {
     expect(updateCalled).toBe(false); // update only on "sent", throw skips send
   });
 });
+
+// ============================ registration regression ==================
+
+describe("job registration via entry point", () => {
+  it("getJob('health').run is defined after side-effect import", async () => {
+    const { getJob } = await import("../src/jobs/registry.js");
+    // Trigger side-effect registration by importing health-check
+    await import("../src/jobs/health-check.js");
+    const job = getJob("health");
+    expect(job).toBeDefined();
+    expect(job!.run).toBeDefined();
+    expect(job!.dryRun).toBeDefined();
+  });
+
+  it("getJob('cost-report').run is defined after side-effect import", async () => {
+    const { getJob } = await import("../src/jobs/registry.js");
+    await import("../src/jobs/cost-report.js");
+    const job = getJob("cost-report");
+    expect(job).toBeDefined();
+    expect(job!.run).toBeDefined();
+    expect(job!.dryRun).toBeDefined();
+  });
+});

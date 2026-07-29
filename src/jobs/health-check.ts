@@ -107,6 +107,18 @@ function isCheckSuccessful(status: string): boolean {
   return status === "SUCCEEDED_ITEMS" || status === "SUCCEEDED_EMPTY";
 }
 
+/**
+ * Detect content collapse for a single source.
+ * Requires ≥4 of previous 7 successful checks with median itemCount ≥5
+ * and the current check is SUCCEEDED_EMPTY.
+ * Network failures are never classified as content collapse.
+ *
+ * KNOWN LIMITATION: the lookback window is bounded by maxSlaWindowHours
+ * (default 48h). Sources with cadence >12h (SLOW collection group) can
+ * accumulate at most ~2 successful checks in that window and can never
+ * reach the required 4. Collapse is structurally undetectable for daily
+ * and slower sources with the default window.
+ */
 function detectContentCollapse(sourceId: string, checks: SourceCheckSummary[]): boolean {
   const sourceChecks = checks
     .filter((c) => c.sourceId === sourceId)
