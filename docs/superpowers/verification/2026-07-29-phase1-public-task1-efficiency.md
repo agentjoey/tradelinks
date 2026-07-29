@@ -28,7 +28,7 @@ pnpm vitest run test/public-read-model.test.ts test/public-channel-consistency.t
 
 Result: Test Files 2 failed (2), Tests 0. Failed to load `../src/public-intelligence/query.js` — read model absent.
 
-## GREEN (targeted gate — rework v1)
+## GREEN (targeted gate — rework v2)
 
 ```bash
 pnpm db:validate                    # exit 0, schema valid
@@ -42,12 +42,26 @@ GATE_EXIT=0
 
 ### Test Results
 
-- `test/public-read-model.test.ts`: 36 tests passed
-  - verified listing excludes non-public versions (3 — presence + absence)
-  - monitored listing (2 — presence + absence)
+- `test/public-read-model.test.ts`: 49 tests passed
+  - verified listing excludes non-public versions (5 — presence + draft/notCurrent/unreviewed/monitored absence)
+  - monitored listing (2 — presence + STALE absence)
   - slug lookup returns null for non-public states (4)
   - serializer visibility invariants (4)
   - serialized output omissions and ordering (9)
+  - fingerprint determinism (4)
+  - pagination, limits, and cursor round-trip (7 — invalid limits, undecodable cursor rejects, repeat-order stability, cursor page-through no-duplicates/no-gaps, nextCursor null on final page)
+  - schema constraints and reverse relations exercised on branch (8 — Guide + 2 GuideEvidence create/read, @@unique([guideId,url]) reject, @@unique([guideId,position]) reject, Briefing + BriefingEntry create/read, @@unique([kind,periodKey]) reject, @@unique([briefingId,position]) reject, Source.guideEvidence reverse relation, CanonicalChangeVersion.briefingEntries reverse relation, LegacyRedirect write+read+default 308)
+  - PUBLIC_CACHE contract (3)
+  - legacy Alert exclusion (1)
+  - correctionHistory filters DRAFT versions (1)
+
+- `test/public-channel-consistency.test.ts`: 5 tests passed (runId-scoped)
+  - all projections share versionId, fingerprint, permalink
+  - fingerprint matches SHA-256 of id|version|updatedAt
+
+- `test/canonical-publish.test.ts`: 22 tests passed (no regression)
+
+Total targeted: 3 files / 76 tests passed (49+5+22).
   - fingerprint determinism (4)
   - pagination and limits (4)
   - PUBLIC_CACHE contract (3)
@@ -91,8 +105,8 @@ Files created/modified:
 - `src/public-intelligence/query.ts` — getPublicChangeBySlug, listPublicChanges (cursor fail-closed)
 - `src/public-intelligence/serialize.ts` — assertPublicVersion, serializeCanonicalVersion (hoisted ROLE_ORDER, DRAFT correction exclusion)
 - `src/public-intelligence/cache.ts` — PUBLIC_CACHE
-- `test/public-read-model.test.ts` — 36 tests (visibility, serialization, legacy Alert exclusion, DRAFT correction filter)
-- `test/public-channel-consistency.test.ts` — 5 tests (channel contract)
+- `test/public-read-model.test.ts` — 49 tests (visibility, serialization, cursor pagination, schema constraints, reverse relations, legacy Alert exclusion, DRAFT correction filter)
+- `test/public-channel-consistency.test.ts` — 5 tests (channel contract, runId-scoped)
 - `docs/superpowers/verification/2026-07-29-phase1-public-task1-efficiency.md` — this file
 - `.agent/CURRENT.md` — task status update
 
@@ -115,11 +129,11 @@ gross_tokens: UNAVAILABLE
 cached_input_tokens: UNAVAILABLE
 uncached_input_tokens: UNAVAILABLE
 output_tokens: UNAVAILABLE
-worker_runs: 2
-reviewer_runs: 1
-targeted_gate_runs: 3
+worker_runs: 3
+reviewer_runs: 2
+targeted_gate_runs: 5
 full_gate_runs: 1
-wall_clock_minutes: ~120
+wall_clock_minutes: ~180
 budget_result: PASS
 verification_record: docs/superpowers/verification/2026-07-29-phase1-public-task1-efficiency.md
 ```

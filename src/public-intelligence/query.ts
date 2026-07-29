@@ -20,8 +20,8 @@ const MAX_LIMIT = 100;
 const PUBLIC_READINESS = ["MONITORED", "VERIFIED"] as const;
 
 function assertLimit(limit: number): void {
-  if (!Number.isFinite(limit) || limit < 1 || limit > MAX_LIMIT) {
-    throw new Error(`limit must be between 1 and ${MAX_LIMIT}, got ${limit}`);
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
+    throw new Error(`limit must be an integer between 1 and ${MAX_LIMIT}, got ${limit}`);
   }
 }
 
@@ -77,7 +77,7 @@ export async function getPublicChangeBySlug(
 
   if (!version) return null;
 
-  return serializeCanonicalVersion(version as unknown as VersionWithEvidence);
+  return serializeCanonicalVersion(version as VersionWithEvidence);
 }
 
 export async function listPublicChanges(

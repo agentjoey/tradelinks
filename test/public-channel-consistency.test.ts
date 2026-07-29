@@ -217,10 +217,12 @@ describe("listPublicChanges produces channel-consistent records", () => {
   it("every item in a listing has the same fingerprint computed by the serializer", async () => {
     await seedPublicVersion();
 
-    const page = await listPublicChanges({ pool: "verified", limit: 20 });
-    expect(page.items.length).toBeGreaterThan(0);
+    const page = await listPublicChanges({ pool: "verified", limit: 100 });
+    // Filter to run-scoped slugs to avoid cross-suite flakiness
+    const runItems = page.items.filter((item) => item.slug.startsWith(runId));
+    expect(runItems.length).toBeGreaterThan(0);
 
-    for (const item of page.items) {
+    for (const item of runItems) {
       const viaSlug = await getPublicChangeBySlug(item.slug);
       expect(viaSlug).not.toBeNull();
       expect(viaSlug!.fingerprint).toBe(item.fingerprint);

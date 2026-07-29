@@ -183,7 +183,14 @@ async function seedNonPublicVersions() {
 
 // After all tests, clean up in FK-safe order
 afterAll(async () => {
-  // FK-safe order for the new models + existing canonical chain
+  // FK-safe order for the new models + existing canonical chain.
+  // FKs are ON DELETE RESTRICT so we delete children first.
+  // Phase-1 public models use runId as a prefix on their ids/slugs.
+  await prisma.briefingEntry.deleteMany({ where: { briefingId: { startsWith: runId } } });
+  await prisma.briefing.deleteMany({ where: { id: { startsWith: runId } } });
+  await prisma.guideEvidence.deleteMany({ where: { guideId: { startsWith: runId } } });
+  await prisma.guide.deleteMany({ where: { id: { startsWith: runId } } });
+  await prisma.legacyRedirect.deleteMany({ where: { fromPath: { startsWith: runId } } });
   await prisma.evidenceRecord.deleteMany({ where: { changeVersion: { canonicalChange: { slug: { startsWith: runId } } } } });
   await prisma.canonicalChangeVersion.deleteMany({ where: { canonicalChange: { slug: { startsWith: runId } } } });
   await prisma.canonicalChange.deleteMany({ where: { slug: { startsWith: runId } } });
@@ -197,12 +204,16 @@ afterAll(async () => {
 
 describe("verified listing excludes non-public versions", () => {
   let draftChange: { slug: string };
+  let notCurrentSlug: string;
+  let unreviewedSlug: string;
   let monitoredVersion: { id: string };
   let publicSlug: string;
 
   beforeAll(async () => {
     const versions = await seedNonPublicVersions();
     draftChange = { slug: versions[0]!.change.slug };
+    notCurrentSlug = versions[1]!.change.slug;
+    unreviewedSlug = versions[2]!.change.slug;
     monitoredVersion = { id: versions[3]!.version.id };
 
     // Also seed a public VERIFIED version to ensure the list is not empty
@@ -224,6 +235,18 @@ describe("verified listing excludes non-public versions", () => {
     const page = await listPublicChanges({ pool: "verified", limit: 20 });
     const slugs = page.items.map((item) => item.slug);
     expect(slugs).not.toContain(draftChange.slug);
+  }, 30000);
+
+  it("does not include a not-current version", async () => {
+    const page = await listPublicChanges({ pool: "verified", limit: 20 });
+    const slugs = page.items.map((item) => item.slug);
+    expect(slugs).not.toContain(notCurrentSlug);
+  }, 30000);
+
+  it("does not include an unreviewed version", async () => {
+    const page = await listPublicChanges({ pool: "verified", limit: 20 });
+    const slugs = page.items.map((item) => item.slug);
+    expect(slugs).not.toContain(unreviewedSlug);
   }, 30000);
 
   it("does not include monitored versions in the verified pool", async () => {
@@ -578,7 +601,7 @@ describe("fingerprint determinism", () => {
   });
 });
 
-describe("pagination and limits", () => {
+describe("pagination, limits, and cursor round-trip", () => {
   it("rejects a limit of 0", async () => {
     await expect(listPublicChanges({ pool: "verified", limit: 0 })).rejects.toThrow();
   });
@@ -591,8 +614,17 @@ describe("pagination and limits", () => {
     await expect(listPublicChanges({ pool: "verified", limit: 1001 })).rejects.toThrow();
   });
 
-  it("pagination is stable when repeated with same cursor", async () => {
-    // Seed several public versions
+  it("rejects a non-integer limit (e.g. 2.7)", async () => {
+    await expect(listPublicChanges({ pool: "verified", limit: 2.7 })).rejects.toThrow();
+  });
+
+  it("rejects an undecodable cursor", async () => {
+    await expect(
+      listPublicChanges({ pool: "verified", limit: 5, cursor: "not-base64-json" }),
+    ).rejects.toThrow(/invalid or undecodable cursor/i);
+  });
+
+  it("repeat query without cursor returns same order", async () => {
     await Promise.all([
       seedPublicVersion({ readiness: "VERIFIED" as any }),
       seedPublicVersion({ readiness: "VERIFIED" as any }),
@@ -601,6 +633,52 @@ describe("pagination and limits", () => {
     const page1 = await listPublicChanges({ pool: "verified", limit: 5 });
     const page2 = await listPublicChanges({ pool: "verified", limit: 5 });
     expect(page1.items.map((i) => i.id)).toEqual(page2.items.map((i) => i.id));
+  }, 30000);
+
+  it("cursor page-through collects all rows with no duplicates or gaps", async () => {
+    // Seed 3 run-scoped VERIFIED rows
+    const s1 = await seedPublicVersion({ readiness: "VERIFIED" as any });
+    const s2 = await seedPublicVersion({ readiness: "VERIFIED" as any });
+    const s3 = await seedPublicVersion({ readiness: "VERIFIED" as any });
+    const seeded = [s1.change.slug, s2.change.slug, s3.change.slug];
+
+    // Page through with limit 2: page1 + page2 should cover all 3
+    const page1 = await listPublicChanges({ pool: "verified", limit: 2 });
+    const page1Run = page1.items.filter((i) => i.slug.startsWith(runId));
+    expect(page1Run.length).toBeGreaterThan(0);
+    expect(page1Run.length).toBeLessThanOrEqual(2);
+    expect(page1.nextCursor).not.toBeNull();
+
+    const page2 = await listPublicChanges({
+      pool: "verified",
+      limit: 2,
+      cursor: page1.nextCursor!,
+    });
+    const page2Run = page2.items.filter((i) => i.slug.startsWith(runId));
+
+    // Concatenated slugs across pages, filtered to run scoped
+    const pagedSlugs = [...page1Run, ...page2Run].map((i) => i.slug);
+    // All 3 seeded slugs should appear
+    for (const s of seeded) {
+      expect(pagedSlugs).toContain(s);
+    }
+    // No duplicates
+    expect(new Set(pagedSlugs).size).toBe(pagedSlugs.length);
+
+    // The full single-page listing at a larger limit should be a superset
+    const fullPage = await listPublicChanges({ pool: "verified", limit: 100 });
+    const fullRunSlugs = fullPage.items
+      .filter((i) => i.slug.startsWith(runId))
+      .map((i) => i.slug);
+    for (const s of seeded) {
+      expect(fullRunSlugs).toContain(s);
+    }
+  }, 60000);
+
+  it("nextCursor is null when total items <= limit", async () => {
+    // Use a very large limit to guarantee everything fits in one page
+    const page = await listPublicChanges({ pool: "verified", limit: 100 });
+    expect(page.nextCursor).toBeNull();
   }, 30000);
 });
 
@@ -622,13 +700,461 @@ describe("PUBLIC_CACHE contract", () => {
   });
 });
 
-describe("new schema constraints exercised", () => {
-  it("BriefingKind enum values are available", async () => {
-    // Verify the new models exist by exercising a write+read
-    // This will fail before migration 0013 is applied (Prisma validation)
-    const result: boolean = typeof (prisma as any).guide !== "undefined";
-    expect(result).toBe(true);
-  });
+describe("schema constraints and reverse relations exercised on branch", () => {
+  it("creates a Guide with two GuideEvidence rows and reads them back", async () => {
+    const seedId = nextSeed();
+    const source = await prisma.source.create({
+      data: {
+        id: `${seedId}-source`,
+        name: "Guide Evidence Source",
+        url: `https://example.com/${seedId}`,
+        adapter: "rss",
+        frequencyCron: "0 * * * *",
+        language: "en",
+        regions: ["north_america"],
+        platforms: [],
+      },
+    });
+
+    const guide = await prisma.guide.create({
+      data: {
+        id: `${seedId}-guide`,
+        slug: `${seedId}-guide`,
+        title: "Test Guide",
+        summary: "Test summary",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        lastReviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+        platforms: ["AMAZON"],
+        productCategories: ["CONSUMER_ELECTRONICS"],
+        riskAttributes: ["BATTERY"],
+        evidence: {
+          create: [
+            {
+              id: `${seedId}-ev1`,
+              sourceId: source.id,
+              url: `https://example.com/${seedId}/ev1`,
+              authorityLevel: "GOVERNMENT_OFFICIAL",
+              access: "PUBLIC",
+              licenseNote: "Public domain",
+              normalizedSummary: "Evidence summary 1",
+              publishedAt: new Date("2026-07-10T00:00:00Z"),
+              reviewedAt: new Date("2026-07-19T00:00:00Z"),
+              position: 1,
+            },
+            {
+              id: `${seedId}-ev2`,
+              sourceId: source.id,
+              url: `https://example.com/${seedId}/ev2`,
+              authorityLevel: "INDUSTRY_OFFICIAL",
+              access: "PUBLIC",
+              licenseNote: "Public domain",
+              normalizedSummary: "Evidence summary 2",
+              publishedAt: new Date("2026-07-12T00:00:00Z"),
+              reviewedAt: new Date("2026-07-19T00:00:00Z"),
+              position: 2,
+            },
+          ],
+        },
+      },
+      include: { evidence: true },
+    });
+
+    expect(guide.evidence.length).toBe(2);
+    expect(guide.slug).toBe(`${seedId}-guide`);
+  }, 30000);
+
+  it("@@unique([guideId, url]) rejects duplicate evidence URL per guide", async () => {
+    const seedId = nextSeed();
+    const source = await prisma.source.create({
+      data: {
+        id: `${seedId}-source`,
+        name: "Unique URL Source",
+        url: `https://example.com/${seedId}`,
+        adapter: "rss",
+        frequencyCron: "0 * * * *",
+        language: "en",
+        regions: ["north_america"],
+        platforms: [],
+      },
+    });
+    await prisma.guide.create({
+      data: {
+        id: `${seedId}-guide`,
+        slug: `${seedId}-guide`,
+        title: "Test",
+        summary: "Test",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        lastReviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+        platforms: [],
+        productCategories: [],
+        riskAttributes: [],
+        evidence: {
+          create: {
+            id: `${seedId}-ev`,
+            sourceId: source.id,
+            url: `https://example.com/${seedId}/dup`,
+            authorityLevel: "GOVERNMENT_OFFICIAL",
+            access: "PUBLIC",
+            licenseNote: "PD",
+            normalizedSummary: "Evidence",
+            reviewedAt: new Date("2026-07-19T00:00:00Z"),
+            position: 1,
+          },
+        },
+      },
+    });
+    // Duplicate (guideId, url) should reject
+    await expect(
+      prisma.guideEvidence.create({
+        data: {
+          id: `${seedId}-ev2`,
+          guideId: `${seedId}-guide`,
+          sourceId: source.id,
+          url: `https://example.com/${seedId}/dup`,
+          authorityLevel: "GOVERNMENT_OFFICIAL",
+          access: "PUBLIC",
+          licenseNote: "PD",
+          normalizedSummary: "Evidence",
+          reviewedAt: new Date("2026-07-19T00:00:00Z"),
+          position: 2,
+        },
+      }),
+    ).rejects.toThrow();
+  }, 30000);
+
+  it("@@unique([guideId, position]) rejects duplicate position", async () => {
+    const seedId = nextSeed();
+    const source = await prisma.source.create({
+      data: {
+        id: `${seedId}-source`,
+        name: "Unique Position Source",
+        url: `https://example.com/${seedId}`,
+        adapter: "rss",
+        frequencyCron: "0 * * * *",
+        language: "en",
+        regions: ["north_america"],
+        platforms: [],
+      },
+    });
+    await prisma.guide.create({
+      data: {
+        id: `${seedId}-guide`,
+        slug: `${seedId}-guide`,
+        title: "Test",
+        summary: "Test",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        lastReviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+        platforms: [],
+        productCategories: [],
+        riskAttributes: [],
+        evidence: {
+          create: {
+            id: `${seedId}-ev1`,
+            sourceId: source.id,
+            url: `https://example.com/${seedId}/a`,
+            authorityLevel: "GOVERNMENT_OFFICIAL",
+            access: "PUBLIC",
+            licenseNote: "PD",
+            normalizedSummary: "Evidence",
+            reviewedAt: new Date("2026-07-19T00:00:00Z"),
+            position: 1,
+          },
+        },
+      },
+    });
+    await expect(
+      prisma.guideEvidence.create({
+        data: {
+          id: `${seedId}-ev2`,
+          guideId: `${seedId}-guide`,
+          sourceId: source.id,
+          url: `https://example.com/${seedId}/b`,
+          authorityLevel: "GOVERNMENT_OFFICIAL",
+          access: "PUBLIC",
+          licenseNote: "PD",
+          normalizedSummary: "Evidence",
+          reviewedAt: new Date("2026-07-19T00:00:00Z"),
+          position: 1,
+        },
+      }),
+    ).rejects.toThrow();
+  }, 30000);
+
+  it("creates a Briefing + BriefingEntry, rejects duplicate period key", async () => {
+    const seedId = nextSeed();
+    const { change } = await seedCanonicalChange();
+    const version = await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 1,
+        isCurrent: true,
+        title: "Briefing Entry Test",
+        summary: "Test",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-15T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Test",
+        editorialStatus: "PUBLISHED" as any,
+        reviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+      },
+    });
+
+    const briefing = await prisma.briefing.create({
+      data: {
+        id: `${seedId}-briefing`,
+        kind: "WEEKLY",
+        periodKey: `${seedId}-wk`,
+        slug: `${seedId}-briefing`,
+        title: "Weekly Briefing",
+        summary: "Test briefing",
+        bodyMarkdown: "# Briefing",
+        readiness: "VERIFIED",
+        fingerprint: "fp1",
+        entries: {
+          create: {
+            changeVersionId: version.id,
+            position: 1,
+            commentary: "Test commentary",
+          },
+        },
+      },
+      include: { entries: true },
+    });
+
+    expect(briefing.entries.length).toBe(1);
+
+    // @@unique([kind, periodKey]) must reject duplicate
+    await expect(
+      prisma.briefing.create({
+        data: {
+          id: `${seedId}-briefing2`,
+          kind: "WEEKLY",
+          periodKey: `${seedId}-wk`,
+          slug: `${seedId}-briefing2`,
+          title: "Dupe",
+          summary: "Dupe",
+          bodyMarkdown: "# Dupe",
+          readiness: "VERIFIED",
+          fingerprint: "fp2",
+        },
+      }),
+    ).rejects.toThrow();
+  }, 30000);
+
+  it("@@unique([briefingId, position]) rejects duplicate entry position", async () => {
+    const seedId = nextSeed();
+    const { change } = await seedCanonicalChange();
+    const version1 = await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 1,
+        isCurrent: true,
+        title: "Briefing Pos Test",
+        summary: "Test",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-15T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Test",
+        editorialStatus: "PUBLISHED" as any,
+        reviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+      },
+    });
+    const version2 = await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 2,
+        isCurrent: false,
+        title: "Briefing Pos Test v2",
+        summary: "Test",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-16T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Test",
+        editorialStatus: "PUBLISHED" as any,
+        reviewedAt: new Date("2026-07-21T00:00:00Z"),
+        reviewedBy: "reviewer",
+      },
+    });
+
+    await prisma.briefing.create({
+      data: {
+        id: `${seedId}-briefing`,
+        kind: "MONTHLY",
+        periodKey: `${seedId}-mo`,
+        slug: `${seedId}-briefing`,
+        title: "Monthly",
+        summary: "Test",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        fingerprint: "fp1",
+        entries: {
+          create: {
+            changeVersionId: version1.id,
+            position: 1,
+            commentary: "First",
+          },
+        },
+      },
+    });
+    await expect(
+      prisma.briefingEntry.create({
+        data: {
+          briefingId: `${seedId}-briefing`,
+          changeVersionId: version2.id,
+          position: 1,
+          commentary: "Must reject duplicate position",
+        },
+      }),
+    ).rejects.toThrow();
+  }, 30000);
+
+  it("reverse relation: Source.guideEvidence returns seeded rows", async () => {
+    const seedId = nextSeed();
+    const source = await prisma.source.create({
+      data: {
+        id: `${seedId}-source`,
+        name: "Reverse Relation Source",
+        url: `https://example.com/${seedId}`,
+        adapter: "rss",
+        frequencyCron: "0 * * * *",
+        language: "en",
+        regions: ["north_america"],
+        platforms: [],
+      },
+    });
+    await prisma.guide.create({
+      data: {
+        id: `${seedId}-guide`,
+        slug: `${seedId}-guide`,
+        title: "Reverse Test",
+        summary: "Test",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        lastReviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+        platforms: [],
+        productCategories: [],
+        riskAttributes: [],
+        evidence: {
+          create: {
+            id: `${seedId}-ev`,
+            sourceId: source.id,
+            url: `https://example.com/${seedId}/ev`,
+            authorityLevel: "GOVERNMENT_OFFICIAL",
+            access: "PUBLIC",
+            licenseNote: "PD",
+            normalizedSummary: "Evidence",
+            reviewedAt: new Date("2026-07-19T00:00:00Z"),
+            position: 1,
+          },
+        },
+      },
+    });
+    const fetched = await prisma.source.findUniqueOrThrow({
+      where: { id: source.id },
+      include: { guideEvidence: true },
+    });
+    expect(fetched.guideEvidence.length).toBe(1);
+    expect(fetched.guideEvidence[0]!.guideId).toBe(`${seedId}-guide`);
+  }, 30000);
+
+  it("reverse relation: CanonicalChangeVersion.briefingEntries returns seeded rows", async () => {
+    const seedId = nextSeed();
+    const { change } = await seedCanonicalChange();
+    const version = await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 1,
+        isCurrent: true,
+        title: "Reverse Briefing Test",
+        summary: "Test",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-15T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Test",
+        editorialStatus: "PUBLISHED" as any,
+        reviewedAt: new Date("2026-07-20T00:00:00Z"),
+        reviewedBy: "reviewer",
+      },
+    });
+    await prisma.briefing.create({
+      data: {
+        id: `${seedId}-briefing`,
+        kind: "DAILY",
+        periodKey: `${seedId}-day`,
+        slug: `${seedId}-briefing`,
+        title: "Daily",
+        summary: "Test",
+        bodyMarkdown: "# Test",
+        readiness: "VERIFIED",
+        fingerprint: "fp1",
+        entries: {
+          create: {
+            changeVersionId: version.id,
+            position: 1,
+            commentary: "Test",
+          },
+        },
+      },
+    });
+    const fetched = await prisma.canonicalChangeVersion.findUniqueOrThrow({
+      where: { id: version.id },
+      include: { briefingEntries: true },
+    });
+    expect(fetched.briefingEntries.length).toBe(1);
+    expect(fetched.briefingEntries[0]!.briefingId).toBe(`${seedId}-briefing`);
+  }, 30000);
+
+  it("LegacyRedirect: write+read and default status 308", async () => {
+    const seedId = nextSeed();
+    await prisma.legacyRedirect.create({
+      data: {
+        fromPath: `${seedId}-from`,
+        toPath: "/changes/new-slug",
+      },
+    });
+    const fetched = await prisma.legacyRedirect.findUniqueOrThrow({
+      where: { fromPath: `${seedId}-from` },
+    });
+    expect(fetched.toPath).toBe("/changes/new-slug");
+    expect(fetched.status).toBe(308);
+  }, 30000);
 });
 
 describe("legacy Alert exclusion", () => {
