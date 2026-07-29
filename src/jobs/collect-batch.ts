@@ -128,8 +128,10 @@ export interface CollectBatchDeps {
   getSources: (group: CollectionGroup) => SourceContract[];
   fetchSource: (source: SourceContract) => Promise<FetchOutcome>;
   ledger: BatchLedger;
-  /** Optional: return true to skip a source (e.g. EXPERIMENTAL at HARD_CAP). */
-  shouldSkip?: (source: SourceContract) => Promise<boolean>;
+  /** Read the latest cost decision (once per invocation). Returns null when
+   *  unavailable. The handler filters every source through this single read
+   *  via isExperimentalSuppressed — no per-source fallback. */
+  readCostDecision?: () => Promise<{ level: string; suppress: string[] } | null>;
 }
 
 // ---- cost suppression reader (production, consumed by collect-batch) ----
@@ -148,24 +150,15 @@ export function isExperimentalSuppressed(
     && source.readiness === "EXPERIMENTAL";
 }
 
-export async function shouldSkipAtHardCap(
-  source: SourceContract,
-  _prisma?: any,
-): Promise<boolean> {
+/** Production: read the latest completed cost-report PipelineRun decision. */
+async function readCostDecision(): Promise<{ level: string; suppress: string[] } | null> {
   try {
     const { readLatestCostDecision } = await import("./cost-report.js");
-    const decision = await readLatestCostDecision(_prisma);
-    if (decision?.level === "HARD_CAP" && decision.suppress.includes("experimental-demand")) {
-      return source.readiness === "EXPERIMENTAL";
-    }
+    return await readLatestCostDecision();
   } catch (err) {
-    // Deliberate: fail open. A transient DB error must not block official
-    // collection by accidentally suppressing sources. The cost-report job
-    // writes the decision independently; suppression is a cost-optimization
-    // that is safe to miss, while missing an official-source check is not.
     console.error("[cost-guardrail] failed to read cost decision:", err);
+    return null;
   }
-  return false;
 }
 
 // ---- cron-to-group mapping ----
@@ -386,26 +379,14 @@ export function createCollectBatch(
       runnerVersion: args.runnerVersion,
     });
 
-    // Apply cost suppression: read decision once then use pure predicate.
+    // Apply cost suppression: read decision once, filter every source
+    // through the pure isExperimentalSuppressed predicate.
     let pendingSources: SourceContract[];
-    if (deps.shouldSkip) {
-      let decisionPromise: Promise<{ level: string; suppress: string[] } | null> | null = null;
-      const skipFlags = await Promise.all(sources.map(async (s) => {
-        if (!decisionPromise) {
-          decisionPromise = (async () => {
-            try {
-              const { readLatestCostDecision } = await import("./cost-report.js");
-              return await readLatestCostDecision();
-            } catch { return null; }
-          })();
-        }
-        const decision = await decisionPromise;
-        if (decision) {
-          return { source: s, skip: isExperimentalSuppressed(decision, s) };
-        }
-        return { source: s, skip: await deps.shouldSkip!(s) };
-      }));
-      pendingSources = skipFlags.filter((f) => !f.skip).map((f) => f.source);
+    if (deps.readCostDecision) {
+      const decision = await deps.readCostDecision();
+      pendingSources = decision
+        ? sources.filter((s) => !isExperimentalSuppressed(decision, s))
+        : sources;
     } else {
       pendingSources = sources;
     }
@@ -485,7 +466,7 @@ export const collectBatch = createCollectBatch({
   getSources: getSourcesForGroup,
   fetchSource: fetchSourceViaRegistry,
   ledger: DB_LEDGER,
-  shouldSkip: shouldSkipAtHardCap,
+  readCostDecision,
 });
 
 // ---- job registration ----

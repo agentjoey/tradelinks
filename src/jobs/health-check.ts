@@ -20,6 +20,7 @@
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
+import { dateHourBucket } from "../monitoring/cost.js";
 
 // ---- delivery adapter injection (structured) ----
 
@@ -75,14 +76,6 @@ export interface HealthCheckDeps {
 export interface Detection {
   code: string;
   subjectId: string;
-}
-
-function dateHourBucket(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const h = String(d.getUTCHours()).padStart(2, "0");
-  return `${y}-${m}-${day}T${h}`;
 }
 
 function median(values: number[]): number {
@@ -190,6 +183,8 @@ export function createHealthCheck(
   };
 }
 
+const HOUR = 60 * 60000;
+
 /**
  * Core detection logic — returns ALL currently-detected failures.
  * Delivery dedup is handled internally by createDeliveryAdapter via
@@ -272,8 +267,6 @@ export async function detectFailures(
 }
 
 // ---- production deps ----
-
-const HOUR = 60 * 60000;
 
 const REAL_DEPS: HealthCheckDeps = {
   async beginRun(input) {

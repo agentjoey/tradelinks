@@ -17,6 +17,7 @@
 import { createHash } from "node:crypto";
 
 import { beginRun } from "../collection/run.js";
+import { dateHourBucket } from "../monitoring/cost.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
 
@@ -110,14 +111,6 @@ function isWeeklyRun(scheduledFor: Date): boolean {
 
 function computeFingerprint(versionIds: string[]): string {
   return createHash("sha256").update(versionIds.join(",")).digest("hex");
-}
-
-function dateHourBucket(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const h = String(d.getUTCHours()).padStart(2, "0");
-  return `${y}-${m}-${day}T${h}`;
 }
 
 // ---- factory ----

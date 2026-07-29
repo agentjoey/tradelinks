@@ -116,7 +116,7 @@ function makeCollector(deps: Partial<CollectBatchDeps> = {}) {
       getSources: deps.getSources ?? (() => []),
       fetchSource: deps.fetchSource ?? (async () => successOutcome("x")),
       ledger: deps.ledger ?? ledger,
-      shouldSkip: deps.shouldSkip,
+      readCostDecision: deps.readCostDecision,
     }),
   };
 }
@@ -484,85 +484,117 @@ describe("collectBatch — scraper retry via injected fetchSource", () => {
   }, 10000);
 });
 
-// ============================ cost suppression (BLOCKER 4 pin) =========
+// ============================ cost suppression (BLOCKER 1 pin) =========
 
 describe("collectBatch — cost suppression", () => {
-  it("skips EXPERIMENTAL demand sources when experimental-demand is suppressed", async () => {
+  it("at HARD_CAP, EXPERIMENTAL is skipped and MONITORED/VERIFIED are fetched", async () => {
     const experimental = testSourceContract("exp-src", { readiness: "EXPERIMENTAL" });
     const monitored = testSourceContract("mon-src", { readiness: "MONITORED" });
-    const allSources = [experimental, monitored];
-
+    const verified = testSourceContract("ver-src", { readiness: "VERIFIED" });
     const fetched: string[] = [];
+    let readCount = 0;
     const { call } = makeCollector({
-      getSources: () => allSources,
+      getSources: () => [experimental, monitored, verified],
       fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
-      shouldSkip: async (s) => s.readiness === "EXPERIMENTAL",
+      readCostDecision: async () => { readCount++; return { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] }; },
     });
-
-    const r = await call("FAST", baseArgs());
-    expect(fetched).toContain("mon-src");    // monitored → still collected
-    expect(fetched).not.toContain("exp-src"); // experimental → skipped
-    expect(r.status).toBe("SUCCEEDED_ITEMS");
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("mon-src");
+    expect(fetched).toContain("ver-src");
+    expect(fetched).not.toContain("exp-src");
+    expect(readCount).toBe(1);
   });
 
-  it("does not skip EXPERIMENTAL sources when suppression is not active", async () => {
+  it("at NORMAL, nothing is skipped", async () => {
     const experimental = testSourceContract("exp-src2", { readiness: "EXPERIMENTAL" });
     const fetched: string[] = [];
     const { call } = makeCollector({
       getSources: () => [experimental],
       fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
-      shouldSkip: async () => false,
+      readCostDecision: async () => ({ level: "NORMAL", suppress: [] }),
     });
-    const r = await call("FAST", baseArgs());
+    await call("FAST", baseArgs());
     expect(fetched).toContain("exp-src2");
-    expect(r.status).toBe("SUCCEEDED_ITEMS");
   });
 
-  it("shouldSkipAtHardCap skips EXPERIMENTAL when reader returns HARD_CAP with experimental-demand suppressed", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
-    const source = testSourceContract("exp-skip-test", { readiness: "EXPERIMENTAL" });
-    const fakeDb = {
-      pipelineRun: {
-        findFirst: async () => ({
-          metadata: { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"], projectedTotalUsd: 55, message: "" },
-        }),
-      },
-    };
-    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(true);
+  it("at REVIEW, nothing is skipped", async () => {
+    const experimental = testSourceContract("exp-src3", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => ({ level: "REVIEW", suppress: [] }),
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src3");
   });
 
-  it("shouldSkipAtHardCap does NOT skip MONITORED even at HARD_CAP", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
-    const source = testSourceContract("mon-skip-test", { readiness: "MONITORED" });
-    const fakeDb = {
-      pipelineRun: {
-        findFirst: async () => ({
-          metadata: { level: "HARD_CAP", suppress: ["experimental-demand"], projectedTotalUsd: 55, message: "" },
-        }),
-      },
-    };
-    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(false);
+  it("when readCostDecision returns null, nothing is skipped (fail open)", async () => {
+    const experimental = testSourceContract("exp-src4", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => null,
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src4");
   });
 
-  it("shouldSkipAtHardCap does NOT skip when level is not HARD_CAP", async () => {
-    const { shouldSkipAtHardCap } = await import("../src/jobs/collect-batch.js");
-    const source = testSourceContract("exp-review-test", { readiness: "EXPERIMENTAL" });
-    const fakeDb = {
-      pipelineRun: {
-        findFirst: async () => ({
-          metadata: { level: "REVIEW", suppress: [], projectedTotalUsd: 42, message: "" },
-        }),
-      },
-    };
-    expect(await shouldSkipAtHardCap(source, fakeDb)).toBe(false);
+  it("reads cost decision exactly once per invocation", async () => {
+    let readCount = 0;
+    const sources = [
+      testSourceContract("a"), testSourceContract("b"), testSourceContract("c"),
+      testSourceContract("d"), testSourceContract("e"),
+    ];
+    const { call } = makeCollector({
+      getSources: () => sources,
+      fetchSource: async () => successOutcome("x"),
+      readCostDecision: async () => { readCount++; return { level: "HARD_CAP", suppress: ["experimental-demand"] }; },
+    });
+    await call("FAST", baseArgs());
+    expect(readCount).toBe(1);
   });
 });
 
-// ============================ BLOCKER 1: readModelEnrichmentSuppressed ====
+// ============================ isExperimentalSuppressed ==============
+
+describe("isExperimentalSuppressed", () => {
+  it("returns true for EXPERIMENTAL source at HARD_CAP with experimental-demand", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] },
+      testSourceContract("x", { readiness: "EXPERIMENTAL" }),
+    )).toBe(true);
+  });
+
+  it("returns false for MONITORED source at HARD_CAP", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "HARD_CAP", suppress: ["experimental-demand"] },
+      testSourceContract("x", { readiness: "MONITORED" }),
+    )).toBe(false);
+  });
+
+  it("returns false for EXPERIMENTAL source at REVIEW", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "REVIEW", suppress: [] },
+      testSourceContract("x", { readiness: "EXPERIMENTAL" }),
+    )).toBe(false);
+  });
+
+  it("returns false for null decision", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(null, testSourceContract("x", { readiness: "EXPERIMENTAL" }))).toBe(false);
+  });
+});
+
+// ============================ readModelEnrichmentSuppressed ==========
 
 describe("readModelEnrichmentSuppressed", () => {
   it("returns true when HARD_CAP suppresses model-enrichment", async () => {
-    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
     const fakeDb = {
       pipelineRun: {
         findFirst: async () => ({
@@ -570,11 +602,11 @@ describe("readModelEnrichmentSuppressed", () => {
         }),
       },
     };
-    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(true);
+    expect(await rd(fakeDb as any)).toBe(true);
   });
 
   it("returns false when model-enrichment is not suppressed", async () => {
-    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
     const fakeDb = {
       pipelineRun: {
         findFirst: async () => ({
@@ -582,16 +614,12 @@ describe("readModelEnrichmentSuppressed", () => {
         }),
       },
     };
-    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(false);
+    expect(await rd(fakeDb as any)).toBe(false);
   });
 
   it("returns false when no decision exists", async () => {
-    const { readModelEnrichmentSuppressed } = await import("../src/jobs/cost-report.js");
-    const fakeDb = {
-      pipelineRun: {
-        findFirst: async () => null,
-      },
-    };
-    expect(await readModelEnrichmentSuppressed(fakeDb)).toBe(false);
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
+    const fakeDb = { pipelineRun: { findFirst: async () => null } };
+    expect(await rd(fakeDb as any)).toBe(false);
   });
 });
