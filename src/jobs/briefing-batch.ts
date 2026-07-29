@@ -6,12 +6,13 @@
  *   qualifyWeeklyBriefing(args) — production, exactly 1 parameter
  *   loadOperationalAlert / setOperationalAlertStore — for tests
  *
- * P0 shadow-only: selects Monday-Sunday UTC window, qualifies current
- * published versions allowed by Verified/Monitored readiness, stores
- * itemCount + ordered version IDs + stable outputFingerprint in
- * PipelineRun.metadata. A missing weekly run or zero qualified entries
- * emits BRIEFING_ABSENT and BLOCKED. Conditional daily absence is
- * SUCCEEDED_EMPTY. Replays are idempotent.
+ * P0 shadow-only: selects the PRECEDING completed Monday-Sunday UTC window
+ * for Monday runs, qualifies current published versions allowed by
+ * Verified/Monitored readiness, stores itemCount + ordered version IDs +
+ * stable outputFingerprint in PipelineRun.metadata. A missing weekly run
+ * or zero qualified entries for a Monday run emits BRIEFING_ABSENT and
+ * BLOCKED. Conditional daily absence is SUCCEEDED_EMPTY. Replays are
+ * idempotent — gated on finished run, not fingerprint.
  */
 
 import { createHash } from "node:crypto";
@@ -76,11 +77,20 @@ export interface BriefingBatchDeps {
 
 // ---- window helpers ----
 
+/**
+ * Returns the Monday-Sunday UTC window to qualify versions from.
+ *
+ * For a Monday run (the weekly cron), selects the PRECEDING completed
+ * Monday–Sunday window so the scheduler can qualify the just-finished
+ * week. For any other day, the window is the Monday–Sunday that contains
+ * scheduledFor — used for daily diagnostic runs where the result is
+ * always SUCCEEDED_EMPTY.
+ */
 function getWeekWindow(date: Date): { start: Date; end: Date } {
-  const utcDay = date.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const utcDay = date.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
   const daysToMonday = utcDay === 0 ? 6 : utcDay - 1;
 
-  const monday = new Date(
+  const mondayOfWeek = new Date(
     Date.UTC(
       date.getUTCFullYear(),
       date.getUTCMonth(),
@@ -92,10 +102,17 @@ function getWeekWindow(date: Date): { start: Date; end: Date } {
     ),
   );
 
-  const nextMonday = new Date(monday);
-  nextMonday.setUTCDate(monday.getUTCDate() + 7);
+  // Monday run → previous completed Monday–Sunday window
+  if (utcDay === 1) {
+    const previousMonday = new Date(mondayOfWeek);
+    previousMonday.setUTCDate(mondayOfWeek.getUTCDate() - 7);
+    return { start: previousMonday, end: mondayOfWeek };
+  }
 
-  return { start: monday, end: nextMonday };
+  // Non-Monday run → current week
+  const nextMonday = new Date(mondayOfWeek);
+  nextMonday.setUTCDate(mondayOfWeek.getUTCDate() + 7);
+  return { start: mondayOfWeek, end: nextMonday };
 }
 
 function isWeeklyRun(scheduledFor: Date): boolean {
@@ -119,17 +136,23 @@ export function createBriefingBatch(
       runnerVersion: args.runnerVersion,
     });
 
-    // Check replay first: if a prior run already has a stable fingerprint, return it.
+    // Replay: if a prior finished run exists, return its result verbatim.
+    // Gate on the run being finished (same as canonicalize-batch), not on
+    // a truthy fingerprint — a BLOCKED absent week has an empty fingerprint.
     if (deps.existingSummary) {
       const prior = await deps.existingSummary(runId);
-      if (prior && prior.outputFingerprint) {
+      if (prior) {
         const priorStatus = prior.status as JobStatus;
         return {
           runId,
           status: priorStatus,
           attempted: prior.versionIds.length,
-          succeeded: priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
-          failed: priorStatus === "BLOCKED" || priorStatus === "FAILED" ? prior.versionIds.length : 0,
+          succeeded:
+            priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
+          failed:
+            priorStatus === "BLOCKED" || priorStatus === "FAILED"
+              ? prior.versionIds.length
+              : 0,
           itemCount: prior.itemCount,
           exitCode: priorStatus === "BLOCKED" ? 2 : 0,
         };
@@ -196,16 +219,15 @@ export function createBriefingBatch(
     }
 
     // Qualify: sort version IDs deterministically, compute stable fingerprint.
-    const versionIds = versions
-      .map((v) => v.versionId)
-      .sort();
+    const versionIds = versions.map((v) => v.versionId).sort();
     const fingerprint = computeFingerprint(versionIds);
 
     // Bound to MAX_VERSIONS just in case — shadow-only, no page rendered.
     const bounded = versionIds.slice(0, MAX_VERSIONS);
-    const boundedFingerprint = bounded.length < versionIds.length
-      ? computeFingerprint(bounded)
-      : fingerprint;
+    const boundedFingerprint =
+      bounded.length < versionIds.length
+        ? computeFingerprint(bounded)
+        : fingerprint;
 
     await deps.finishRun(runId, {
       status: "SUCCEEDED_ITEMS",
@@ -277,15 +299,23 @@ const REAL_DEPS: BriefingBatchDeps = {
     const { prisma: db } = await import("../db/client.js");
     const run = await db.pipelineRun.findUnique({
       where: { id: runId },
-      select: { finishedAt: true, status: true, itemCount: true, outputFingerprint: true, metadata: true },
+      select: {
+        finishedAt: true,
+        status: true,
+        itemCount: true,
+        outputFingerprint: true,
+        metadata: true,
+      },
     });
-    if (!run || !run.finishedAt || !run.outputFingerprint) return null;
+    // Gate on finished run only — a BLOCKED absent week has an empty
+    // outputFingerprint but is still a finished, replayable run.
+    if (!run || !run.finishedAt) return null;
     const meta = run.metadata as { versionIds?: string[] } | null;
     return {
       status: run.status,
       itemCount: run.itemCount,
       versionIds: meta?.versionIds ?? [],
-      outputFingerprint: run.outputFingerprint,
+      outputFingerprint: run.outputFingerprint ?? "",
     };
   },
   async recordOperationalAlert(key: string) {

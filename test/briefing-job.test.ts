@@ -31,6 +31,11 @@ function mondayArgs(): JobArgs {
   return baseArgs({ scheduledFor: new Date("2026-07-27T08:00:00Z") });
 }
 
+/** Monday 03:10 UTC (the cron time) */
+function mondayCronArgs(): JobArgs {
+  return baseArgs({ scheduledFor: new Date("2026-07-27T03:10:00Z") });
+}
+
 /** Sunday = 2026-08-02 (Sunday UTC) */
 function sundayArgs(): JobArgs {
   return baseArgs({ scheduledFor: new Date("2026-08-02T08:00:00Z") });
@@ -38,8 +43,14 @@ function sundayArgs(): JobArgs {
 
 class InMemoryAlertStore implements OperationalAlertStore {
   readonly alerts = new Map<string, boolean>();
-  async record(key: string) { this.alerts.set(key, true); }
-  async load(key: string) { return this.alerts.has(key); }
+  readonly recordCounts = new Map<string, number>();
+  async record(key: string) {
+    this.alerts.set(key, true);
+    this.recordCounts.set(key, (this.recordCounts.get(key) ?? 0) + 1);
+  }
+  async load(key: string) {
+    return this.alerts.has(key);
+  }
 }
 
 function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
@@ -47,27 +58,47 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
   setOperationalAlertStore(alertStore);
 
   let nextRunId = 1;
-  const runStore = new Map<string, {
-    status: string; itemCount: number; metadata: unknown;
-    outputFingerprint: string; finished: boolean;
-  }>();
+  const runStore = new Map<
+    string,
+    {
+      status: string;
+      itemCount: number;
+      metadata: unknown;
+      outputFingerprint: string;
+      finished: boolean;
+    }
+  >();
 
   return {
     alertStore,
     call: createBriefingBatch({
-      selectQualifiedVersions: deps.selectQualifiedVersions ?? (async () => []),
+      selectQualifiedVersions:
+        deps.selectQualifiedVersions ?? (async () => []),
       beginRun: deps.beginRun ?? (async () => `run-${nextRunId++}`),
-      finishRun: deps.finishRun ?? (async (runId, summary) => {
-        runStore.set(runId, { ...summary, finished: true });
-      }),
-      existingSummary: deps.existingSummary ?? (async (runId) => {
-        const r = runStore.get(runId);
-        if (!r || !r.finished) return null;
-        return { ...r, versionIds: (r.metadata as any)?.versionIds ?? [] };
-      }),
-      recordOperationalAlert: deps.recordOperationalAlert ?? (async (key) => {
-        alertStore.alerts.set(key, true);
-      }),
+      finishRun:
+        deps.finishRun ??
+        (async (runId, summary) => {
+          runStore.set(runId, { ...summary, finished: true });
+        }),
+      existingSummary:
+        deps.existingSummary ??
+        (async (runId) => {
+          const r = runStore.get(runId);
+          if (!r || !r.finished) return null;
+          return {
+            ...r,
+            versionIds: (r.metadata as any)?.versionIds ?? [],
+          };
+        }),
+      recordOperationalAlert:
+        deps.recordOperationalAlert ??
+        (async (key) => {
+          alertStore.alerts.set(key, true);
+          alertStore.recordCounts.set(
+            key,
+            (alertStore.recordCounts.get(key) ?? 0) + 1,
+          );
+        }),
     }),
   };
 }
@@ -87,16 +118,19 @@ describe("briefingBatch — weekly absence", () => {
 
 describe("briefingBatch — daily absence", () => {
   it("returns SUCCEEDED_EMPTY on non-Monday with no qualified content", async () => {
-    // Wednesday
     const { call } = makeBriefinger();
-    const result = await call(baseArgs({ scheduledFor: new Date("2026-07-29T08:00:00Z") }));
+    const result = await call(
+      baseArgs({ scheduledFor: new Date("2026-07-29T08:00:00Z") }),
+    );
     expect(result.status).toBe("SUCCEEDED_EMPTY");
     expect(result.exitCode).toBe(0);
   });
 
   it("does not record BRIEFING_ABSENT on non-Monday with no qualified content", async () => {
     const { call } = makeBriefinger();
-    await call(baseArgs({ scheduledFor: new Date("2026-07-30T08:00:00Z") }));
+    await call(
+      baseArgs({ scheduledFor: new Date("2026-07-30T08:00:00Z") }),
+    );
     expect(await loadOperationalAlert("BRIEFING_ABSENT")).toBe(false);
   });
 
@@ -151,49 +185,79 @@ describe("briefingBatch — weekly qualification", () => {
     );
   }, 10000);
 
-  it("computes the Monday-Sunday UTC window around scheduledFor", async () => {
+  // ---- window tests: Monday selects the PRECEDING completed week ----
+
+  it("Monday at 08:00 selects the previous Monday-Sunday window", async () => {
     const captured: { windowStart?: string; windowEnd?: string } = {};
     const { call } = makeBriefinger({
       selectQualifiedVersions: async (_opts) => [],
       finishRun: async (_rid, summary) => {
-        const m = summary.metadata as { windowStart: string; windowEnd: string };
+        const m = summary.metadata as {
+          windowStart: string;
+          windowEnd: string;
+        };
         captured.windowStart = m.windowStart;
         captured.windowEnd = m.windowEnd;
       },
     });
-    // Monday 2026-07-27 -> window should be 2026-07-27T00:00:00Z to 2026-08-03T00:00:00Z
+    // Monday 2026-07-27T08:00Z → previous week 2026-07-20 to 2026-07-27
     await call(mondayArgs());
-    expect(captured.windowStart).toBe("2026-07-27T00:00:00.000Z");
-    expect(captured.windowEnd).toBe("2026-08-03T00:00:00.000Z");
+    expect(captured.windowStart).toBe("2026-07-20T00:00:00.000Z");
+    expect(captured.windowEnd).toBe("2026-07-27T00:00:00.000Z");
   }, 10000);
 
-  it("computes window for mid-week date correctly", async () => {
+  it("Monday cron time 03:10 selects the previous Monday-Sunday window", async () => {
     const captured: { windowStart?: string; windowEnd?: string } = {};
     const { call } = makeBriefinger({
       selectQualifiedVersions: async (_opts) => [],
       finishRun: async (_rid, summary) => {
-        const m = summary.metadata as { windowStart: string; windowEnd: string };
+        const m = summary.metadata as {
+          windowStart: string;
+          windowEnd: string;
+        };
         captured.windowStart = m.windowStart;
         captured.windowEnd = m.windowEnd;
       },
     });
-    // Wednesday 2026-07-29 -> window should be Mon 2026-07-27 to Sun 2026-08-03
+    // Monday 2026-07-27T03:10Z (cron) → previous week 2026-07-20 to 2026-07-27
+    await call(mondayCronArgs());
+    expect(captured.windowStart).toBe("2026-07-20T00:00:00.000Z");
+    expect(captured.windowEnd).toBe("2026-07-27T00:00:00.000Z");
+  }, 10000);
+
+  it("mid-week date selects the current Monday-Sunday window", async () => {
+    const captured: { windowStart?: string; windowEnd?: string } = {};
+    const { call } = makeBriefinger({
+      selectQualifiedVersions: async (_opts) => [],
+      finishRun: async (_rid, summary) => {
+        const m = summary.metadata as {
+          windowStart: string;
+          windowEnd: string;
+        };
+        captured.windowStart = m.windowStart;
+        captured.windowEnd = m.windowEnd;
+      },
+    });
+    // Wednesday 2026-07-29 → current week 2026-07-27 to 2026-08-03
     await call(baseArgs());
     expect(captured.windowStart).toBe("2026-07-27T00:00:00.000Z");
     expect(captured.windowEnd).toBe("2026-08-03T00:00:00.000Z");
   }, 10000);
 
-  it("computes window for Sunday correctly", async () => {
+  it("Sunday selects the current Monday-Sunday window", async () => {
     const captured: { windowStart?: string; windowEnd?: string } = {};
     const { call } = makeBriefinger({
       selectQualifiedVersions: async (_opts) => [],
       finishRun: async (_rid, summary) => {
-        const m = summary.metadata as { windowStart: string; windowEnd: string };
+        const m = summary.metadata as {
+          windowStart: string;
+          windowEnd: string;
+        };
         captured.windowStart = m.windowStart;
         captured.windowEnd = m.windowEnd;
       },
     });
-    // Sunday 2026-08-02 -> window should be Mon 2026-07-27 to Sun 2026-08-03
+    // Sunday 2026-08-02 → current week 2026-07-27 to 2026-08-03
     await call(sundayArgs());
     expect(captured.windowStart).toBe("2026-07-27T00:00:00.000Z");
     expect(captured.windowEnd).toBe("2026-08-03T00:00:00.000Z");
@@ -211,7 +275,10 @@ describe("briefingBatch — replay idempotency", () => {
         { versionId: "v-b" },
       ],
       finishRun: async (_rid, summary) => {
-        prior = { ...summary, versionIds: (summary.metadata as any)?.versionIds ?? [] };
+        prior = {
+          ...summary,
+          versionIds: (summary.metadata as any)?.versionIds ?? [],
+        };
       },
       existingSummary: async () => prior,
     });
@@ -249,6 +316,25 @@ describe("briefingBatch — absent replay", () => {
     expect(second.status).toBe("BLOCKED");
     expect(second.exitCode).toBe(2);
   }, 10000);
+
+  it("records BRIEFING_ABSENT exactly once across replay of the same slot", async () => {
+    let prior: any = null;
+    const { call, alertStore } = makeBriefinger({
+      selectQualifiedVersions: async () => [],
+      finishRun: async (_rid, summary) => {
+        prior = { ...summary, versionIds: [] };
+      },
+      existingSummary: async () => prior,
+    });
+
+    // First run records the alert
+    await call(mondayArgs());
+    expect(alertStore.recordCounts.get("BRIEFING_ABSENT")).toBe(1);
+
+    // Replay must NOT re-record the alert
+    await call(mondayArgs());
+    expect(alertStore.recordCounts.get("BRIEFING_ABSENT")).toBe(1);
+  }, 10000);
 });
 
 // ============================ zero qualified ====================
@@ -271,9 +357,7 @@ describe("briefingBatch — zero qualified", () => {
 describe("briefingBatch — not weekly", () => {
   it("mid-week run with content still qualifies but does not emit BRIEFING_ABSENT", async () => {
     const { call } = makeBriefinger({
-      selectQualifiedVersions: async () => [
-        { versionId: "v-1" },
-      ],
+      selectQualifiedVersions: async () => [{ versionId: "v-1" }],
     });
     const result = await call(baseArgs()); // Wednesday
     expect(result.status).toBe("SUCCEEDED_ITEMS");

@@ -3,12 +3,18 @@
  *
  * Tests call createPublishBatch(deps) — the factory — not the production
  * publishBatch.  All deps are injectable for credential-free execution.
+ *
+ * Persists a PUBLISH PipelineRun through beginRun/finishRun deps matching
+ * the accepted Tasks 1–2 persisted PipelineRun contract.
  */
 
 import { describe, expect, it } from "vitest";
 
 import type { JobArgs } from "../src/jobs/types.js";
-import { createPublishBatch, type PublishBatchDeps } from "../src/jobs/publish-batch.js";
+import {
+  createPublishBatch,
+  type PublishBatchDeps,
+} from "../src/jobs/publish-batch.js";
 
 function baseArgs(overrides?: Partial<JobArgs>): JobArgs {
   return {
@@ -24,25 +30,60 @@ interface FakeDraft {
   reviewedBy: string | null;
 }
 
-function fakeDraft(id: string, reviewedBy: string | null = "reviewer-1"): FakeDraft {
+function fakeDraft(
+  id: string,
+  reviewedBy: string | null = "reviewer-1",
+): FakeDraft {
   return { id, reviewedBy };
+}
+
+interface RunRec {
+  id: string;
+  status: string;
+  itemCount: number;
+  finished: boolean;
 }
 
 function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
   const published: string[] = [];
   const invalidatedTags: string[] = [];
+  let nextRunId = 1;
+  const runStore = new Map<string, RunRec>();
 
   return {
     published,
     invalidatedTags,
+    runStore,
     call: createPublishBatch({
-      loadReviewedDrafts: deps.loadReviewedDrafts ?? (async (_limit) => []),
-      publishDraft: deps.publishDraft ?? (async (draftId) => {
-        published.push(draftId);
-      }),
-      invalidateTag: deps.invalidateTag ?? (async (tag) => {
-        invalidatedTags.push(tag);
-      }),
+      loadReviewedDrafts:
+        deps.loadReviewedDrafts ?? (async (_limit) => []),
+      publishDraft:
+        deps.publishDraft ??
+        (async (draftId) => {
+          published.push(draftId);
+        }),
+      invalidateTag:
+        deps.invalidateTag ??
+        (async (tag) => {
+          invalidatedTags.push(tag);
+        }),
+      beginRun:
+        deps.beginRun ??
+        (async () => {
+          const id = `run-${nextRunId++}`;
+          runStore.set(id, { id, status: "RUNNING", itemCount: 0, finished: false });
+          return id;
+        }),
+      finishRun:
+        deps.finishRun ??
+        (async (runId, summary) => {
+          const r = runStore.get(runId);
+          if (r) {
+            r.status = summary.status;
+            r.itemCount = summary.itemCount;
+            r.finished = true;
+          }
+        }),
     }),
   };
 }
@@ -55,6 +96,39 @@ describe("publishBatch — empty", () => {
     const result = await call(baseArgs());
     expect(result).toMatchObject({ status: "SUCCEEDED_EMPTY", exitCode: 0 });
   });
+});
+
+// ============================ PipelineRun persistence ===========
+
+describe("publishBatch — PipelineRun persistence", () => {
+  it("persists a PUBLISH PipelineRun and returns the persisted runId", async () => {
+    const drafts = [fakeDraft("d-1")];
+    const { call, runStore } = makePublisher({
+      loadReviewedDrafts: async (limit) => drafts.slice(0, limit),
+    });
+    const result = await call(baseArgs());
+    expect(runStore.has(result.runId)).toBe(true);
+    const rec = runStore.get(result.runId)!;
+    expect(rec.finished).toBe(true);
+    expect(rec.status).toBe("SUCCEEDED_ITEMS");
+    expect(rec.itemCount).toBe(1);
+  }, 10000);
+
+  it("same-slot replay reuses the persisted runId", async () => {
+    const drafts = [fakeDraft("d-1")];
+    const { call } = makePublisher({
+      loadReviewedDrafts: async (limit) => drafts.slice(0, limit),
+      beginRun: async () => {
+        // Return a stable runId like the real beginRun upsert
+        const id = "run-persisted";
+        return id;
+      },
+    });
+    const r1 = await call(baseArgs());
+    const r2 = await call(baseArgs());
+    expect(r1.runId).toBe(r2.runId);
+    expect(r1.runId).toBe("run-persisted");
+  }, 10000);
 });
 
 // ============================ bounded publishing ================
@@ -100,11 +174,7 @@ describe("publishBatch — 100 cap", () => {
 
 describe("publishBatch — individual failure", () => {
   it("continues batch on individual draft failure", async () => {
-    const drafts = [
-      fakeDraft("ok-1"),
-      fakeDraft("bad"),
-      fakeDraft("ok-2"),
-    ];
+    const drafts = [fakeDraft("ok-1"), fakeDraft("bad"), fakeDraft("ok-2")];
     const published: string[] = [];
     const { call } = makePublisher({
       loadReviewedDrafts: async () => drafts,
@@ -118,6 +188,7 @@ describe("publishBatch — individual failure", () => {
     expect(published).toEqual(["ok-1", "ok-2"]);
     expect(result.succeeded).toBe(2);
     expect(result.failed).toBe(1);
+    expect(result.attempted).toBe(3);
     expect(result.exitCode).toBe(1);
   }, 10000);
 });
@@ -156,7 +227,7 @@ describe("publishBatch — cache invalidation", () => {
 // ============================ skip drafts lacking reviewedBy ====
 
 describe("publishBatch — skip non-reviewed", () => {
-  it("skips drafts with null reviewedBy", async () => {
+  it("skips drafts with null reviewedBy without counting as failed", async () => {
     const drafts = [
       fakeDraft("d-1", "alice"),
       fakeDraft("d-2", null),
@@ -171,9 +242,11 @@ describe("publishBatch — skip non-reviewed", () => {
     });
     const result = await call(baseArgs());
     expect(published).toEqual(["d-1", "d-3"]);
+    // Attempted = only actual publish attempts, not skipped
+    expect(result.attempted).toBe(2);
     expect(result.succeeded).toBe(2);
-    expect(result.failed).toBe(1);
-    expect(result.attempted).toBe(3);
+    expect(result.failed).toBe(0);
+    expect(result.exitCode).toBe(0);
   }, 10000);
 });
 
@@ -192,6 +265,26 @@ describe("publishBatch — all fail", () => {
     expect(result.status).toBe("FAILED");
     expect(result.succeeded).toBe(0);
     expect(result.failed).toBe(2);
+    expect(result.attempted).toBe(2);
     expect(result.exitCode).toBe(1);
+  }, 10000);
+});
+
+// ============================ invalidateTag guards ==============
+
+describe("publishBatch — invalidateTag guard", () => {
+  it("does not fail when invalidateTag throws (Railway/CLI context)", async () => {
+    const drafts = [fakeDraft("d-1")];
+    const { call } = makePublisher({
+      loadReviewedDrafts: async () => drafts,
+      invalidateTag: async () => {
+        throw new Error("Invariant: headers() expects to have requestAsyncStorage");
+      },
+    });
+    // Should not throw — invalidateTag failure is isolated
+    const result = await call(baseArgs());
+    expect(result.status).toBe("SUCCEEDED_ITEMS");
+    expect(result.succeeded).toBe(1);
+    expect(result.exitCode).toBe(0);
   }, 10000);
 });
