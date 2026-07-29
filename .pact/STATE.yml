@@ -92,7 +92,7 @@ features:
         deps: [resumable-batches]
       - id: health-cost
         owner: opencode
-        status: awaiting_review
+        status: changes_requested
         reviewer: claude
         spec: .pact/tasks/phase1-operations-health-cost.md
         evidence: REWORK v2 — all 4 reviewer blockers resolved. BLOCKER 1 (production delivery): REAL_DEPS.recordOperationalAlert calls recordOpsAlert -> Telegram via transactional.ts -> push/send.ts. BLOCKER 2 (date-hour key): alertKey uses YYYY-MM-DDTHH bucket; cross-day test verifies re-alerting on different day. BLOCKER 3 (separation): detectFailures returns ALL current failures regardless of emission; persisting outage test verifies SUCCEEDED_ITEMS on second run. BLOCKER 4 (real cost + suppression): getProjectedCost wired to src/monitoring/cost.ts; setSuppressedJobs/getSuppressedJobs exported for dispatcher. NB: removed extra productive.length check; parseAlertKey handles colon-bearing subjectIds; pinned replay runId. GATES: pnpm vitest run test/health-check.test.ts test/cost-guardrail.test.ts test/health.test.ts test/channel-select.test.ts -> Test Files 4 passed (4), Tests 62 passed (62). Regression: test/job-lock.test.ts test/job-retry.test.ts -> 2 passed, 36 passed. Combined 6 files: 98 passed. pnpm lint (tsc --noEmit) exit 0. Scope: 7 files (src/jobs/{health-check,cost-report}.ts, src/email/transactional.ts, src/monitoring/{health,cost}.ts, test/{health-check,cost-guardrail}.test.ts); no schema/migration/deployment/UI changes.
