@@ -15,6 +15,7 @@ import {
   recomputeAllCapabilityReadiness,
 } from "../canonicalize/coverage.js";
 import type { ReadinessLevel } from "../domain/intelligence/taxonomy.js";
+export { evaluateOperationalHealth } from "../jobs/health-check.js";
 
 export type HealthTier = "healthy" | "degraded" | "unhealthy" | "silent" | "disabled";
 
