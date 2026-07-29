@@ -59,6 +59,9 @@ export interface BriefingBatchDeps {
     summary: {
       status: string;
       itemCount: number;
+      attempted: number;
+      succeeded: number;
+      failed: number;
       metadata: unknown;
       outputFingerprint: string;
     },
@@ -68,10 +71,17 @@ export interface BriefingBatchDeps {
   existingSummary?(runId: string): Promise<{
     status: string;
     itemCount: number;
+    attempted: number;
+    succeeded: number;
+    failed: number;
     versionIds: string[];
     outputFingerprint: string;
   } | null>;
-  /** Record an operational alert (e.g. BRIEFING_ABSENT). */
+  /** Record an operational alert (e.g. BRIEFING_ABSENT).
+   *  In production this is a no-op: `alertStore` is only ever set by
+   *  test/briefing-job.test.ts via setOperationalAlertStore. The
+   *  durable operational-alert persistence (e.g. Telegram delivery
+   *  with idempotency key) is deferred to Task 4 (health-cost). */
   recordOperationalAlert(key: string): Promise<void>;
 }
 
@@ -145,13 +155,9 @@ export function createBriefingBatch(
         return {
           runId,
           status: priorStatus,
-          attempted: prior.versionIds.length,
-          succeeded:
-            priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
-          failed:
-            priorStatus === "BLOCKED" || priorStatus === "FAILED"
-              ? prior.versionIds.length
-              : 0,
+          attempted: prior.attempted,
+          succeeded: prior.succeeded,
+          failed: prior.failed,
           itemCount: prior.itemCount,
           exitCode: priorStatus === "BLOCKED" ? 2 : 0,
         };
@@ -174,6 +180,9 @@ export function createBriefingBatch(
       await deps.finishRun(runId, {
         status: "BLOCKED",
         itemCount: 0,
+        attempted: 0,
+        succeeded: 0,
+        failed: 0,
         metadata: {
           versionIds: [],
           windowStart: window.start.toISOString(),
@@ -198,6 +207,9 @@ export function createBriefingBatch(
       await deps.finishRun(runId, {
         status: "SUCCEEDED_EMPTY",
         itemCount: 0,
+        attempted: 0,
+        succeeded: 0,
+        failed: 0,
         metadata: {
           versionIds: [],
           windowStart: window.start.toISOString(),
@@ -218,14 +230,17 @@ export function createBriefingBatch(
     }
 
     // Qualify: sort version IDs deterministically, compute stable fingerprint.
-    // selectQualifiedVersions already bounds to MAX_VERSIONS via 'take', so
-    // the versionIds are safe to use directly.
-    const versionIds = versions.map((v) => v.versionId).sort();
+    // Defensively slice to MAX_VERSIONS even when the dependency over-returns.
+    const versionIds = versions.slice(0, MAX_VERSIONS).map((v) => v.versionId).sort();
     const fingerprint = computeFingerprint(versionIds);
+    const count = versionIds.length;
 
     await deps.finishRun(runId, {
       status: "SUCCEEDED_ITEMS",
-      itemCount: versionIds.length,
+      itemCount: count,
+      attempted: count,
+      succeeded: count,
+      failed: 0,
       metadata: {
         versionIds,
         windowStart: window.start.toISOString(),
@@ -237,10 +252,10 @@ export function createBriefingBatch(
     return {
       runId,
       status: "SUCCEEDED_ITEMS" as const,
-      attempted: versionIds.length,
-      succeeded: versionIds.length,
+      attempted: count,
+      succeeded: count,
       failed: 0,
-      itemCount: versionIds.length,
+      itemCount: count,
       exitCode: 0,
     };
   };
@@ -284,7 +299,12 @@ const REAL_DEPS: BriefingBatchDeps = {
         status: summary.status as import("@prisma/client").RunStatus,
         itemCount: summary.itemCount,
         outputFingerprint: summary.outputFingerprint || null,
-        metadata: summary.metadata as any,
+        metadata: {
+          ...((summary.metadata) as Record<string, unknown>),
+          attempted: summary.attempted,
+          succeeded: summary.succeeded,
+          failed: summary.failed,
+        },
         finishedAt: new Date(),
       },
     });
@@ -304,10 +324,18 @@ const REAL_DEPS: BriefingBatchDeps = {
     // Gate on finished run only — a BLOCKED absent week has an empty
     // outputFingerprint but is still a finished, replayable run.
     if (!run || !run.finishedAt) return null;
-    const meta = run.metadata as { versionIds?: string[] } | null;
+    const meta = run.metadata as {
+      versionIds?: string[];
+      attempted?: number;
+      succeeded?: number;
+      failed?: number;
+    } | null;
     return {
       status: run.status,
       itemCount: run.itemCount,
+      attempted: meta?.attempted ?? 0,
+      succeeded: meta?.succeeded ?? 0,
+      failed: meta?.failed ?? 0,
       versionIds: meta?.versionIds ?? [],
       outputFingerprint: run.outputFingerprint ?? "",
     };

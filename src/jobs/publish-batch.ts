@@ -42,12 +42,13 @@ export interface PublishBatchDeps {
     scheduledFor: Date;
     runnerVersion: string;
   }): Promise<string>;
-  /** Finish the run, persisting status and full counts to
-   *  PipelineRun.metadata.publishSummary so replay can read them
-   *  verbatim. */
+  /** Finish the run, persisting status, full counts, and the
+   *  identity-keyed attempted/failed sets to
+   *  PipelineRun.metadata.publishSummary so replay can reconcile by
+   *  draft identity instead of aggregate arithmetic. */
   finishRun(
     runId: string,
-    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number },
+    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number; attemptedIds: string[]; failedIds: string[] },
   ): Promise<void>;
   /** Read the existing PipelineRun summary to power idempotent replay.
    *  Returns null when no prior finished run exists. */
@@ -57,6 +58,8 @@ export interface PublishBatchDeps {
     attempted: number;
     succeeded: number;
     failed: number;
+    attemptedIds: string[];
+    failedIds: string[];
   } | null>;
 }
 
@@ -103,6 +106,8 @@ export function createPublishBatch(
         attempted: 0,
         succeeded: 0,
         failed: 0,
+        attemptedIds: [],
+        failedIds: [],
       });
       return {
         runId,
@@ -115,18 +120,23 @@ export function createPublishBatch(
       };
     }
 
-    let succeeded = 0;
-    let failed = 0;
+    const attemptedThisRun: string[] = [];
+    const failedThisRun: string[] = [];
+    const succeededThisRun: string[] = [];
 
     for (const draft of reviewedDrafts) {
       if (!draft.reviewedBy) continue;
+      attemptedThisRun.push(draft.id);
       try {
         await deps.publishDraft(draft.id, draft.reviewedBy);
-        succeeded++;
+        succeededThisRun.push(draft.id);
       } catch {
-        failed++;
+        failedThisRun.push(draft.id);
       }
     }
+
+    const succeeded = succeededThisRun.length;
+    const failed = failedThisRun.length;
 
     if (succeeded > 0) {
       try {
@@ -149,41 +159,59 @@ export function createPublishBatch(
       status = succeeded > 0 ? "PARTIAL" : "FAILED";
     }
 
-    // On replay: accumulate the real prior counts from metadata so no
-    // count is ever reconstructed from status+itemCount. A retry where
-    // previously-failed items now succeed shifts those from the prior
-    // failed bucket into succeeded.
+    // Reconcile by draft identity — never by aggregate arithmetic.
+    // On replay: (a) previously-failed drafts that now succeed are
+    // removed from the failed set ("recovered"); (b) newly-failed
+    // drafts are added; (c) attempted is the union of all seen IDs.
     let persistedStatus: JobStatus = status;
     let persistedItemCount = succeeded;
     let persistedSucceeded = succeeded;
     let persistedFailed = failed;
     let persistedAttempted = attempted;
+    let persistedAttemptedIds = [...attemptedThisRun];
+    let persistedFailedIds = [...failedThisRun];
+
     if (deps.existingSummary) {
       const prior = await deps.existingSummary(runId);
       if (prior) {
-        if (succeeded + failed === 0) {
+        if (attemptedThisRun.length === 0) {
           // No new work — preserve prior summary verbatim.
           persistedStatus = prior.status as JobStatus;
           persistedItemCount = prior.itemCount;
           persistedSucceeded = prior.succeeded;
           persistedFailed = prior.failed;
           persistedAttempted = prior.attempted;
+          persistedAttemptedIds = prior.attemptedIds ?? [];
+          persistedFailedIds = prior.failedIds ?? [];
         } else {
-          // New work produced — accumulate onto prior, handling the
-          // case where previously-failed items now succeed on retry.
-          persistedSucceeded = prior.succeeded + succeeded;
-          persistedFailed =
-            Math.max(0, prior.failed + failed - succeeded);
-          // Unique items: prior.attempted already counts prior.failed;
-          // current.attempted retries some of those — only count the
-          // portion that exceeds prior.failed as net-new.
-          const retried =
-            Math.min(attempted, prior.failed);
-          persistedAttempted = prior.attempted + attempted - retried;
+          const priorAttemptedSet = new Set(prior.attemptedIds ?? []);
+          const priorFailedSet = new Set(prior.failedIds ?? []);
+          const currentSucceededSet = new Set(succeededThisRun);
+          const currentFailedSet = new Set(failedThisRun);
+          const currentAttemptedSet = new Set(attemptedThisRun);
 
-          // Persist itemCount as the cumulative succeeded count so a
-          // downstream consumer (health-cost) sees the real publication
-          // yield, not just this invocation's delta.
+          // recovered = priorFailedIds ∩ succeededThisRun
+          const recovered = new Set<string>();
+          for (const id of priorFailedSet) {
+            if (currentSucceededSet.has(id)) recovered.add(id);
+          }
+
+          // persistedFailedIds = (priorFailedIds − recovered) ∪ currentFailedSet
+          const nextFailedSet = new Set<string>();
+          for (const id of priorFailedSet) {
+            if (!recovered.has(id)) nextFailedSet.add(id);
+          }
+          for (const id of currentFailedSet) nextFailedSet.add(id);
+
+          // persistedAttemptedIds = priorAttemptedIds ∪ currentAttemptedSet
+          const nextAttemptedSet = new Set(priorAttemptedSet);
+          for (const id of currentAttemptedSet) nextAttemptedSet.add(id);
+
+          persistedAttemptedIds = [...nextAttemptedSet];
+          persistedFailedIds = [...nextFailedSet];
+          persistedAttempted = nextAttemptedSet.size;
+          persistedFailed = nextFailedSet.size;
+          persistedSucceeded = persistedAttempted - persistedFailed;
           persistedItemCount = persistedSucceeded;
 
           if (persistedFailed === 0) {
@@ -203,6 +231,8 @@ export function createPublishBatch(
       attempted: persistedAttempted,
       succeeded: persistedSucceeded,
       failed: persistedFailed,
+      attemptedIds: persistedAttemptedIds,
+      failedIds: persistedFailedIds,
     });
 
     return {
@@ -256,6 +286,14 @@ const REAL_DEPS: PublishBatchDeps = {
   },
   async finishRun(runId, summary) {
     const { prisma: db } = await import("../db/client.js");
+    // Read existing metadata so we merge publishSummary into it rather
+    // than replacing sibling keys added by other consumers.
+    const existing = await db.pipelineRun.findUnique({
+      where: { id: runId },
+      select: { metadata: true },
+    });
+    const existingMeta =
+      (existing?.metadata as Record<string, unknown> | null) ?? {};
     await db.pipelineRun.update({
       where: { id: runId },
       data: {
@@ -263,12 +301,15 @@ const REAL_DEPS: PublishBatchDeps = {
         itemCount: summary.itemCount,
         finishedAt: new Date(),
         metadata: {
+          ...existingMeta,
           publishSummary: {
             status: summary.status,
             itemCount: summary.itemCount,
             attempted: summary.attempted,
             succeeded: summary.succeeded,
             failed: summary.failed,
+            attemptedIds: summary.attemptedIds,
+            failedIds: summary.failedIds,
           },
         },
       },
@@ -284,9 +325,18 @@ const REAL_DEPS: PublishBatchDeps = {
     const meta = run.metadata as { publishSummary?: {
       status: string; itemCount: number;
       attempted: number; succeeded: number; failed: number;
+      attemptedIds?: string[]; failedIds?: string[];
     } } | null;
     if (!meta?.publishSummary) return null;
-    return meta.publishSummary;
+    return {
+      status: meta.publishSummary.status,
+      itemCount: meta.publishSummary.itemCount,
+      attempted: meta.publishSummary.attempted,
+      succeeded: meta.publishSummary.succeeded,
+      failed: meta.publishSummary.failed,
+      attemptedIds: meta.publishSummary.attemptedIds ?? [],
+      failedIds: meta.publishSummary.failedIds ?? [],
+    };
   },
 };
 

@@ -63,6 +63,9 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
     {
       status: string;
       itemCount: number;
+      attempted: number;
+      succeeded: number;
+      failed: number;
       metadata: unknown;
       outputFingerprint: string;
       finished: boolean;
@@ -78,7 +81,16 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
       finishRun:
         deps.finishRun ??
         (async (runId, summary) => {
-          runStore.set(runId, { ...summary, finished: true });
+          runStore.set(runId, {
+            status: summary.status,
+            itemCount: summary.itemCount,
+            attempted: summary.attempted,
+            succeeded: summary.succeeded,
+            failed: summary.failed,
+            metadata: summary.metadata,
+            outputFingerprint: summary.outputFingerprint,
+            finished: true,
+          });
         }),
       existingSummary:
         deps.existingSummary ??
@@ -86,8 +98,13 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
           const r = runStore.get(runId);
           if (!r || !r.finished) return null;
           return {
-            ...r,
+            status: r.status,
+            itemCount: r.itemCount,
+            attempted: r.attempted,
+            succeeded: r.succeeded,
+            failed: r.failed,
             versionIds: (r.metadata as any)?.versionIds ?? [],
+            outputFingerprint: r.outputFingerprint,
           };
         }),
       recordOperationalAlert:

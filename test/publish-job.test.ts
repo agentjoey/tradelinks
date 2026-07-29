@@ -45,6 +45,8 @@ interface RunRec {
   attempted: number;
   succeeded: number;
   failed: number;
+  attemptedIds: string[];
+  failedIds: string[];
   finished: boolean;
 }
 
@@ -82,6 +84,8 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
             attempted: 0,
             succeeded: 0,
             failed: 0,
+            attemptedIds: [],
+            failedIds: [],
             finished: false,
           });
           return id;
@@ -96,6 +100,8 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
             r.attempted = summary.attempted;
             r.succeeded = summary.succeeded;
             r.failed = summary.failed;
+            r.attemptedIds = summary.attemptedIds ?? [];
+            r.failedIds = summary.failedIds ?? [];
             r.finished = true;
           }
         }),
@@ -110,6 +116,8 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
             attempted: r.attempted,
             succeeded: r.succeeded,
             failed: r.failed,
+            attemptedIds: r.attemptedIds,
+            failedIds: r.failedIds,
           };
         }),
     }),
@@ -167,6 +175,8 @@ describe("publishBatch — PipelineRun persistence", () => {
             attempted: 0,
             succeeded: 0,
             failed: 0,
+            attemptedIds: [],
+            failedIds: [],
             finished: false,
           });
         }
@@ -346,6 +356,8 @@ describe("publishBatch — retry after PARTIAL", () => {
             attempted: 0,
             succeeded: 0,
             failed: 0,
+            attemptedIds: [],
+            failedIds: [],
             finished: false,
           });
         }
@@ -412,6 +424,8 @@ describe("publishBatch — retry after PARTIAL", () => {
             attempted: 0,
             succeeded: 0,
             failed: 0,
+            attemptedIds: [],
+            failedIds: [],
             finished: false,
           });
         }
@@ -492,4 +506,141 @@ describe("publishBatch — invalidateTag guard", () => {
     expect(result.succeeded).toBe(1);
     expect(result.exitCode).toBe(0);
   }, 10000);
+});
+
+// ============================ identity-based reconciliation ======
+
+describe("publishBatch — identity-based reconciliation", () => {
+  it("Probe A — sticky failing draft replayed 3x stays failed=1 attempted=3 exit 1", async () => {
+    // d3 is a sticky failing draft (e.g. action-template-not-reviewed).
+    // It fails every time it is attempted. The failure count must NOT
+    // grow across replays — it is the SAME draft failing repeatedly.
+    let runCount = 0;
+    const persistedRunId = "run-probe-a";
+    const { call, runStore } = makePublisher({
+      beginRun: async () => {
+        if (!runStore.has(persistedRunId)) {
+          runStore.set(persistedRunId, {
+            id: persistedRunId,
+            status: "RUNNING",
+            itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
+            attemptedIds: [],
+            failedIds: [],
+            finished: false,
+          });
+        }
+        return persistedRunId;
+      },
+      loadReviewedDrafts: async () => {
+        runCount++;
+        if (runCount === 1) {
+          return [fakeDraft("d1"), fakeDraft("d2"), fakeDraft("d3")];
+        }
+        // replays: d1/d2 already published, only d3 remains
+        return [fakeDraft("d3")];
+      },
+      publishDraft: async (draftId) => {
+        if (draftId === "d3") throw new Error("sticky failure");
+      },
+    });
+
+    // r1: d1/d2 succeed, d3 fails -> PARTIAL, attempted 3, succeeded 2, failed 1
+    const r1 = await call(baseArgs());
+    expect(r1.status).toBe("PARTIAL");
+    expect(r1.attempted).toBe(3);
+    expect(r1.succeeded).toBe(2);
+    expect(r1.failed).toBe(1);
+    expect(r1.exitCode).toBe(1);
+
+    const rec1 = runStore.get(persistedRunId)!;
+    expect(rec1.attemptedIds).toEqual(["d1", "d2", "d3"].sort());
+    expect(rec1.failedIds).toEqual(["d3"]);
+
+    // r2: d3 fails again. Must NOT grow: failed stays 1, attempted stays 3.
+    const r2 = await call(baseArgs());
+    expect(r2.status).toBe("PARTIAL");
+    expect(r2.attempted).toBe(3);
+    expect(r2.succeeded).toBe(2);
+    expect(r2.failed).toBe(1);
+    expect(r2.exitCode).toBe(1);
+
+    const rec2 = runStore.get(persistedRunId)!;
+    expect(rec2.failedIds).toEqual(["d3"]);
+    expect(rec2.attemptedIds.length).toBe(3);
+
+    // r3: d3 fails a third time. Still must NOT grow.
+    const r3 = await call(baseArgs());
+    expect(r3.status).toBe("PARTIAL");
+    expect(r3.attempted).toBe(3);
+    expect(r3.succeeded).toBe(2);
+    expect(r3.failed).toBe(1);
+    expect(r3.exitCode).toBe(1);
+
+    const rec3 = runStore.get(persistedRunId)!;
+    expect(rec3.failedIds).toEqual(["d3"]);
+    expect(rec3.attemptedIds.length).toBe(3);
+  }, 15000);
+
+  it("Probe B — new failure in replay reports PARTIAL exit 1, never SUCCEEDED_ITEMS", async () => {
+    // run 1: d1 publishes clean -> SUCCEEDED_ITEMS
+    // run 2: d2 publishes ok, "bad" throws -> must report PARTIAL, failed>=1
+    let runCount = 0;
+    const persistedRunId = "run-probe-b";
+    const { call, runStore } = makePublisher({
+      beginRun: async () => {
+        if (!runStore.has(persistedRunId)) {
+          runStore.set(persistedRunId, {
+            id: persistedRunId,
+            status: "RUNNING",
+            itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
+            attemptedIds: [],
+            failedIds: [],
+            finished: false,
+          });
+        }
+        return persistedRunId;
+      },
+      loadReviewedDrafts: async () => {
+        runCount++;
+        if (runCount === 1) {
+          return [fakeDraft("d1")];
+        }
+        // replay: d1 already published, d2 and bad newly reviewed
+        return [fakeDraft("d2"), fakeDraft("bad")];
+      },
+      publishDraft: async (draftId) => {
+        if (draftId === "bad") throw new Error("publication invariant");
+      },
+    });
+
+    // r1: clean
+    const r1 = await call(baseArgs());
+    expect(r1.status).toBe("SUCCEEDED_ITEMS");
+    expect(r1.attempted).toBe(1);
+    expect(r1.succeeded).toBe(1);
+    expect(r1.failed).toBe(0);
+    expect(r1.exitCode).toBe(0);
+
+    // r2: new failure appears -> must be PARTIAL, exit 1, NEVER SUCCEEDED_ITEMS
+    const r2 = await call(baseArgs());
+    expect(r2.status).not.toBe("SUCCEEDED_ITEMS");
+    expect(r2.status).not.toBe("SUCCEEDED_EMPTY");
+    expect(r2.status).toBe("PARTIAL");
+    expect(r2.failed).toBeGreaterThanOrEqual(1);
+    expect(r2.succeeded).toBe(2);
+    expect(r2.attempted).toBe(3);
+    expect(r2.exitCode).toBe(1);
+
+    const rec = runStore.get(persistedRunId)!;
+    expect(rec.failedIds).toContain("bad");
+    expect(rec.attemptedIds).toContain("d2");
+    expect(rec.attemptedIds).toContain("bad");
+    expect(rec.attemptedIds).toContain("d1");
+  }, 15000);
 });
