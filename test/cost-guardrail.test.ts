@@ -27,16 +27,21 @@ describe("evaluateCostGuardrail — pure function", () => {
     evaluateCostGuardrail = mod.evaluateCostGuardrail;
   });
 
+  it("returns NORMAL at $40 (not above)", () => {
+    const d = evaluateCostGuardrail({ projectedTotalUsd: 40 });
+    expect(d.level).toBe("NORMAL");
+    expect(d.suppress).toEqual([]);
+  });
+
   it("returns NORMAL below $40", () => {
     const d = evaluateCostGuardrail({ projectedTotalUsd: 39.99 });
     expect(d.level).toBe("NORMAL");
     expect(d.suppress).toEqual([]);
   });
 
-  it("returns REVIEW at exactly $40", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 40 });
+  it("returns REVIEW above $40 (not at)", () => {
+    const d = evaluateCostGuardrail({ projectedTotalUsd: 40.01 });
     expect(d.level).toBe("REVIEW");
-    expect(d.suppress).toEqual([]);
   });
 
   it("returns REVIEW between $40 and $50", () => {
@@ -44,11 +49,16 @@ describe("evaluateCostGuardrail — pure function", () => {
     expect(d.level).toBe("REVIEW");
   });
 
-  it("returns HARD_CAP at exactly $50", () => {
-    const d = evaluateCostGuardrail({ projectedTotalUsd: 50 });
+  it("returns HARD_CAP above $50", () => {
+    const d = evaluateCostGuardrail({ projectedTotalUsd: 50.01 });
     expect(d.level).toBe("HARD_CAP");
     expect(d.suppress).toContain("experimental-demand");
     expect(d.suppress).toContain("model-enrichment");
+  });
+
+  it("returns REVIEW at $50 (above 40, not above 50)", () => {
+    const d = evaluateCostGuardrail({ projectedTotalUsd: 50 });
+    expect(d.level).toBe("REVIEW");
   });
 
   it("suppresses experimental-demand and model-enrichment above the monthly cap", () => {
@@ -94,6 +104,7 @@ describe("costReport job handler", () => {
         expect(summary.status).toBe("SUCCEEDED_ITEMS");
       },
       getProjectedCost: async () => 35,
+      recordOperationalAlert: async () => {},
     });
     const result = await handler(baseArgs());
     expect(result.status).toBe("SUCCEEDED_ITEMS");
@@ -163,5 +174,45 @@ describe("costReport job handler", () => {
     const second = await handler(baseArgs());
     expect(second.status).toBe(first.status);
     expect(second.itemCount).toBe(first.itemCount);
+  });
+});
+
+// ============================ suppression consumption =================
+
+describe("costReport — suppression consumption", () => {
+  it("getSuppressedJobs returns jobs set by finishRun at HARD_CAP", async () => {
+    const { createCostReport: create, setSuppressedJobs, getSuppressedJobs } = await import("../src/jobs/cost-report.js");
+
+    // Reset suppressed jobs before test
+    setSuppressedJobs([]);
+
+    const handler = create({
+      beginRun: async () => "run-s1",
+      finishRun: async (_rid: string, summary: any) => {
+        const meta = summary.metadata as any;
+        if (meta?.level === "HARD_CAP" && meta.suppress) {
+          setSuppressedJobs([...meta.suppress]);
+        }
+      },
+      getProjectedCost: async () => 55,
+      recordOperationalAlert: async () => {},
+    });
+    await handler(baseArgs());
+    expect(getSuppressedJobs()).toEqual(["experimental-demand", "model-enrichment"]);
+  });
+
+  it("getSuppressedJobs is empty at NORMAL level", async () => {
+    const { createCostReport: create, setSuppressedJobs, getSuppressedJobs } = await import("../src/jobs/cost-report.js");
+
+    setSuppressedJobs([]);
+
+    const handler = create({
+      beginRun: async () => "run-s2",
+      finishRun: async () => {},
+      getProjectedCost: async () => 35,
+      recordOperationalAlert: async () => {},
+    });
+    await handler(baseArgs());
+    expect(getSuppressedJobs()).toEqual([]);
   });
 });

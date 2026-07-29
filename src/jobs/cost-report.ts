@@ -5,12 +5,13 @@
  *   evaluateCostGuardrail(input) → CostDecision   (pure, credential-free)
  *   createCostReport(deps) → (args) => Promise<JobResult>
  *   costReport(args) — production, exactly 1 parameter
+ *   setSuppressedJobs / getSuppressedJobs — dispatcher consumption
  *
- * Thresholds:
- *   <  $40  NORMAL     — no suppression
- *   ≥  $40  REVIEW     — operator review needed
- *   ≥  $50  HARD_CAP   — suppress experimental-demand, model-enrichment;
- *                          official collection is never suppressed.
+ * Thresholds (spec says "above $40" and "above $50"):
+ *   ≤ $40  NORMAL     — no suppression
+ *   > $40  REVIEW     — operator review needed
+ *   > $50  HARD_CAP   — suppress experimental-demand, model-enrichment;
+ *                        official collection is never suppressed.
  */
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
@@ -26,6 +27,18 @@ export interface CostDecision {
   level: CostLevel;
   suppress: string[];
   message: string;
+}
+
+// ---- suppressed jobs (dispatcher consumption) ----
+
+let suppressedJobs: string[] = [];
+
+export function setSuppressedJobs(jobs: string[]): void {
+  suppressedJobs = jobs;
+}
+
+export function getSuppressedJobs(): readonly string[] {
+  return suppressedJobs;
 }
 
 // ---- cost report deps ----
@@ -65,12 +78,12 @@ export interface CostReportDeps {
 /**
  * Evaluate cost guardrail thresholds. Official-source collection is never
  * suppressed — only experimental demand and model enrichment are affected
- * at HARD_CAP.
+ * at HARD_CAP. Boundary: "above $40" → REVIEW, "above $50" → HARD_CAP.
  */
 export function evaluateCostGuardrail(input: CostInputs): CostDecision {
   const projected = input.projectedTotalUsd;
 
-  if (projected >= 50) {
+  if (projected > 50) {
     return {
       level: "HARD_CAP",
       suppress: ["experimental-demand", "model-enrichment"],
@@ -81,7 +94,7 @@ export function evaluateCostGuardrail(input: CostInputs): CostDecision {
     };
   }
 
-  if (projected >= 40) {
+  if (projected > 40) {
     return {
       level: "REVIEW",
       suppress: [],
@@ -163,12 +176,6 @@ export function createCostReport(
 
 // ---- production deps ----
 
-let costAlertStore: ((key: string) => Promise<void>) | null = null;
-
-export function setCostAlertStore(fn: ((key: string) => Promise<void>) | null): void {
-  costAlertStore = fn;
-}
-
 const REAL_DEPS: CostReportDeps = {
   async beginRun(input) {
     const { beginRun: br } = await import("../collection/run.js");
@@ -182,6 +189,10 @@ const REAL_DEPS: CostReportDeps = {
   },
   async finishRun(runId, summary) {
     const { prisma: db } = await import("../db/client.js");
+    const meta = summary.metadata as { level?: string; suppress?: string[] } | null;
+    if (meta?.level === "HARD_CAP" && meta.suppress) {
+      setSuppressedJobs([...meta.suppress]);
+    }
     await db.pipelineRun.update({
       where: { id: runId },
       data: {
@@ -189,7 +200,7 @@ const REAL_DEPS: CostReportDeps = {
         itemCount: summary.itemCount,
         outputFingerprint: summary.outputFingerprint || null,
         metadata: {
-          ...((summary.metadata) as Record<string, unknown>),
+          ...((meta) as Record<string, unknown>),
           attempted: summary.attempted,
           succeeded: summary.succeeded,
           failed: summary.failed,
@@ -225,11 +236,19 @@ const REAL_DEPS: CostReportDeps = {
     };
   },
   async getProjectedCost() {
-    return 0;
+    try {
+      const { getProjectedCost: fetchCost } = await import("../monitoring/cost.js");
+      return await fetchCost();
+    } catch {
+      return 0;
+    }
   },
   async recordOperationalAlert(key: string) {
-    if (costAlertStore) {
-      await costAlertStore(key);
+    try {
+      const { recordOpsAlert } = await import("../email/transactional.js");
+      await recordOpsAlert(key);
+    } catch {
+      // delivery failure non-fatal
     }
   },
 };

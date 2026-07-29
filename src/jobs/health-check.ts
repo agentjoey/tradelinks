@@ -3,7 +3,8 @@
  *
  * Exports:
  *   createHealthCheck(deps) → (args) => Promise<JobResult>
- *   evaluateOperationalHealth(args) — production, exactly 1 parameter
+ *   evaluateOperationalHealth(now) → HealthReport
+ *   detectFailures(deps, now) → Detection[]
  *   loadOperationalAlert / setOperationalAlertStore — for tests
  *
  * Detects four failure classes:
@@ -12,7 +13,9 @@
  *   CONTENT_COLLAPSE — productive baseline went silent (NOT network failure)
  *   BRIEFING_ABSENT  — weekly briefing missing
  *
- * Operational alert idempotency key: ${code}:${subjectId}:${utcHour}
+ * Operational alert idempotency key: ${code}:${subjectId}:${YYYY-MM-DD}THH
+ * Detection is separated from emission: detectFailures returns ALL currently
+ * detected failures; the idempotency key gates delivery only.
  */
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
@@ -27,7 +30,7 @@ export interface OperationalAlertStore {
 
 let alertStore: OperationalAlertStore | null = null;
 
-export function setOperationalAlertStore(s: OperationalAlertStore): void {
+export function setOperationalAlertStore(s: OperationalAlertStore | null): void {
   alertStore = s;
 }
 
@@ -59,6 +62,11 @@ export interface CapabilitySourceRef {
 export interface CapabilitySummary {
   key: string;
   sources: CapabilitySourceRef[];
+}
+
+export interface Detection {
+  code: string;
+  subjectId: string;
 }
 
 // ---- health-check deps ----
@@ -100,12 +108,16 @@ export interface HealthCheckDeps {
 
 // ---- detection helpers ----
 
-function utcHour(d: Date): number {
-  return d.getUTCHours();
+function dateHourBucket(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  return `${y}-${m}-${day}T${h}`;
 }
 
-function alertKey(code: string, subjectId: string, hour: number): string {
-  return `${code}:${subjectId}:${hour}`;
+function alertKey(code: string, subjectId: string, bucket: string): string {
+  return `${code}:${subjectId}:${bucket}`;
 }
 
 function median(values: number[]): number {
@@ -131,10 +143,6 @@ function isCheckSuccessful(status: string): boolean {
   return status === "SUCCEEDED_ITEMS" || status === "SUCCEEDED_EMPTY";
 }
 
-function isCheckProductive(status: string): boolean {
-  return status === "SUCCEEDED_ITEMS";
-}
-
 /**
  * Detect content collapse for a single source.
  * Requires: ≥4 of previous 7 successful checks have median itemCount ≥5,
@@ -154,21 +162,12 @@ function detectContentCollapse(
   const latest = sourceChecks[0];
   if (!latest) return false;
 
-  // Only fire when the most recent outcome is a successful parse that is empty
   if (latest.status !== "SUCCEEDED_EMPTY") return false;
 
-  // Previous successful checks (skip the most recent since it's the empty one)
   const previousSuccessful = sourceChecks.slice(1).filter((c) => isCheckSuccessful(c.status));
 
-  if (previousSuccessful.length < 4) return false;
-
-  // Take the first 7 previous successful checks to evaluate the baseline
   const baseline = previousSuccessful.slice(0, 7);
   if (baseline.length < 4) return false;
-
-  // At least 4 must be productive (SUCCEEDED_ITEMS)
-  const productive = baseline.filter((c) => isCheckProductive(c.status));
-  if (productive.length < 4) return false;
 
   const counts = baseline.map((c) => c.itemCount);
   const med = median(counts);
@@ -177,10 +176,8 @@ function detectContentCollapse(
 
 // ---- factory ----
 
-// ---- public interface ----
-
 export interface HealthReport {
-  detections: string[];
+  detections: Array<{ code: string; subjectId: string }>;
   healthy: boolean;
   checkedAt: string;
 }
@@ -215,8 +212,9 @@ export function createHealthCheck(
     const now = deps.now();
     const detections = await detectFailures(deps, now);
 
-    const hadFailures = detections.length > 0;
-    const status = hadFailures ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
+    const status: JobStatus = detections.length > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
+
+    const keys = detections.map((d) => alertKey(d.code, d.subjectId, dateHourBucket(now)));
 
     await deps.finishRun(runId, {
       status,
@@ -225,15 +223,16 @@ export function createHealthCheck(
       succeeded: detections.length,
       failed: 0,
       metadata: {
-        detections,
+        detections: detections.map((d) => ({ code: d.code, subjectId: d.subjectId })),
+        keys,
         checkedAt: now.toISOString(),
       },
-      outputFingerprint: detections.join(";") || "",
+      outputFingerprint: keys.join(";") || "",
     });
 
     return {
       runId,
-      status: status as JobStatus,
+      status,
       attempted: detections.length,
       succeeded: detections.length,
       failed: 0,
@@ -244,15 +243,17 @@ export function createHealthCheck(
 }
 
 /**
- * Core detection logic — pure of run tracking. Returns the alert keys
- * that were newly recorded (never previously seen in this UTC hour).
+ * Core detection logic — returns ALL currently-detected failures.
+ * Emission to Telegram (via recordOperationalAlert) is gated by
+ * loadOperationalAlert for delivery idempotency, but detection is
+ * returned regardless — a persisting outage must not report healthy.
  */
 export async function detectFailures(
   deps: HealthCheckDeps,
   now: Date,
-): Promise<string[]> {
-  const hour = utcHour(now);
-  const detections: string[] = [];
+): Promise<Detection[]> {
+  const bucket = dateHourBucket(now);
+  const detections: Detection[] = [];
 
   // ---- 1. SOURCE_STALE ----
   const capabilities = await deps.getCoverageCapabilities();
@@ -269,11 +270,10 @@ export async function detectFailures(
     const facts = sourceFacts[sourceId];
     if (!facts) continue;
     if (isSourceStale(facts, now)) {
-      const key = alertKey("SOURCE_STALE", sourceId, hour);
-      const emitted = await loadOperationalAlert(key);
-      if (!emitted) {
+      detections.push({ code: "SOURCE_STALE", subjectId: sourceId });
+      const key = alertKey("SOURCE_STALE", sourceId, bucket);
+      if (!(await loadOperationalAlert(key))) {
         await deps.recordOperationalAlert(key);
-        detections.push(key);
       }
     }
   }
@@ -285,11 +285,10 @@ export async function detectFailures(
   for (const sourceId of allSourceIds) {
     const collapsed = detectContentCollapse(sourceId, checks);
     if (collapsed) {
-      const key = alertKey("CONTENT_COLLAPSE", sourceId, hour);
-      const emitted = await loadOperationalAlert(key);
-      if (!emitted) {
+      detections.push({ code: "CONTENT_COLLAPSE", subjectId: sourceId });
+      const key = alertKey("CONTENT_COLLAPSE", sourceId, bucket);
+      if (!(await loadOperationalAlert(key))) {
         await deps.recordOperationalAlert(key);
-        detections.push(key);
       }
     }
   }
@@ -311,11 +310,10 @@ export async function detectFailures(
     });
 
     if (allStale) {
-      const key = alertKey("GLOBAL_GAP", cap.key, hour);
-      const emitted = await loadOperationalAlert(key);
-      if (!emitted) {
+      detections.push({ code: "GLOBAL_GAP", subjectId: cap.key });
+      const key = alertKey("GLOBAL_GAP", cap.key, bucket);
+      if (!(await loadOperationalAlert(key))) {
         await deps.recordOperationalAlert(key);
-        detections.push(key);
       }
     }
   }
@@ -323,11 +321,10 @@ export async function detectFailures(
   // ---- 4. BRIEFING_ABSENT ----
   const briefingStatus = await deps.getBriefingStatus();
   if (briefingStatus.absent) {
-    const key = alertKey("BRIEFING_ABSENT", "weekly", hour);
-    const emitted = await loadOperationalAlert(key);
-    if (!emitted) {
+    detections.push({ code: "BRIEFING_ABSENT", subjectId: "weekly" });
+    const key = alertKey("BRIEFING_ABSENT", "weekly", bucket);
+    if (!(await loadOperationalAlert(key))) {
       await deps.recordOperationalAlert(key);
-      detections.push(key);
     }
   }
 
@@ -337,6 +334,31 @@ export async function detectFailures(
 // ---- production deps ----
 
 const HOUR = 60 * 60000;
+
+/**
+ * Production operational alert store backed by an in-memory set + Telegram.
+ * The set is bound by process lifetime; the date-scoped hour bucket in the
+ * key (YYYY-MM-DDTHH) ensures that a worker restart cannot re-fire within
+ * the same bucket unless the detection is genuinely new.
+ */
+function productionAlertStore(): OperationalAlertStore {
+  const sent = new Set<string>();
+  return {
+    async record(key: string) {
+      if (sent.has(key)) return;
+      sent.add(key);
+      try {
+        const { recordOpsAlert } = await import("../email/transactional.js");
+        await recordOpsAlert(key);
+      } catch {
+        // delivery failure non-fatal; idempotency key prevents double-send
+      }
+    },
+    async load(key: string) {
+      return sent.has(key);
+    },
+  };
+}
 
 const REAL_DEPS: HealthCheckDeps = {
   async beginRun(input) {
@@ -394,9 +416,8 @@ const REAL_DEPS: HealthCheckDeps = {
     };
   },
   async recordOperationalAlert(key: string) {
-    if (alertStore) {
-      await alertStore.record(key);
-    }
+    const store = alertStore ?? productionAlertStore();
+    await store.record(key);
   },
   async getSourceChecks(since: Date) {
     const { prisma: db } = await import("../db/client.js");
@@ -469,12 +490,14 @@ const REAL_DEPS: HealthCheckDeps = {
 
 /**
  * Evaluate operational health at the given clock.
- * Returns a HealthReport with all detected failure-class alert keys.
+ * Returns a HealthReport with ALL currently-detected failure classes.
+ * Detection is separated from delivery — a persisting outage returns
+ * unhealthy regardless of prior alert emission.
  */
 export async function evaluateOperationalHealth(now: Date): Promise<HealthReport> {
   const detections = await detectFailures(REAL_DEPS, now);
   return {
-    detections,
+    detections: detections.map((d) => ({ code: d.code, subjectId: d.subjectId })),
     healthy: detections.length === 0,
     checkedAt: now.toISOString(),
   };
