@@ -191,25 +191,32 @@ afterAll(async () => {
   await prisma.evidenceCluster.deleteMany({ where: { fingerprint: { startsWith: runId } } });
   await prisma.item.deleteMany({ where: { sourceId: { startsWith: runId } } });
   await prisma.source.deleteMany({ where: { id: { startsWith: runId } } });
+  await prisma.alert.deleteMany({ where: { id: { startsWith: runId } } });
   await prisma.$disconnect();
 }, 120000);
 
 describe("verified listing excludes non-public versions", () => {
   let draftChange: { slug: string };
   let monitoredVersion: { id: string };
+  let publicSlug: string;
 
   beforeAll(async () => {
     const versions = await seedNonPublicVersions();
     draftChange = { slug: versions[0]!.change.slug };
     monitoredVersion = { id: versions[3]!.version.id };
 
-    // Also seed a public version to ensure the list is not empty
-    await seedPublicVersion({ readiness: "VERIFIED" as any });
+    // Also seed a public VERIFIED version to ensure the list is not empty
+    const { change } = await seedPublicVersion({ readiness: "VERIFIED" as any });
+    publicSlug = change.slug;
   }, 60000);
 
   it("returns only current reviewed VERIFIED versions", async () => {
     const page = await listPublicChanges({ pool: "verified", limit: 20 });
-    const allVerified = page.items.every((item) => item.readiness === "VERIFIED");
+    const runItems = page.items.filter((item) => item.slug.startsWith(runId));
+    // The seeded VERIFIED row must be present
+    const publicInResult = runItems.some((item) => item.slug === publicSlug);
+    expect(publicInResult).toBe(true);
+    const allVerified = runItems.every((item) => item.readiness === "VERIFIED");
     expect(allVerified).toBe(true);
   }, 30000);
 
@@ -228,12 +235,16 @@ describe("verified listing excludes non-public versions", () => {
 
 describe("monitored listing includes monitored and verified only", () => {
   let staleChangeSlug: string;
+  let verifiedSlug: string;
+  let monitoredSlug: string;
 
   beforeAll(async () => {
     // Seed VERIFIED
-    await seedPublicVersion({ readiness: "VERIFIED" as any });
+    const { change: vChange } = await seedPublicVersion({ readiness: "VERIFIED" as any });
+    verifiedSlug = vChange.slug;
     // Seed MONITORED
-    await seedPublicVersion({ readiness: "MONITORED" as any });
+    const { change: mChange } = await seedPublicVersion({ readiness: "MONITORED" as any });
+    monitoredSlug = mChange.slug;
     // Seed STALE – must not appear
     const { change } = await seedPublicVersion({ readiness: "STALE" as any });
     staleChangeSlug = change.slug;
@@ -241,8 +252,11 @@ describe("monitored listing includes monitored and verified only", () => {
 
   it("allows VERIFIED in monitored pool", async () => {
     const page = await listPublicChanges({ pool: "monitored", limit: 20 });
-    const readinesses = new Set(page.items.map((i: any) => i.readiness));
-    expect(readinesses.has("VERIFIED") || readinesses.has("MONITORED")).toBe(true);
+    const runItems = page.items.filter((item) => item.slug.startsWith(runId));
+    const verifiedPresent = runItems.some((item) => item.slug === verifiedSlug);
+    const monitoredPresent = runItems.some((item) => item.slug === monitoredSlug);
+    expect(verifiedPresent).toBe(true);
+    expect(monitoredPresent).toBe(true);
   }, 30000);
 
   it("excludes STALE from monitored pool", async () => {
@@ -615,4 +629,100 @@ describe("new schema constraints exercised", () => {
     const result: boolean = typeof (prisma as any).guide !== "undefined";
     expect(result).toBe(true);
   });
+});
+
+describe("legacy Alert exclusion", () => {
+  it("listPublicChanges never includes legacy Alerts", async () => {
+    // Create a published Alert — it must never leak into the public listing
+    await prisma.alert.create({
+      data: {
+        id: `${runId}-legacy-alert`,
+        title: "Legacy Alert — must not appear in public listing",
+        summary: "Test legacy alert",
+        urgencyScore: 90,
+        regions: ["north_america"],
+        platforms: [],
+        category: "regulatory",
+        affectedSkus: [],
+        sourceUrls: [],
+        status: "published",
+        publishedAt: new Date("2026-07-20T00:00:00Z"),
+      },
+    });
+
+    const page = await listPublicChanges({ pool: "verified", limit: 100 });
+    const ids = page.items.map((i) => i.id);
+    expect(ids).not.toContain(`${runId}-legacy-alert`);
+
+    // Also lookup by slug — must be null
+    const result = await getPublicChangeBySlug(`${runId}-legacy-alert`);
+    expect(result).toBeNull();
+  }, 30000);
+});
+
+describe("correctionHistory filters DRAFT versions", () => {
+  it("excludes correction reasons authored on DRAFT-only versions", async () => {
+    const { change } = await seedPublicVersion({
+      readiness: "VERIFIED" as any,
+    });
+
+    // Create a DRAFT version with a correctionReason — this should NOT appear
+    await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 2,
+        isCurrent: false,
+        title: "Draft correction",
+        summary: "Draft correction",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-15T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Draft",
+        editorialStatus: "DRAFT" as any,
+        correctionReason: "This DRAFT reason must not appear in public",
+        reviewedAt: null,
+      },
+    });
+
+    // Create a PUBLISHED correction — only this should appear
+    await prisma.canonicalChangeVersion.create({
+      data: {
+        canonicalChangeId: change.id,
+        version: 3,
+        isCurrent: false,
+        title: "Published correction",
+        summary: "Published correction",
+        signalType: "REGULATORY",
+        regions: [],
+        platforms: [],
+        operatingStages: [],
+        productCategories: [],
+        riskAttributes: [],
+        policyTopics: [],
+        sourcePublishedAt: new Date("2026-07-15T00:00:00Z"),
+        urgency: 80,
+        readiness: "VERIFIED" as any,
+        generalImpact: "Corrected",
+        editorialStatus: "PUBLISHED" as any,
+        correctionReason: "This PUBLISHED correction must appear in public",
+        reviewedAt: new Date("2026-07-22T00:00:00Z"),
+        reviewedBy: "reviewer-2",
+      },
+    });
+
+    const result = await getPublicChangeBySlug(change.slug);
+    expect(result).not.toBeNull();
+    expect(result!.correctionHistory.length).toBe(1);
+    expect(result!.correctionHistory[0]!.correctionReason).toBe(
+      "This PUBLISHED correction must appear in public",
+    );
+    expect(result!.correctionHistory[0]!.version).toBe(3);
+  }, 30000);
 });

@@ -77,9 +77,7 @@ export async function getPublicChangeBySlug(
 
   if (!version) return null;
 
-  return serializeCanonicalVersion(
-    version as unknown as VersionWithEvidence,
-  );
+  return serializeCanonicalVersion(version as unknown as VersionWithEvidence);
 }
 
 export async function listPublicChanges(
@@ -94,19 +92,18 @@ export async function listPublicChanges(
     readiness: { in: readinesses },
   };
 
-  // Count total matching
   const total = await prisma.canonicalChangeVersion.count({ where });
 
-  // Cursor handling
-  const cursorClause: Record<string, unknown> | undefined =
-    filters.cursor && decodeCursor(filters.cursor)
-      ? {
-          cursor: {
-            id: decodeCursor(filters.cursor)!.id,
-          },
-          skip: 1,
-        }
-      : undefined;
+  let cursorClause: { cursor: { id: string }; skip: number } | undefined;
+  if (filters.cursor) {
+    const decoded = decodeCursor(filters.cursor);
+    if (!decoded) {
+      throw new Error(
+        `invalid or undecodable cursor: ${filters.cursor.slice(0, 20)}...`,
+      );
+    }
+    cursorClause = { cursor: { id: decoded.id }, skip: 1 };
+  }
 
   const versions = await prisma.canonicalChangeVersion.findMany({
     where,

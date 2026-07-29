@@ -8,9 +8,18 @@
 
 import { createHash } from "node:crypto";
 
-import type { CanonicalPublicRecord, VersionWithEvidence } from "./types.js";
+import type {
+  CanonicalPublicRecord,
+  VersionWithEvidence,
+} from "./types.js";
 
 const PUBLIC_READINESS: ReadonlySet<string> = new Set(["MONITORED", "VERIFIED"]);
+
+const ROLE_ORDER: Record<string, number> = {
+  PRIMARY_OFFICIAL: 0,
+  SUPPORTING_OFFICIAL: 1,
+  SECONDARY_CONTEXT: 2,
+};
 
 export class SerializationError extends Error {
   constructor(
@@ -23,7 +32,10 @@ export class SerializationError extends Error {
 }
 
 export function assertPublicVersion(
-  version: Pick<VersionWithEvidence, "isCurrent" | "editorialStatus" | "readiness" | "reviewedAt">,
+  version: Pick<
+    VersionWithEvidence,
+    "isCurrent" | "editorialStatus" | "readiness" | "reviewedAt"
+  >,
 ): void {
   if (!version.isCurrent) {
     throw new SerializationError(
@@ -62,22 +74,23 @@ export function serializeCanonicalVersion(
     .digest("hex");
 
   const orderedEvidence = [...version.evidence].sort((a, b) => {
-    const roleOrder: Record<string, number> = {
-      PRIMARY_OFFICIAL: 0,
-      SUPPORTING_OFFICIAL: 1,
-      SECONDARY_CONTEXT: 2,
-    };
-    const aRole = roleOrder[a.role] ?? 99;
-    const bRole = roleOrder[b.role] ?? 99;
+    const aRole = ROLE_ORDER[a.role] ?? 99;
+    const bRole = ROLE_ORDER[b.role] ?? 99;
     if (aRole !== bRole) return aRole - bRole;
-    // Within the same role, more recent publishedAt first, nulls last
     const aPub = a.publishedAt?.getTime() ?? 0;
     const bPub = b.publishedAt?.getTime() ?? 0;
     return bPub - aPub;
   });
 
+  // Correction history: only published versions whose correction reason is
+  // set. DRAFT correction reasons are editorial drafts that have never been
+  // reviewed or published — they do not belong in the public audit trail.
   const correctionHistory = version.canonicalChange.versions
-    .filter((v) => v.correctionReason != null)
+    .filter(
+      (v) =>
+        v.correctionReason != null &&
+        v.editorialStatus === "PUBLISHED",
+    )
     .map((v) => ({
       version: v.version,
       correctionReason: v.correctionReason!,
@@ -94,7 +107,7 @@ export function serializeCanonicalVersion(
     title: version.title,
     summary: version.summary,
     signalType: version.signalType,
-    market: version.market as "US",
+    market: "US",
     regions: version.regions,
     platforms: version.platforms,
     operatingStages: version.operatingStages,

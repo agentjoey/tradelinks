@@ -3,6 +3,20 @@
  * channels (pages, RSS, API, Telegram, briefings).
  */
 
+import type {
+  AuthorityLevel,
+  EvidenceRole,
+  EditorialStatus,
+  MarketCode,
+  OperatingStage,
+  PlatformCode,
+  PolicyTopic,
+  ProductCategory,
+  ReadinessLevel,
+  RiskAttribute,
+  SignalType,
+} from "@prisma/client";
+
 export type CanonicalPublicRecord = {
   id: string;
   slug: string;
@@ -11,14 +25,14 @@ export type CanonicalPublicRecord = {
   fingerprint: string;
   title: string;
   summary: string;
-  signalType: string;
+  signalType: SignalType;
   market: "US";
   regions: string[];
-  platforms: string[];
-  operatingStages: string[];
-  productCategories: string[];
-  riskAttributes: string[];
-  policyTopics: string[];
+  platforms: PlatformCode[];
+  operatingStages: OperatingStage[];
+  productCategories: ProductCategory[];
+  riskAttributes: RiskAttribute[];
+  policyTopics: PolicyTopic[];
   sourcePublishedAt: string;
   effectiveAt: string | null;
   urgency: number;
@@ -31,8 +45,8 @@ export type CanonicalPublicRecord = {
     sourceId: string;
     sourceName: string;
     url: string;
-    role: string;
-    authorityLevel: string;
+    role: EvidenceRole;
+    authorityLevel: AuthorityLevel;
     publishedAt: string | null;
     normalizedSummary: string;
     reviewedAt: string | null;
@@ -61,19 +75,19 @@ export type VersionWithEvidence = {
   version: number;
   updatedAt: Date;
   isCurrent: boolean;
-  editorialStatus: string;
-  readiness: string;
+  editorialStatus: EditorialStatus;
+  readiness: ReadinessLevel;
   reviewedAt: Date | null;
   title: string;
   summary: string;
-  signalType: string;
-  market: string;
+  signalType: SignalType;
+  market: MarketCode;
   regions: string[];
-  platforms: string[];
-  operatingStages: string[];
-  productCategories: string[];
-  riskAttributes: string[];
-  policyTopics: string[];
+  platforms: PlatformCode[];
+  operatingStages: OperatingStage[];
+  productCategories: ProductCategory[];
+  riskAttributes: RiskAttribute[];
+  policyTopics: PolicyTopic[];
   sourcePublishedAt: Date;
   effectiveAt: Date | null;
   urgency: number;
@@ -86,14 +100,15 @@ export type VersionWithEvidence = {
       version: number;
       correctionReason: string | null;
       createdAt: Date;
+      editorialStatus: EditorialStatus;
     }>;
   };
   evidence: Array<{
     sourceId: string;
     source: { name: string };
     url: string;
-    role: string;
-    authorityLevel: string;
+    role: EvidenceRole;
+    authorityLevel: AuthorityLevel;
     publishedAt: Date | null;
     normalizedSummary: string;
     reviewedAt: Date | null;
