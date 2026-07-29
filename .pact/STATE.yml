@@ -85,7 +85,7 @@ features:
         deps: [finite-dispatch]
       - id: publishing-briefing
         owner: opencode
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-operations-publishing-briefing.md
         evidence: null
