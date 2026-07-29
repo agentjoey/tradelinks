@@ -211,3 +211,4 @@
 {"event_id":"e422aa62aef893a04f63372585090156","ts":"2026-07-29T21:20:56Z","agent_id":"claude","role":"reviewer","event_type":"accept","task_id":"health-cost","feature":"phase1-operations","payload":{}}
 {"event_id":"178503f1f5e8bb333c7f6f5e1f02c520","ts":"2026-07-29T21:21:28Z","agent_id":"codex","role":"orchestrator","event_type":"escalate","task_id":"","feature":"phase1-operations","payload":{"reason":"iteration limit exceeded","seat":"codex"}}
 {"event_id":"271681ca1424308023d33b856c8fcee6","ts":"2026-07-29T21:24:41Z","agent_id":"codex","role":"orchestrator","event_type":"start","task_id":"railway-cutover","feature":"phase1-operations","payload":{"owner":"opencode"}}
+{"event_id":"c498818bc08052d5e7618d7ad1b99178","ts":"2026-07-29T21:24:50Z","agent_id":"opencode","role":"worker","event_type":"join","task_id":"","feature":"","payload":{"client":{"name":"pactify-cli","version":"dev"},"protocol_version":1,"roles":["worker"]}}
