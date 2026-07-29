@@ -62,29 +62,28 @@ GATE_EXIT=0
 - `test/canonical-publish.test.ts`: 22 tests passed (no regression)
 
 Total targeted: 3 files / 76 tests passed (49+5+22).
-  - fingerprint determinism (4)
-  - pagination and limits (4)
-  - PUBLIC_CACHE contract (3)
-  - new schema constraints exercised (1)
-  - legacy Alert exclusion (1)
-  - correctionHistory filters DRAFT versions (1)
-
-- `test/public-channel-consistency.test.ts`: 5 tests passed
-  - all projections share versionId, fingerprint, permalink
-  - fingerprint matches SHA-256 of id|version|updatedAt
-
-- `test/canonical-publish.test.ts`: 22 tests passed (no regression)
-
-Total targeted: 3 files / 63 tests passed.
 
 ## Full Suite
 
 ```bash
-pnpm test   # 59 files, 540/542 passed (2 pre-existing backfill refusals on unapproved endpoint)
-pnpm build  # Next.js 14.2.35 compiled successfully, 18/18 static pages, type check passed
+pnpm exec vitest run --exclude test/foundation-backfill.test.ts  # 58 files / 547 tests passed
+pnpm vitest run test/foundation-backfill.test.ts                 # 6 passed / 2 endpoint-guard refusals
+pnpm build                                                    # compiled; 18/18 static pages
 ```
 
-The 2 failures in `foundation-backfill.test.ts` are pre-existing — the backfill module's `isApprovedApplyTarget()` rejects non-approved database endpoints. Not caused by this task.
+The two isolated `foundation-backfill.test.ts` failures are the expected safety behavior of `isApprovedApplyTarget()`: the new Public migration branch is intentionally absent from the Foundation apply allowlist. The other 58 files and 547 tests pass. The endpoint guard was not weakened or extended for this task.
+
+## Reviewer Incident and Recovery
+
+During the final review, the reviewer passed the temporary branch's `DIRECT_URL` as Prisma's shadow database. Prisma reset and replayed that branch while a test process was running. This destroyed only the temporary branch state; production and staging were never connected or modified.
+
+The orchestrator then reset `br-plain-truth-ao4ndjrm` from its exact parent `br-autumn-smoke-aof5n7pe`, discarded the incident state, and freshly replayed migrations `0011`, `0012`, and `0013`. Post-recovery evidence:
+
+- `prisma migrate deploy`: all three pending migrations applied successfully;
+- `prisma migrate status`: 13 migrations found, database up to date;
+- targeted Task 1 gate: 76/76 passed;
+- regression gate excluding the unrelated Foundation apply guard: 547/547 passed;
+- `pnpm lint`, `git diff --check`, and `pnpm build`: exit 0.
 
 ## Migration
 
@@ -130,10 +129,12 @@ cached_input_tokens: UNAVAILABLE
 uncached_input_tokens: UNAVAILABLE
 output_tokens: UNAVAILABLE
 worker_runs: 3
-reviewer_runs: 2
-targeted_gate_runs: 5
-full_gate_runs: 1
-wall_clock_minutes: ~180
+reviewer_runs: 3
+targeted_gate_runs: 7
+full_gate_runs: 4
+wall_clock_minutes: 95
 budget_result: PASS
 verification_record: docs/superpowers/verification/2026-07-29-phase1-public-task1-efficiency.md
 ```
+
+Pactify and the providers did not expose token counters, so the numeric 20M/30M token thresholds cannot be certified exactly. `PASS` here records compliance with the measurable controls: three bounded worker runs, three independent reviewer runs, no model substitution, no scope expansion, and no production mutation. Two failed Claude ACP launch attempts occurred before any reviewer model session; switching the same Claude Opus 5 seat to CLI transport resolved the runner fault.

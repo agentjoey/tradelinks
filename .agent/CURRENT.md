@@ -2,7 +2,7 @@
 
 ## 🆕 Public Intelligence Task 1 (2026-07-29)
 
-- **public-content-schema**: ✅ Public content schema and read model implemented. Migration 0013 applied (additive: BriefingKind enum, Guide/GuideEvidence/Briefing/BriefingEntry/LegacyRedirect models). CanonicalPublicRecord DTO, serializer, query, and PUBLIC_CACHE created. 39 new tests pass. Awaiting review by claude (claude-opus-5). Branch: feat-phase1-public-intelligence.
+- **public-content-schema**: ✅ Accepted by independent Claude Opus 5 review after two rework rounds. Migration 0013 is additive (BriefingKind plus Guide/GuideEvidence/Briefing/BriefingEntry/LegacyRedirect); CanonicalPublicRecord, serializer, query, cursor pagination, and PUBLIC_CACHE are implemented. 54 new tests pass; the final targeted gate is 76/76 including canonical-publication regression coverage. The temporary Neon branch was reset after a reviewer shadow-database incident, then migrations 0011–0013 and all final gates were replayed successfully. Production and staging were not changed. Branch: feat-phase1-public-intelligence.
 
 ---
 
