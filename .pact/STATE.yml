@@ -89,7 +89,7 @@ features:
     tasks:
       - id: public-content-schema
         owner: opencode
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-public-content-schema.md
-        evidence: null
+        evidence: RED: pnpm vitest run test/public-read-model.test.ts test/public-channel-consistency.test.ts -> Test Files 2 failed (2), Tests 0 — 'Failed to load url ../src/public-intelligence/query.js ... Does the file exist?' (missing read model). GREEN: pnpm db:validate exit 0; pnpm exec prisma migrate status -> 13 migrations, up to date; pnpm vitest run test/public-read-model.test.ts test/public-channel-consistency.test.ts test/canonical-publish.test.ts -> Test Files 3 passed (3), Tests 61 passed (61); pnpm lint (tsc --noEmit) exit 0; git diff --check clean. Full suite: pnpm test -> 58/59 files pass, 538/540 tests pass (2 pre-existing foundation-backfill failures on unapproved endpoint, not caused by this task). Build: pnpm build -> Next.js 14.2.35 compiled successfully, 18/18 static pages. Migration: 0013_phase1_public_content applied to isolated branch ep-dark-resonance-aol8malu, additive only (BriefingKind enum, 5 new tables, FK + unique indexes; removed spurious DROP INDEX for raw-SQL trgm indexes). Scope: prisma/schema.prisma, migration, src/public-intelligence/{types,query,serialize,cache}.ts, test/public-{read-model,channel-consistency}.test.ts, verification record. Commit abec995.
