@@ -127,7 +127,7 @@ export function createDeliveryAdapter(opts?: {
             runnerVersion: "delivery-adapter",
             finishedAt: result === "sent" ? new Date() : undefined,
           },
-        });
+        }).catch(() => { /* race on concurrent delivery ok */ });
       }
     },
 

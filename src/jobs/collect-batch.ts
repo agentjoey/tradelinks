@@ -134,24 +134,13 @@ export interface CollectBatchDeps {
 
 // ---- cost suppression reader (production, consumed by collect-batch) ----
 
-let _cachedDecision: { decision: { level: string; suppress: string[] } | null; at: number } | null = null;
-
-/** Clear the internal cost-decision cache (for tests that change Prisma state). */
-export function clearSuppressionCache(): void {
-  _cachedDecision = null;
-}
-
 export async function shouldSkipAtHardCap(
   source: SourceContract,
   _prisma?: any,
 ): Promise<boolean> {
   try {
-    // Read decision once per batch invocation (30s cache window)
-    if (!_cachedDecision || Date.now() - _cachedDecision.at > 30_000) {
-      const { readLatestCostDecision } = await import("./cost-report.js");
-      _cachedDecision = { decision: await readLatestCostDecision(_prisma), at: Date.now() };
-    }
-    const decision = _cachedDecision.decision;
+    const { readLatestCostDecision } = await import("./cost-report.js");
+    const decision = await readLatestCostDecision(_prisma);
     if (decision?.level === "HARD_CAP" && decision.suppress.includes("experimental-demand")) {
       return source.readiness === "EXPERIMENTAL";
     }

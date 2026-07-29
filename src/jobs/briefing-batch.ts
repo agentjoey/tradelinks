@@ -4,7 +4,6 @@
  * Exports:
  *   createBriefingBatch(deps) → (args) => Promise<JobResult>
  *   qualifyWeeklyBriefing(args) — production, exactly 1 parameter
- *   loadOperationalAlert / setOperationalAlertStore — for tests
  *
  * P0 shadow-only: selects the PRECEDING completed Monday-Sunday UTC window
  * for Monday runs, qualifies current published versions allowed by

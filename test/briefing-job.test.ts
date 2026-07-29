@@ -39,25 +39,19 @@ function sundayArgs(): JobArgs {
 }
 
 class AlertLedger {
-  readonly alerts = new Map<string, boolean>();
-  readonly recordCounts = new Map<string, number>();
+  readonly records: Array<{ code: string; subjectId: string; bucket: string }> = [];
   record(key: { code: string; subjectId: string; bucket: string }) {
-    const sk = `${key.code}:${key.subjectId}:${key.bucket}`;
-    this.alerts.set(sk, true);
-    this.recordCounts.set(sk, (this.recordCounts.get(sk) ?? 0) + 1);
+    this.records.push(key);
   }
-  hasByCode(code: string): boolean {
-    for (const k of this.alerts.keys()) {
-      if (k.startsWith(`${code}:`)) return true;
-    }
-    return false;
+  hasExact(expect: { code: string; subjectId: string; bucket: string }): boolean {
+    return this.records.some((r) =>
+      r.code === expect.code && r.subjectId === expect.subjectId && r.bucket === expect.bucket,
+    );
   }
-  getCountByCode(code: string): number {
-    let count = 0;
-    for (const [k, n] of this.recordCounts) {
-      if (k.startsWith(`${code}:`)) count = Math.max(count, n);
-    }
-    return count;
+  countExact(expect: { code: string; subjectId: string; bucket: string }): number {
+    return this.records.filter((r) =>
+      r.code === expect.code && r.subjectId === expect.subjectId && r.bucket === expect.bucket,
+    ).length;
   }
 }
 
@@ -130,7 +124,7 @@ describe("briefingBatch — weekly absence", () => {
     const { call, alertStore } = makeBriefinger();
     const result = await call(mondayArgs());
     expect(result).toMatchObject({ status: "BLOCKED", exitCode: 2 });
-    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(true);
+    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(true);
   });
 });
 
@@ -151,7 +145,7 @@ describe("briefingBatch — daily absence", () => {
     await call(
       baseArgs({ scheduledFor: new Date("2026-07-30T08:00:00Z") }),
     );
-    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(false);
+    expect(alertStore.records.some((r) => r.code === "BRIEFING_ABSENT")).toBe(false);
   });
 
   it("returns SUCCEEDED_EMPTY on Sunday with no qualified content", async () => {
@@ -349,11 +343,11 @@ describe("briefingBatch — absent replay", () => {
 
     // First run records the alert
     await call(mondayArgs());
-    expect(alertStore.getCountByCode("BRIEFING_ABSENT")).toBe(1);
+    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(1);
 
     // Replay must NOT re-record the alert
     await call(mondayArgs());
-    expect(alertStore.getCountByCode("BRIEFING_ABSENT")).toBe(1);
+    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(1);
   }, 10000);
 });
 
@@ -368,7 +362,7 @@ describe("briefingBatch — zero qualified", () => {
     expect(result.status).toBe("BLOCKED");
     expect(result.exitCode).toBe(2);
     expect(result.itemCount).toBe(0);
-    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(true);
+    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(true);
   }, 10000);
 });
 
@@ -382,6 +376,6 @@ describe("briefingBatch — not weekly", () => {
     const result = await call(baseArgs()); // Wednesday
     expect(result.status).toBe("SUCCEEDED_ITEMS");
     expect(result.exitCode).toBe(0);
-    expect(alertStore.hasByCode("BRIEFING_ABSENT")).toBe(false);
+    expect(alertStore.records.some((r) => r.code === "BRIEFING_ABSENT")).toBe(false);
   }, 10000);
 });

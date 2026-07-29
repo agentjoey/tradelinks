@@ -5,7 +5,6 @@
  *   createHealthCheck(deps) → (args) => Promise<JobResult>
  *   evaluateOperationalHealth(now) → HealthReport
  *   detectFailures(deps, now) → Detection[]
- *   loadOperationalAlert / setOperationalAlertStore — for tests
  *
  * Detects four failure classes:
  *   GLOBAL_GAP       — no source in a capability within its group max SLA
@@ -16,6 +15,7 @@
  * Delivery is separated from detection: detectFailures returns ALL currently-
  * detected failures. Delivery uses a PipelineRun-backed adapter
  * (createDeliveryAdapter) with structured {code, subjectId, bucket} keys.
+ * The adapter handles its own dedup via finishedAt checks.
  */
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
@@ -27,21 +27,6 @@ export interface AlertDeliveryKey {
   code: string;
   subjectId: string;
   bucket: string; // YYYY-MM-DDTHH
-}
-
-export interface OperationalAlertStore {
-  record(key: AlertDeliveryKey): Promise<void>;
-  load(key: AlertDeliveryKey): Promise<boolean>;
-}
-
-let alertStore: OperationalAlertStore | null = null;
-
-export function setOperationalAlertStore(s: OperationalAlertStore | null): void {
-  alertStore = s;
-}
-
-export async function loadOperationalAlert(key: AlertDeliveryKey): Promise<boolean> {
-  return alertStore?.load(key) ?? false;
 }
 
 // ---- types ----
@@ -195,8 +180,8 @@ export function createHealthCheck(
 
 /**
  * Core detection logic — returns ALL currently-detected failures.
- * Delivery is gated by loadOperationalAlert for dedup;
- * detection is returned regardless so persisting outages remain unhealthy.
+ * Delivery dedup is handled internally by createDeliveryAdapter via
+ * finishedAt checks on PipelineRun rows — no external guard needed.
  */
 export async function detectFailures(
   deps: HealthCheckDeps,
@@ -219,10 +204,7 @@ export async function detectFailures(
     if (!facts) continue;
     if (isSourceStale(facts, now)) {
       detections.push({ code: "SOURCE_STALE", subjectId: sourceId });
-      const key = { code: "SOURCE_STALE", subjectId: sourceId, bucket };
-      if (!(await loadOperationalAlert(key))) {
-        await deps.recordOperationalAlert(key);
-      }
+      await deps.recordOperationalAlert({ code: "SOURCE_STALE", subjectId: sourceId, bucket });
     }
   }
 
@@ -232,10 +214,7 @@ export async function detectFailures(
   for (const sourceId of allSourceIds) {
     if (detectContentCollapse(sourceId, checks)) {
       detections.push({ code: "CONTENT_COLLAPSE", subjectId: sourceId });
-      const key = { code: "CONTENT_COLLAPSE", subjectId: sourceId, bucket };
-      if (!(await loadOperationalAlert(key))) {
-        await deps.recordOperationalAlert(key);
-      }
+      await deps.recordOperationalAlert({ code: "CONTENT_COLLAPSE", subjectId: sourceId, bucket });
     }
   }
 
@@ -251,27 +230,24 @@ export async function detectFailures(
       return now.getTime() - s.lastOkAt.getTime() > maxSlaMinutes * 60000;
     })) {
       detections.push({ code: "GLOBAL_GAP", subjectId: cap.key });
-      const key = { code: "GLOBAL_GAP", subjectId: cap.key, bucket };
-      if (!(await loadOperationalAlert(key))) {
-        await deps.recordOperationalAlert(key);
-      }
+      await deps.recordOperationalAlert({ code: "GLOBAL_GAP", subjectId: cap.key, bucket });
     }
   }
 
   // ---- 4. BRIEFING_ABSENT ----
   const briefingStatus = await deps.getBriefingStatus(now);
   if (briefingStatus.absent) {
-    // Use Monday date as subjectId (consistent with briefing-batch)
+    // SubjectId is the Monday that STARTED the missing weekly window
+    // (the same window queried by getBriefingStatus: [prevMon, curMon)).
     const mondayOfWeek = new Date(Date.UTC(
       now.getUTCFullYear(), now.getUTCMonth(),
       now.getUTCDate() - ((now.getUTCDay() + 6) % 7),
     ));
-    const subjectId = mondayOfWeek.toISOString().slice(0, 10);
+    const previousMonday = new Date(mondayOfWeek);
+    previousMonday.setUTCDate(mondayOfWeek.getUTCDate() - 7);
+    const subjectId = previousMonday.toISOString().slice(0, 10);
     detections.push({ code: "BRIEFING_ABSENT", subjectId });
-    const key = { code: "BRIEFING_ABSENT", subjectId, bucket };
-    if (!(await loadOperationalAlert(key))) {
-      await deps.recordOperationalAlert(key);
-    }
+    await deps.recordOperationalAlert({ code: "BRIEFING_ABSENT", subjectId, bucket });
   }
 
   return detections;

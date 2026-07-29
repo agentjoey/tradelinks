@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { JobArgs, JobResult } from "../src/jobs/types.js";
-import type { OperationalAlertStore, AlertDeliveryKey } from "../src/jobs/health-check.js";
+import type { AlertDeliveryKey } from "../src/jobs/health-check.js";
 
 function baseArgs(overrides?: Partial<JobArgs>): JobArgs {
   return {
@@ -19,11 +19,12 @@ function toKey(k: AlertDeliveryKey): string {
   return `${k.code}:${k.subjectId}:${k.bucket}`;
 }
 
-class InMemoryAlertStore implements OperationalAlertStore {
+class InMemoryAlertStore {
   readonly alerts = new Map<string, boolean>();
   readonly recordCounts = new Map<string, number>();
   async record(key: AlertDeliveryKey) {
     const k = toKey(key);
+    if (this.alerts.has(k)) return; // dedup like adapter's finishedAt check
     this.alerts.set(k, true);
     this.recordCounts.set(k, (this.recordCounts.get(k) ?? 0) + 1);
   }
@@ -56,9 +57,8 @@ function dateHour(d: Date): string {
 }
 
 async function makeHandler(overrides: Record<string, unknown> = {}, opts?: { fixedRunId?: string }) {
-  const { createHealthCheck, setOperationalAlertStore } = await import("../src/jobs/health-check.js");
+  const { createHealthCheck } = await import("../src/jobs/health-check.js");
   const store = new InMemoryAlertStore();
-  setOperationalAlertStore(store);
 
   let nextRunId = 0;
   const fixed = opts?.fixedRunId;
@@ -248,7 +248,7 @@ describe("healthCheck — BRIEFING_ABSENT", () => {
   it("emits BRIEFING_ABSENT on Monday when no briefing was produced", async () => {
     const now = new Date("2026-07-27T08:00:00Z"); // Monday UTC
     const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "BRIEFING_ABSENT", subjectId: "2026-07-27", bucket };
+    const key: AlertDeliveryKey = { code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket };
     const { call, store } = await makeHandler({
       getBriefingStatus: async () => ({ absent: true }),
       now: () => now,
@@ -265,7 +265,7 @@ describe("healthCheck — BRIEFING_ABSENT", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "BRIEFING_ABSENT", subjectId: "2026-07-27", bucket })).toBe(false);
+    expect(store.has({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket })).toBe(false);
   });
 });
 
