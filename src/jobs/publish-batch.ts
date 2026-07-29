@@ -42,16 +42,21 @@ export interface PublishBatchDeps {
     scheduledFor: Date;
     runnerVersion: string;
   }): Promise<string>;
-  /** Finish the run, persisting status and itemCount. */
+  /** Finish the run, persisting status and full counts to
+   *  PipelineRun.metadata.publishSummary so replay can read them
+   *  verbatim. */
   finishRun(
     runId: string,
-    summary: { status: string; itemCount: number },
+    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number },
   ): Promise<void>;
   /** Read the existing PipelineRun summary to power idempotent replay.
    *  Returns null when no prior finished run exists. */
   existingSummary?(runId: string): Promise<{
     status: string;
     itemCount: number;
+    attempted: number;
+    succeeded: number;
+    failed: number;
   } | null>;
 }
 
@@ -67,12 +72,14 @@ export function createPublishBatch(
     });
 
     const drafts = await deps.loadReviewedDrafts(MAX_DRAFTS);
+    const reviewedDrafts = drafts.slice(0, MAX_DRAFTS);
 
-    if (drafts.length === 0) {
-      // Replay: if a prior finished run exists, return its result verbatim.
-      // The real production path reaches here when a prior run published
-      // all drafts, so loadReviewedDrafts returns [] because those versions
-      // are now editorialStatus PUBLISHED and no longer match DRAFT/IN_REVIEW.
+    if (reviewedDrafts.length === 0) {
+      // Replay: if a prior finished run exists, return its cumulative
+      // result verbatim. The real production path reaches here when a
+      // prior run published all drafts, so loadReviewedDrafts returns []
+      // because those versions are now editorialStatus PUBLISHED and no
+      // longer match DRAFT/IN_REVIEW.
       if (deps.existingSummary) {
         const prior = await deps.existingSummary(runId);
         if (prior) {
@@ -80,14 +87,9 @@ export function createPublishBatch(
           return {
             runId,
             status: priorStatus,
-            attempted:
-              priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
-            succeeded:
-              priorStatus === "SUCCEEDED_ITEMS" ? prior.itemCount : 0,
-            failed:
-              priorStatus === "PARTIAL" || priorStatus === "FAILED"
-                ? prior.itemCount
-                : 0,
+            attempted: prior.attempted,
+            succeeded: prior.succeeded,
+            failed: prior.failed,
             itemCount: prior.itemCount,
             exitCode:
               priorStatus === "FAILED" || priorStatus === "PARTIAL" ? 1 : 0,
@@ -98,6 +100,9 @@ export function createPublishBatch(
       await deps.finishRun(runId, {
         status: "SUCCEEDED_EMPTY",
         itemCount: 0,
+        attempted: 0,
+        succeeded: 0,
+        failed: 0,
       });
       return {
         runId,
@@ -113,7 +118,7 @@ export function createPublishBatch(
     let succeeded = 0;
     let failed = 0;
 
-    for (const draft of drafts) {
+    for (const draft of reviewedDrafts) {
       if (!draft.reviewedBy) continue;
       try {
         await deps.publishDraft(draft.id, draft.reviewedBy);
@@ -144,8 +149,10 @@ export function createPublishBatch(
       status = succeeded > 0 ? "PARTIAL" : "FAILED";
     }
 
-    // On replay with accumulated work: if a prior run exists, accumulate
-    // the new counts onto the prior persisted summary.
+    // On replay: accumulate the real prior counts from metadata so no
+    // count is ever reconstructed from status+itemCount. A retry where
+    // previously-failed items now succeed shifts those from the prior
+    // failed bucket into succeeded.
     let persistedStatus: JobStatus = status;
     let persistedItemCount = succeeded;
     let persistedSucceeded = succeeded;
@@ -158,24 +165,27 @@ export function createPublishBatch(
           // No new work — preserve prior summary verbatim.
           persistedStatus = prior.status as JobStatus;
           persistedItemCount = prior.itemCount;
-          persistedSucceeded =
-            prior.status === "SUCCEEDED_ITEMS" ? prior.itemCount : 0;
-          persistedFailed =
-            prior.status === "PARTIAL" || prior.status === "FAILED"
-              ? prior.itemCount
-              : 0;
-          persistedAttempted = persistedSucceeded + persistedFailed;
+          persistedSucceeded = prior.succeeded;
+          persistedFailed = prior.failed;
+          persistedAttempted = prior.attempted;
         } else {
-          // New work produced — accumulate onto prior.
-          persistedItemCount = prior.itemCount + succeeded;
-          persistedSucceeded =
-            (prior.status === "SUCCEEDED_ITEMS" ? prior.itemCount : 0) +
-            succeeded;
+          // New work produced — accumulate onto prior, handling the
+          // case where previously-failed items now succeed on retry.
+          persistedSucceeded = prior.succeeded + succeeded;
           persistedFailed =
-            (prior.status === "PARTIAL" || prior.status === "FAILED"
-              ? prior.itemCount
-              : 0) + failed;
-          persistedAttempted = persistedSucceeded + persistedFailed;
+            Math.max(0, prior.failed + failed - succeeded);
+          // Unique items: prior.attempted already counts prior.failed;
+          // current.attempted retries some of those — only count the
+          // portion that exceeds prior.failed as net-new.
+          const retried =
+            Math.min(attempted, prior.failed);
+          persistedAttempted = prior.attempted + attempted - retried;
+
+          // Persist itemCount as the cumulative succeeded count so a
+          // downstream consumer (health-cost) sees the real publication
+          // yield, not just this invocation's delta.
+          persistedItemCount = persistedSucceeded;
+
           if (persistedFailed === 0) {
             persistedStatus =
               persistedSucceeded > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
@@ -190,6 +200,9 @@ export function createPublishBatch(
     await deps.finishRun(runId, {
       status: persistedStatus,
       itemCount: persistedItemCount,
+      attempted: persistedAttempted,
+      succeeded: persistedSucceeded,
+      failed: persistedFailed,
     });
 
     return {
@@ -249,6 +262,15 @@ const REAL_DEPS: PublishBatchDeps = {
         status: summary.status as import("@prisma/client").RunStatus,
         itemCount: summary.itemCount,
         finishedAt: new Date(),
+        metadata: {
+          publishSummary: {
+            status: summary.status,
+            itemCount: summary.itemCount,
+            attempted: summary.attempted,
+            succeeded: summary.succeeded,
+            failed: summary.failed,
+          },
+        },
       },
     });
   },
@@ -256,10 +278,15 @@ const REAL_DEPS: PublishBatchDeps = {
     const { prisma: db } = await import("../db/client.js");
     const run = await db.pipelineRun.findUnique({
       where: { id: runId },
-      select: { finishedAt: true, status: true, itemCount: true },
+      select: { finishedAt: true, metadata: true },
     });
     if (!run || !run.finishedAt) return null;
-    return { status: run.status, itemCount: run.itemCount };
+    const meta = run.metadata as { publishSummary?: {
+      status: string; itemCount: number;
+      attempted: number; succeeded: number; failed: number;
+    } } | null;
+    if (!meta?.publishSummary) return null;
+    return meta.publishSummary;
   },
 };
 

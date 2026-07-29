@@ -42,6 +42,9 @@ interface RunRec {
   id: string;
   status: string;
   itemCount: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
   finished: boolean;
 }
 
@@ -76,6 +79,9 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
             id,
             status: "RUNNING",
             itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
             finished: false,
           });
           return id;
@@ -87,6 +93,9 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
           if (r) {
             r.status = summary.status;
             r.itemCount = summary.itemCount;
+            r.attempted = summary.attempted;
+            r.succeeded = summary.succeeded;
+            r.failed = summary.failed;
             r.finished = true;
           }
         }),
@@ -95,7 +104,13 @@ function makePublisher(deps: Partial<PublishBatchDeps> = {}) {
         (async (runId) => {
           const r = runStore.get(runId);
           if (!r || !r.finished) return null;
-          return { status: r.status, itemCount: r.itemCount };
+          return {
+            status: r.status,
+            itemCount: r.itemCount,
+            attempted: r.attempted,
+            succeeded: r.succeeded,
+            failed: r.failed,
+          };
         }),
     }),
   };
@@ -149,6 +164,9 @@ describe("publishBatch — PipelineRun persistence", () => {
             id: persistedRunId,
             status: "RUNNING",
             itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
             finished: false,
           });
         }
@@ -213,12 +231,13 @@ describe("publishBatch — bounded publishing", () => {
 // ============================ 100 cap ===========================
 
 describe("publishBatch — 100 cap", () => {
-  it("bounded to 100 reviewed drafts", async () => {
+  it("bounded to 100 reviewed drafts even when dep over-returns", async () => {
     const allDrafts = Array.from({ length: 150 }, (_, i) =>
       fakeDraft(`draft-${i + 1}`),
     );
     const { call, published } = makePublisher({
-      loadReviewedDrafts: async (limit) => allDrafts.slice(0, limit),
+      // Dep deliberately returns more than 100 — the handler must cap.
+      loadReviewedDrafts: async () => allDrafts,
     });
     const result = await call(baseArgs());
     expect(published.length).toBe(100);
@@ -305,6 +324,132 @@ describe("publishBatch — skip non-reviewed", () => {
     expect(result.succeeded).toBe(2);
     expect(result.failed).toBe(0);
     expect(result.exitCode).toBe(0);
+  }, 10000);
+});
+
+// ============================ retry after partial ===============
+
+describe("publishBatch — retry after PARTIAL", () => {
+  it("retry where previously failing draft succeeds reports cumulative success", async () => {
+    // run 1: 3 reviewed drafts, d3 throws -> PARTIAL (succeeded 2, failed 1)
+    // run 2: d3 now succeeds; d1/d2 already published so only d3 loads
+    // expected: cumulative SUCCEEDED_ITEMS, attempted 3, succeeded 3, failed 0, itemCount 3
+    const failedOnce = new Set<string>();
+    const persistedRunId = "run-persisted";
+    const { call, runStore } = makePublisher({
+      beginRun: async () => {
+        if (!runStore.has(persistedRunId)) {
+          runStore.set(persistedRunId, {
+            id: persistedRunId,
+            status: "RUNNING",
+            itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
+            finished: false,
+          });
+        }
+        return persistedRunId;
+      },
+      loadReviewedDrafts: async () => {
+        if (failedOnce.has("d3")) {
+          // run 2: d1/d2 already published, only d3 remains
+          return [fakeDraft("d3")];
+        }
+        return [fakeDraft("d1"), fakeDraft("d2"), fakeDraft("d3")];
+      },
+      publishDraft: async (draftId) => {
+        if (draftId === "d3" && !failedOnce.has("d3")) {
+          failedOnce.add("d3");
+          throw new Error("publication invariant");
+        }
+      },
+    });
+
+    // run 1
+    const r1 = await call(baseArgs());
+    expect(r1.status).toBe("PARTIAL");
+    expect(r1.attempted).toBe(3);
+    expect(r1.succeeded).toBe(2);
+    expect(r1.failed).toBe(1);
+    expect(r1.itemCount).toBe(2);
+    expect(r1.exitCode).toBe(1);
+
+    const recAfterRun1 = runStore.get(persistedRunId)!;
+    expect(recAfterRun1.attempted).toBe(3);
+    expect(recAfterRun1.succeeded).toBe(2);
+    expect(recAfterRun1.failed).toBe(1);
+    expect(recAfterRun1.status).toBe("PARTIAL");
+
+    // run 2 (retry, d3 now succeeds)
+    const r2 = await call(baseArgs());
+    expect(r2.status).toBe("SUCCEEDED_ITEMS");
+    expect(r2.attempted).toBe(3);
+    expect(r2.succeeded).toBe(3);
+    expect(r2.failed).toBe(0);
+    expect(r2.itemCount).toBe(3);
+    expect(r2.exitCode).toBe(0);
+
+    const recAfterRun2 = runStore.get(persistedRunId)!;
+    expect(recAfterRun2.attempted).toBe(3);
+    expect(recAfterRun2.succeeded).toBe(3);
+    expect(recAfterRun2.failed).toBe(0);
+    expect(recAfterRun2.status).toBe("SUCCEEDED_ITEMS");
+  }, 10000);
+
+  it("zero-work replay after PARTIAL run returns prior counts unchanged", async () => {
+    // run 1: PARTIAL (succeeded 2, failed 1)
+    // run 2: zero loadable drafts (all in final state) -> returns prior counts
+    let hasRun = false;
+    const persistedRunId = "run-persisted-z";
+    const { call, runStore } = makePublisher({
+      beginRun: async () => {
+        if (!runStore.has(persistedRunId)) {
+          runStore.set(persistedRunId, {
+            id: persistedRunId,
+            status: "RUNNING",
+            itemCount: 0,
+            attempted: 0,
+            succeeded: 0,
+            failed: 0,
+            finished: false,
+          });
+        }
+        return persistedRunId;
+      },
+      loadReviewedDrafts: async () => {
+        if (!hasRun) {
+          hasRun = true;
+          return [fakeDraft("d1"), fakeDraft("d2"), fakeDraft("d3")];
+        }
+        return [];
+      },
+      publishDraft: async (draftId) => {
+        if (draftId === "d3") throw new Error("publication invariant");
+      },
+    });
+
+    // run 1: PARTIAL
+    const r1 = await call(baseArgs());
+    expect(r1.status).toBe("PARTIAL");
+    expect(r1.succeeded).toBe(2);
+    expect(r1.failed).toBe(1);
+    expect(r1.attempted).toBe(3);
+
+    // run 2: zero new work — must return prior unchanged
+    const r2 = await call(baseArgs());
+    expect(r2.status).toBe("PARTIAL");
+    expect(r2.attempted).toBe(3);
+    expect(r2.succeeded).toBe(2);
+    expect(r2.failed).toBe(1);
+    expect(r2.exitCode).toBe(1);
+
+    // Run store must NOT be overwritten with zeros
+    const rec = runStore.get(persistedRunId)!;
+    expect(rec.attempted).toBe(3);
+    expect(rec.succeeded).toBe(2);
+    expect(rec.failed).toBe(1);
+    expect(rec.status).toBe("PARTIAL");
   }, 10000);
 });
 
