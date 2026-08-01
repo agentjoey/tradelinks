@@ -728,7 +728,8 @@ export const SOURCES: SourceConfig[] = [
     id: "US-APHIS",
     name: "USDA APHIS Announcements",
     url: "https://www.aphis.usda.gov/news/releases",
-    adapter: "fetch",
+    adapter: "scrapling",
+    scrapeMode: "stealth",
     frequencyCron: "31 13 * * *",
     language: "en",
     regions: ["north_america"],
@@ -736,10 +737,10 @@ export const SOURCES: SourceConfig[] = [
     categoryHint: "regulatory",
     enabled: false,
     note: "Finite-only (resumable-batches). Legacy queue disabled.",
-    fetchConfig: {
-      itemSelector: ".views-row",
-      titleSelector: "h2, h3, .field-content",
-      linkSelector: "a",
+    scrapeSelectors: {
+      item: ".views-row",
+      title: "h2, h3, .field-content",
+      link: "a",
     },
   },
   {
