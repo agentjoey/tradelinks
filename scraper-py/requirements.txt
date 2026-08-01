@@ -1,8 +1,15 @@
 # Python >= 3.10 required (Scrapling)
 fastapi>=0.115,<1.0
 uvicorn>=0.32,<1.0
-# [fetchers] extra pulls the browser engines + curl_cffi needed by StealthyFetcher
-scrapling[fetchers]==0.4.1
+# [fetchers] extra pulls the browser engines + curl_cffi needed by StealthyFetcher.
+# Pinned to 0.3.12 (NOT 0.4.x): Scrapling >=0.4.0 introduced an eager-UA boundary
+# in _config_tools.py that generates __default_chrome_useragent__ (Chrome 143) at
+# module-import time. BrowserForge 1.2.4 + apify-fingerprint-datapoints 0.14.0
+# cannot generate Linux Chrome 143 headers, so the import fails before any request.
+# 0.3.12 uses Browser(name="chrome", min_version=130) and only generates one UA
+# (browser_mode=True). Its StealthyFetcher.fetch API is identical for our kwargs
+# (headless, network_idle, timeout, disable_resources).
+scrapling[fetchers]==0.3.12
 browserforge==1.2.4
 apify-fingerprint-datapoints==0.14.0
 pytrends>=4.9.2

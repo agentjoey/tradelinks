@@ -1,13 +1,21 @@
 """
 Credential-free regression: exact critical runtime pins in requirements.txt.
 
-The production scraper failed because Scrapling 0.4.12 hard-codes Chromium 149
-and BrowserForge 1.2.4 with apify-fingerprint-datapoints 0.14.0 cannot generate
-Linux Chrome 149 headers. Scrapling 0.4.1 hard-codes Chromium 141 and its
-critical dependency trio imports successfully in an isolated environment.
+Root cause: Scrapling >=0.4.0 introduced an eager-UA boundary in
+_config_tools.py that generates both __default_useragent__ (Chromium 141)
+and __default_chrome_useragent__ (Chrome 143) at module-import time.
+BrowserForge 1.2.4 with apify-fingerprint-datapoints 0.14.0 cannot
+generate Linux Chrome 143 headers, so the import itself fails.
 
-These tests parse requirements.txt and assert the exact pinned versions. They
-require no browser, no credentials, and no network access.
+Scrapling 0.3.12 uses Browser(name="chrome", min_version=130) and
+generates only one User-Agent (browser_mode=True), which stays within
+BrowserForge's supported range. Its StealthyFetcher.fetch API is
+identical to 0.4.1 for the kwargs we use (headless, network_idle,
+timeout, disable_resources).
+
+These tests parse requirements.txt and assert the exact pinned versions.
+If scrapling is installed, the module-level chrome_version constant (if
+any) is also inspected. No browser, no credentials, no network.
 """
 
 from __future__ import annotations
@@ -44,14 +52,65 @@ class RequirementsPinTests(unittest.TestCase):
     def setUpClass(cls):
         cls.deps = parse_requirements(REQUIREMENTS_PATH)
 
-    def test_scrapling_pinned_to_0_4_1(self):
+    def test_scrapling_pinned_to_0_3_12(self):
         self.assertIn("scrapling[fetchers]", self.deps,
                        "scrapling[fetchers] must be pinned in requirements.txt")
-        self.assertEqual(self.deps["scrapling[fetchers]"], "0.4.1",
-                         "scrapling[fetchers] must be exactly 0.4.1")
-        # Safety: must NOT pin to 0.4.12 (broken Chromium 149)
-        self.assertNotEqual(self.deps["scrapling[fetchers]"], "0.4.12",
-                            "scrapling 0.4.12 hard-codes Chromium 149 which is broken with BrowserForge 1.2.4")
+        self.assertEqual(self.deps["scrapling[fetchers]"], "0.3.12",
+                         "scrapling[fetchers] must be exactly 0.3.12")
+
+    def test_scrapling_rejects_eager_ua_boundary(self):
+        """Scrapling >=0.4.0 eagerly generates Chrome 143 (via _config_tools)
+        which BrowserForge 1.2.4 + apify 0.14.0 cannot produce. The pin must be
+        <0.4.0 (i.e. in the 0.3.x line where only min_version=130 is used)."""
+        version = self.deps.get("scrapling[fetchers]", "")
+        self.assertTrue(version, "scrapling[fetchers] must be present in requirements.txt")
+        parts = version.split(".")
+        self.assertEqual(len(parts), 3, f"version '{version}' must be a 3-part semver")
+        major = int(parts[0])
+        minor = int(parts[1])
+        # 0.3.x is safe; 0.4.0+ introduced the eager Chrome 143 generation
+        self.assertEqual(major, 0, f"version '{version}' must be 0.x.y")
+        self.assertLess(minor, 4, f"version '{version}' must be <0.4.0 (eager-UA boundary). "
+                        "Scrapling >=0.4.0 eagerly generates Chrome 143 headers at import "
+                        "time, which BrowserForge 1.2.4 + apify-fingerprint-datapoints 0.14.0 "
+                        "cannot produce.")
+        # Safety: explicitly reject known-broken versions
+        self.assertNotEqual(version, "0.4.1",
+                            "scrapling 0.4.1 eagerly generates Chrome 143 headers")
+        self.assertNotEqual(version, "0.4.12",
+                            "scrapling 0.4.12 hard-codes Chromium 149")
+
+    def test_scrapling_module_no_eager_chrome_143(self):
+        """If scrapling is installed, its fingerprints.py must not expose a
+        chrome_version >= 143 (the eager-UA boundary). Skip if not installed."""
+        try:
+            import scrapling
+        except ImportError:
+            self.skipTest("scrapling not installed in this test environment")
+        version_attr = getattr(scrapling, '__version__', None)
+        if version_attr:
+            version_parts = version_attr.split(".")
+            if len(version_parts) >= 2:
+                major = int(version_parts[0])
+                minor = int(version_parts[1])
+                if major == 0 and minor >= 4:
+                    self.fail(
+                        f"Scrapling {version_attr} installed, which introduced the "
+                        f"eager-UA boundary. Must use 0.3.x."
+                    )
+        # Inspect fingerprints module for chrome_version constant
+        try:
+            import scrapling.engines.toolbelt.fingerprints as fp
+            chrome_ver = getattr(fp, 'chrome_version', None)
+            if chrome_ver is not None:
+                self.assertLess(
+                    chrome_ver, 143,
+                    f"scrapling.engines.toolbelt.fingerprints.chrome_version={chrome_ver} "
+                    f"exceeds BrowserForge 1.2.4 max (142). Eager Chrome {chrome_ver} UA "
+                    f"generation in _config_tools will fail at import time."
+                )
+        except ImportError:
+            pass  # 0.3.x may not have the submodule or chrome_version constant
 
     def test_browserforge_pinned_to_1_2_4(self):
         self.assertIn("browserforge", self.deps,
