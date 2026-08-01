@@ -3,9 +3,10 @@ Credential-free regression: scrape_stealth calls StealthyFetcher.fetch
 without the redundant extra_flags argument while preserving headless,
 network_idle, timeout, and disable_resources.
 
-Scrapling 0.4.1 includes --disable-dev-shm-usage in upstream DEFAULT_ARGS.
-The extra_flags argument is redundant and in v0.4.1 it also hits a tuple/list
-bug when passed as a list, so the local duplicate must be removed.
+Scrapling 0.3.12 StealthyFetcher (Camoufox/Firefox) does not need extra_flags;
+the headless/network_idle/timeout/disable_resources kwargs are sufficient.
+The extra_flags argument was removed to avoid a tuple/list bug in the old
+0.4.1 path and is not re-introduced for 0.3.12.
 
 These tests use standard-library unittest.mock so they do not require a
 browser, credentials, or network access.
@@ -86,7 +87,7 @@ class ScrapeStealthContractTests(unittest.TestCase):
         call_kwargs = self._call_with_mock()
         self.assertNotIn("extra_flags", call_kwargs,
                          "extra_flags must NOT be passed to StealthyFetcher.fetch "
-                         "(Scrapling 0.4.1 includes --disable-dev-shm-usage in DEFAULT_ARGS)")
+                         "(Scrapling 0.3.12 StealthyFetcher does not need extra_flags)")
 
     def test_fetch_preserves_headless(self):
         call_kwargs = self._call_with_mock()
