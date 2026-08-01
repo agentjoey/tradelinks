@@ -99,8 +99,8 @@ features:
         deps: [publishing-briefing]
       - id: railway-cutover
         owner: opencode
-        status: in_progress
+        status: awaiting_review
         reviewer: claude
         spec: .pact/tasks/phase1-operations-railway-cutover.md
-        evidence: null
+        evidence: Collect-batch cold-start fix (Phase-A). Files: src/jobs/collect-batch.ts, test/collect-batch.test.ts. RED (5 failing tests confirmed pre-implementation), GREEN (47/47 collect-batch tests pass, tsc --noEmit clean). Two-part fix: (1) classifyCallScraperError treats TypeError (fetch transport) as retryable SCRAPER_TRANSPORT; (2) once-per-batch scraper fairness gate polls scraper /health <=30s, fails-closed with SCRAPER_READINESS_TIMEOUT per-source if never ready. 7 new tests: gate called-once, skip-no-scraper, timeout-fails-closed, non-scraper-unaffected, ordering, fail-open, transport-retryable. Full suite: 545 passed, 27 intentionally RED (production-runtime.test.ts Phase-A). Cloud gates (72h window, manual slots, deployment) remain pending until Codex orchestrator steps. Commit: 5443900.
         deps: [health-cost]
