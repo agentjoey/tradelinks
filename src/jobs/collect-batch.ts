@@ -132,6 +132,11 @@ export interface CollectBatchDeps {
    *  unavailable. The handler filters every source through this single read
    *  via isExperimentalSuppressed — no per-source fallback. */
   readCostDecision?: () => Promise<{ level: string; suppress: string[] } | null>;
+  /** Scraper readiness gate: called once per batch before any SCRAPER source
+   *  is fetched. Resolves when the scraper service is ready; rejects with
+   *  SCRAPER_READINESS_TIMEOUT if readiness never arrives. When absent
+   *  (fail-open), SCRAPER sources are fetched without a readiness check. */
+  scraperReadinessGate?: () => Promise<void>;
 }
 
 // ---- cost suppression reader (production, consumed by collect-batch) ----
@@ -269,6 +274,11 @@ export function classifyCallScraperError(err: unknown): FetchOutcome {
       httpStatus,
     };
   }
+  // Transport error (TypeError from fetch) — retryable; covers cold-start
+  // where the scraper service hasn't become ready yet.
+  if (err instanceof TypeError) {
+    return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
+  }
   // Schema validation failure (ZodError from ScrapeResponseSchema.parse) or
   // other unclassified errors — never retried.
   return { kind: "failed", code: `SCRAPER_ERROR: ${msg.slice(0, 100)}`, retryable: false };
@@ -397,6 +407,27 @@ export function createCollectBatch(
     // Track in-invocation failures that never reached the ledger (BLOCKER 2 fix).
     let unreportedFailures = 0;
 
+    // ---- scraper readiness gate (once per batch) ----
+    const scraperPending = pendingSources.filter((s) => s.fetchMethod === "SCRAPER");
+    if (scraperPending.length > 0 && deps.scraperReadinessGate) {
+      try {
+        await deps.scraperReadinessGate();
+      } catch (_gateErr) {
+        for (const s of scraperPending) {
+          try {
+            await deps.ledger.recordOutcome(runId, s.id, {
+              kind: "failed",
+              code: "SCRAPER_READINESS_TIMEOUT",
+              retryable: false,
+            });
+          } catch {
+            unreportedFailures++;
+          }
+        }
+        pendingSources = pendingSources.filter((s) => s.fetchMethod !== "SCRAPER");
+      }
+    }
+
     await mapWithLimit(pendingSources, 5, async (source) => {
       const retryResult = await retryUnit({
         maxAttempts: 3,
@@ -461,12 +492,35 @@ export function createCollectBatch(
   };
 }
 
+/** Production: bounded scraper readiness gate. Polls the scraper service health
+ *  endpoint with a finite timeout so cold-start is tolerated. Rejects after the
+ *  timeout so the batch fails closed with per-source SCRAPER_READINESS_TIMEOUT. */
+async function scraperReadinessGate(): Promise<void> {
+  const start = Date.now();
+  const timeoutMs = 30_000;
+  const pollMs = 1000;
+  const baseUrl = env.SCRAPER_SERVICE_URL;
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(`${baseUrl}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) return;
+    } catch {
+      // Not ready or health endpoint unreachable — keep polling
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new Error("SCRAPER_READINESS_TIMEOUT");
+}
+
 /** Production two-parameter entry point — exactly the spec shape. */
 export const collectBatch = createCollectBatch({
   getSources: getSourcesForGroup,
   fetchSource: fetchSourceViaRegistry,
   ledger: DB_LEDGER,
   readCostDecision,
+  scraperReadinessGate,
 });
 
 // ---- job registration ----
