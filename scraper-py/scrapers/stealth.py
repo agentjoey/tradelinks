@@ -36,6 +36,9 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
         headless=True,
         network_idle=True,
         timeout=90000,
+        # Block images/fonts/media/css/etc (keeps document/script/xhr) — we only
+        # need the product grid DOM. Big memory + bandwidth cut per launch, which
+        # is what was killing the Chromium driver under load.
         disable_resources=True,
     )
 

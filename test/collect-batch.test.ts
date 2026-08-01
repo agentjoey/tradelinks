@@ -438,6 +438,15 @@ describe("classifyCallScraperError", () => {
     }
   });
 
+  it("classifies TypeError transport error (terminated) as retryable", () => {
+    const outcome = classifyCallScraperError(new TypeError("terminated"));
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
+
   // ---- narrowed transport retry: non-transport TypeError ----
   it("classifies non-transport TypeError (validation) as non-retryable", () => {
     const outcome = classifyCallScraperError(new TypeError("Invalid URL"));
@@ -450,8 +459,7 @@ describe("classifyCallScraperError", () => {
 
   // ---- AbortError / TimeoutError as transport retries ----
   it("classifies AbortError as retryable transport", () => {
-    const abortErr = new Error("The operation was aborted");
-    abortErr.name = "AbortError";
+    const abortErr = new DOMException("The operation was aborted", "AbortError");
     const outcome = classifyCallScraperError(abortErr);
     expect(outcome.kind).toBe("failed");
     if (outcome.kind === "failed") {
@@ -461,8 +469,7 @@ describe("classifyCallScraperError", () => {
   });
 
   it("classifies TimeoutError as retryable transport", () => {
-    const timeoutErr = new Error("The operation timed out");
-    timeoutErr.name = "TimeoutError";
+    const timeoutErr = new DOMException("The operation timed out", "TimeoutError");
     const outcome = classifyCallScraperError(timeoutErr);
     expect(outcome.kind).toBe("failed");
     if (outcome.kind === "failed") {

@@ -274,11 +274,11 @@ export function classifyCallScraperError(err: unknown): FetchOutcome {
       httpStatus,
     };
   }
-  // Narrow transport retry: only TypeError with "fetch failed" message
-  // (Node.js fetch network error) plus AbortError/TimeoutError from
-  // AbortSignal.timeout. Validation/programming TypeErrors stay
-  // non-retryable.
-  if (err instanceof TypeError && /fetch failed/i.test(msg)) {
+  // Narrow transport retry: only TypeError with "fetch failed" or
+  // "terminated" message (Node undici network errors) plus
+  // AbortError/TimeoutError from AbortSignal.timeout.
+  // Validation/programming TypeErrors stay non-retryable.
+  if (err instanceof TypeError && /fetch failed|terminated/i.test(msg)) {
     return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
   }
   const errName = err instanceof Error ? err.name : String(err);

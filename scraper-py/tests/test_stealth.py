@@ -13,10 +13,18 @@ browser, credentials, or network access.
 
 from __future__ import annotations
 
+import os
 import sys
 import types
 import unittest
 from unittest.mock import MagicMock
+
+
+def _ensure_scraper_path():
+    """Add the scraper-py directory to sys.path so imports work without ambient PYTHONPATH."""
+    scraper_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if scraper_dir not in sys.path:
+        sys.path.insert(0, scraper_dir)
 
 
 class ScrapeStealthContractTests(unittest.TestCase):
@@ -57,9 +65,9 @@ class ScrapeStealthContractTests(unittest.TestCase):
     @staticmethod
     def _import_fresh_stealth():
         """Import (or re-import) scrapers.stealth so it picks up the mock."""
+        _ensure_scraper_path()
         if "scrapers.stealth" in sys.modules:
             del sys.modules["scrapers.stealth"]
-        # Ensure the scraper-py is on sys.path
         import scrapers.stealth  # type: ignore
         return scrapers.stealth
 
