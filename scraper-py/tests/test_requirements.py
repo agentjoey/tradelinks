@@ -80,37 +80,17 @@ class RequirementsPinTests(unittest.TestCase):
         self.assertNotEqual(version, "0.4.12",
                             "scrapling 0.4.12 hard-codes Chromium 149")
 
-    def test_scrapling_module_no_eager_chrome_143(self):
-        """If scrapling is installed, its fingerprints.py must not expose a
-        chrome_version >= 143 (the eager-UA boundary). Skip if not installed."""
-        try:
-            import scrapling
-        except ImportError:
-            self.skipTest("scrapling not installed in this test environment")
-        version_attr = getattr(scrapling, '__version__', None)
-        if version_attr:
-            version_parts = version_attr.split(".")
-            if len(version_parts) >= 2:
-                major = int(version_parts[0])
-                minor = int(version_parts[1])
-                if major == 0 and minor >= 4:
-                    self.fail(
-                        f"Scrapling {version_attr} installed, which introduced the "
-                        f"eager-UA boundary. Must use 0.3.x."
-                    )
-        # Inspect fingerprints module for chrome_version constant
-        try:
-            import scrapling.engines.toolbelt.fingerprints as fp
-            chrome_ver = getattr(fp, 'chrome_version', None)
-            if chrome_ver is not None:
-                self.assertLess(
-                    chrome_ver, 143,
-                    f"scrapling.engines.toolbelt.fingerprints.chrome_version={chrome_ver} "
-                    f"exceeds BrowserForge 1.2.4 max (142). Eager Chrome {chrome_ver} UA "
-                    f"generation in _config_tools will fail at import time."
-                )
-        except ImportError:
-            pass  # 0.3.x may not have the submodule or chrome_version constant
+    def test_requirements_pin_prevents_eager_chrome_143(self):
+        """The scrapling pin alone is sufficient: <0.4.0 means module-level
+        _config_tools never generates Chrome 143. No runtime import needed —
+        the version pin in requirements.txt is the gate. This replaces the
+        vacuous optional runtime chrome_version test which always skipped in CI."""
+        version = self.deps.get("scrapling[fetchers]", "")
+        self.assertTrue(version, "scrapling[fetchers] must be present")
+        parts = [int(x) for x in version.split(".")]
+        self.assertEqual(len(parts), 3, f"version '{version}' must be 3-part semver")
+        self.assertEqual(parts[0], 0, "must be 0.x.y")
+        self.assertLess(parts[1], 4, f"version '{version}' must be <0.4.0")
 
     def test_browserforge_pinned_to_1_2_4(self):
         self.assertIn("browserforge", self.deps,
@@ -122,7 +102,18 @@ class RequirementsPinTests(unittest.TestCase):
         self.assertIn("apify-fingerprint-datapoints", self.deps,
                        "apify-fingerprint-datapoints must be pinned in requirements.txt")
         self.assertEqual(self.deps["apify-fingerprint-datapoints"], "0.14.0",
-                         "apify-fingerprint-datapoints must be exactly 0.14.0")
+                          "apify-fingerprint-datapoints must be exactly 0.14.0")
+
+    def test_camoufox_pinned_to_0_4_11(self):
+        """Scrapling 0.3.12 runs 'python -m camoufox fetch --browserforge'.
+        Unconstrained camoufox>=0.4.11 (from scrapling[fetchers]) resolves to
+        0.5.4+, whose CLI removed --browserforge. 0.4.11 is the minimal
+        compatible pin that still has @click.option('--browserforge')."""
+        self.assertIn("camoufox", self.deps,
+                       "camoufox must be pinned in requirements.txt "
+                       "(Scrapling 0.3.12 StealthyFetcher requires 'python -m camoufox fetch --browserforge')")
+        self.assertEqual(self.deps["camoufox"], "0.4.11",
+                          "camoufox must be exactly 0.4.11 — 0.4.12+ removed --browserforge CLI")
 
 
 if __name__ == "__main__":

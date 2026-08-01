@@ -27,9 +27,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Scrapling's browser engine (Scrapling 0.3.12 StealthyFetcher uses
-# Camoufox/Firefox, not Patchright/Chromium). Fail-closed: if the browser
-# cannot be installed the image build must stop.
+# Install Scrapling's browser engine. StealthyFetcher runtime is
+# Camoufox/Firefox; `scrapling install` still downloads Playwright Chromium
+# dependencies as part of its install step. Only a separate Patchright browser
+# install was redundant. Fail-closed: if the browser cannot be installed the
+# image build must stop.
 RUN scrapling install
 
 # Build-time import smoke: verifies StealthyFetcher can be imported after

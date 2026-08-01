@@ -6,10 +6,15 @@ uvicorn>=0.32,<1.0
 # in _config_tools.py that generates __default_chrome_useragent__ (Chrome 143) at
 # module-import time. BrowserForge 1.2.4 + apify-fingerprint-datapoints 0.14.0
 # cannot generate Linux Chrome 143 headers, so the import fails before any request.
-# 0.3.12 uses Browser(name="chrome", min_version=130) and only generates one UA
-# (browser_mode=True). Its StealthyFetcher.fetch API is identical for our kwargs
-# (headless, network_idle, timeout, disable_resources).
+# 0.3.12 uses Browser(name="chrome", min_version=130, browser_mode=False) and
+# generates one UA. Safety is the absence of eager exact Chrome 143 generation.
+# Its StealthyFetcher.fetch API is identical for our kwargs (headless,
+# network_idle, timeout, disable_resources).
 scrapling[fetchers]==0.3.12
+# Scrapling 0.3.12 runs 'python -m camoufox fetch --browserforge'. Unconstrained
+# camoufox>=0.4.11 (from scrapling[fetchers]) resolves to 0.5.4+, whose CLI
+# removed --browserforge. Camoufox 0.4.11 is the minimal compatible pin.
+camoufox==0.4.11
 browserforge==1.2.4
 apify-fingerprint-datapoints==0.14.0
 pytrends>=4.9.2
