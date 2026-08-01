@@ -274,9 +274,15 @@ export function classifyCallScraperError(err: unknown): FetchOutcome {
       httpStatus,
     };
   }
-  // Transport error (TypeError from fetch) — retryable; covers cold-start
-  // where the scraper service hasn't become ready yet.
-  if (err instanceof TypeError) {
+  // Narrow transport retry: only TypeError with "fetch failed" message
+  // (Node.js fetch network error) plus AbortError/TimeoutError from
+  // AbortSignal.timeout. Validation/programming TypeErrors stay
+  // non-retryable.
+  if (err instanceof TypeError && /fetch failed/i.test(msg)) {
+    return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
+  }
+  const errName = err instanceof Error ? err.name : String(err);
+  if (errName === "AbortError" || errName === "TimeoutError") {
     return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
   }
   // Schema validation failure (ZodError from ScrapeResponseSchema.parse) or
@@ -418,7 +424,7 @@ export function createCollectBatch(
             await deps.ledger.recordOutcome(runId, s.id, {
               kind: "failed",
               code: "SCRAPER_READINESS_TIMEOUT",
-              retryable: false,
+              retryable: true,
             });
           } catch {
             unreportedFailures++;

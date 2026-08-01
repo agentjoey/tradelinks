@@ -36,14 +36,7 @@ def scrape_stealth(url: str, selectors: dict[str, str]) -> list[dict[str, Any]]:
         headless=True,
         network_idle=True,
         timeout=90000,
-        # Block images/fonts/media/css/etc (keeps document/script/xhr) — we only
-        # need the product grid DOM. Big memory + bandwidth cut per launch, which
-        # is what was killing the Chromium driver under load.
         disable_resources=True,
-        # Containers ship a tiny /dev/shm (~64MB); Chromium overruns it and the
-        # driver dies with "Connection closed while reading from the driver".
-        # Route shared memory to /tmp instead.
-        extra_flags=["--disable-dev-shm-usage"],
     )
 
     items: list[dict[str, Any]] = []

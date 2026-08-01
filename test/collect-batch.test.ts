@@ -437,6 +437,39 @@ describe("classifyCallScraperError", () => {
       expect(outcome.code).toContain("SCRAPER_TRANSPORT");
     }
   });
+
+  // ---- narrowed transport retry: non-transport TypeError ----
+  it("classifies non-transport TypeError (validation) as non-retryable", () => {
+    const outcome = classifyCallScraperError(new TypeError("Invalid URL"));
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(false);
+      expect(outcome.code).toContain("SCRAPER_ERROR");
+    }
+  });
+
+  // ---- AbortError / TimeoutError as transport retries ----
+  it("classifies AbortError as retryable transport", () => {
+    const abortErr = new Error("The operation was aborted");
+    abortErr.name = "AbortError";
+    const outcome = classifyCallScraperError(abortErr);
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
+
+  it("classifies TimeoutError as retryable transport", () => {
+    const timeoutErr = new Error("The operation timed out");
+    timeoutErr.name = "TimeoutError";
+    const outcome = classifyCallScraperError(timeoutErr);
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
 });
 
 // ============================ scraper retry via full pipeline =====
@@ -659,7 +692,7 @@ describe("collectBatch — scraper readiness gate", () => {
       expect(o).toBeDefined();
       if (o && o.kind === "failed") {
         expect(o.code).toBe("SCRAPER_READINESS_TIMEOUT");
-        expect(o.retryable).toBe(false);
+        expect(o.retryable).toBe(true);
       }
     }
   }, 10000);
