@@ -117,7 +117,7 @@ features:
         deps: [readiness-gated-hubs]
       - id: guides-and-briefings
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-guides-and-briefings.md
         evidence: null
