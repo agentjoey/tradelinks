@@ -3,10 +3,9 @@
  *
  * Server-only. Builds on the accepted Task 1 contract: the same visibility
  * invariant (isCurrent / PUBLISHED / reviewed / MONITORED|VERIFIED), the same
- * serializer, and the same opaque cursor wire format (base64url JSON
- * { id, reviewedAt }) emitted by listPublicChanges in query.ts. Task 1 keeps
- * its helpers module-private and query.ts is out of scope, so the pagination
- * below re-states the identical format — the tests pin cross-compatibility.
+ * serializer, and the same opaque cursor helpers (encodeCursor/decodeCursor,
+ * exported from query.ts — one implementation, one wire format, so web and
+ * the Task 7 API can never drift apart).
  *
  * Phase 1 ships search WITHOUT a dedicated index, deliberately: canonical
  * changes are curated and low-volume (hundreds, not millions), so a
@@ -25,7 +24,7 @@ import {
 } from "../domain/intelligence/taxonomy.js";
 import { toDemandContext } from "./coverage.js";
 import type { DemandContext } from "./coverage.js";
-import { getPublicChangeBySlug } from "./query.js";
+import { decodeCursor, encodeCursor, getPublicChangeBySlug } from "./query.js";
 import { serializeCanonicalVersion } from "./serialize.js";
 import type { CanonicalPublicRecord, PublicPage, VersionWithEvidence } from "./types.js";
 
@@ -114,24 +113,6 @@ export function parsePublicSearchParams(input: URLSearchParams): PublicSearchFil
     cursor: input.get("cursor"),
     limit,
   };
-}
-
-// ---------- cursor (identical wire format to Task 1 query.ts) ----------
-
-function decodeCursor(cursor: string): { id: string; reviewedAt: string } | null {
-  try {
-    const obj = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
-    if (typeof obj.id === "string" && typeof obj.reviewedAt === "string") {
-      return obj;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function encodeCursor(id: string, reviewedAt: string): string {
-  return Buffer.from(JSON.stringify({ id, reviewedAt })).toString("base64url");
 }
 
 // ---------- search ----------

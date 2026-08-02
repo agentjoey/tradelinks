@@ -39,7 +39,7 @@ function readinessForPool(pool: "verified" | "monitored") {
   return [...PUBLIC_READINESS];
 }
 
-function decodeCursor(cursor: string): { id: string; reviewedAt: string } | null {
+export function decodeCursor(cursor: string): { id: string; reviewedAt: string } | null {
   try {
     const obj = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
     if (typeof obj.id === "string" && typeof obj.reviewedAt === "string") {
@@ -51,7 +51,7 @@ function decodeCursor(cursor: string): { id: string; reviewedAt: string } | null
   }
 }
 
-function encodeCursor(id: string, reviewedAt: string): string {
+export function encodeCursor(id: string, reviewedAt: string): string {
   return Buffer.from(JSON.stringify({ id, reviewedAt })).toString("base64url");
 }
 
