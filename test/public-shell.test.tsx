@@ -14,6 +14,7 @@ import { PublicShell } from "../app/(public)/layout";
 import { PublicNav, PUBLIC_NAV_ITEMS } from "../app/(public)/PublicNav";
 import { PublicFooter } from "../app/(public)/PublicFooter";
 import { StatePanel } from "../app/(public)/StatePanel";
+import { IntelligenceCard } from "../app/(public)/IntelligenceCard";
 import Home from "../app/(public)/page";
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
@@ -179,24 +180,76 @@ describe("StatePanel", () => {
 });
 
 describe("public home page", () => {
-  it("renders exactly one h1", () => {
-    render(<Home />);
+  it("renders exactly one h1", async () => {
+    render(await Home());
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-  });
+  }, 60000);
 
-  it("does not carry the BL-045 liveness choreography", () => {
-    const { container } = render(<Home />);
+  it("does not carry the BL-045 liveness choreography", async () => {
+    const { container } = render(await Home());
     const html = container.innerHTML;
     for (const cls of ["lm", "li", "focus-in", "top-cluster", "tape", "radar-glyph", "live-dot", "insert-row"]) {
       expect(html, `class ${cls} must not appear`).not.toMatch(new RegExp(`\\b${cls}\\b`));
     }
-  });
+  }, 60000);
 
   it("shows readiness as literal words with evidence inline", () => {
-    render(<Home />);
-    expect(screen.getAllByText("Verified").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Monitored").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/evidence/i, { selector: ".ev-t, [data-evidence-label]" }).length).toBeGreaterThan(0);
+    // Task 3: Home is now async and wired to the live read model, so its
+    // content is not deterministic. The DESIGN.md invariant this test guards
+    // — readiness is a literal word, never colour alone, and evidence sits
+    // inline with its conclusion rather than behind a disclosure — now lives
+    // on IntelligenceCard, the card Home and every hub render. It is asserted
+    // here against fixed records, with no dependence on database contents.
+    const base = {
+      id: "c-1",
+      slug: "fixture-rule",
+      versionId: "v-1",
+      version: 1,
+      fingerprint: "f".repeat(64),
+      title: "Fixture rule title",
+      summary: "Fixture summary",
+      signalType: "REGULATORY",
+      market: "US",
+      regions: ["north_america"],
+      platforms: [],
+      operatingStages: [],
+      productCategories: [],
+      riskAttributes: [],
+      policyTopics: [],
+      sourcePublishedAt: "2026-07-15T00:00:00.000Z",
+      effectiveAt: null,
+      urgency: 60,
+      generalImpact: "Hits sellers of covered goods.",
+      generalActionTemplate: null,
+      permalink: "https://tradelinks.us/changes/fixture-rule",
+      reviewedAt: "2026-07-20T00:00:00.000Z",
+      evidence: [
+        {
+          sourceId: "s-1",
+          sourceName: "Fixture source",
+          url: "https://example.gov/rule",
+          role: "PRIMARY_OFFICIAL",
+          authorityLevel: "GOVERNMENT_OFFICIAL",
+          publishedAt: "2026-07-10T00:00:00.000Z",
+          normalizedSummary: "Official fixture evidence summary",
+          reviewedAt: "2026-07-19T00:00:00.000Z",
+        },
+      ],
+      correctionHistory: [],
+    } as const;
+    render(
+      <>
+        <IntelligenceCard record={{ ...base, readiness: "VERIFIED" } as any} />
+        <IntelligenceCard record={{ ...base, versionId: "v-2", readiness: "MONITORED" } as any} />
+      </>,
+    );
+    // The literal readiness words render as text — remove them and this
+    // fails loudly, which is what keeps colour from ever carrying the state.
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Monitored")).toBeInTheDocument();
+    // Evidence sits inline with the conclusion, not behind a disclosure.
+    expect(screen.getAllByText("Evidence").length).toBe(2);
+    expect(screen.getAllByText("Official fixture evidence summary").length).toBe(2);
   });
 });
 

@@ -10,6 +10,6 @@ export default defineConfig({
     // exclusions survive; only add the Playwright e2e directory on top.
     exclude: [...configDefaults.exclude, "test/e2e/**"],
     environmentMatchGlobs: [["**/*.test.tsx", "jsdom"]],
-    setupFiles: ["test/setup-dom.ts"],
+    setupFiles: ["dotenv/config", "test/setup-dom.ts"],
   },
 });

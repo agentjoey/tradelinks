@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
 import { getPublishedNotes } from "../src/daily/db.js";
+import {
+  canRenderHub,
+  getCoverageMatrix,
+  listTopicSummaries,
+} from "../src/public-intelligence/coverage.js";
 import { addLocale } from "./lib/locale";
 
 export const dynamic = "force-dynamic";
@@ -28,5 +33,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}${addLocale(p, "zh")}`, changeFrequency: cf, priority: pr },
   ]);
 
-  return [...staticEntries, ...noteEntries];
+  // Phase 1 public hubs: eligible (renderable) hubs and supported topics only,
+  // English-only for Phase 1. A hub below Monitored 404s and stays out.
+  const [matrix, topics] = await Promise.all([
+    getCoverageMatrix().catch(() => []),
+    listTopicSummaries().catch(() => []),
+  ]);
+
+  const publicEntries: MetadataRoute.Sitemap = [
+    { url: `${SITE}/coverage`, changeFrequency: "daily", priority: 0.6 },
+    { url: `${SITE}/categories`, changeFrequency: "daily", priority: 0.7 },
+    { url: `${SITE}/topics`, changeFrequency: "daily", priority: 0.6 },
+  ];
+
+  for (const row of matrix) {
+    if (!canRenderHub(row)) continue;
+    let path: string | null = null;
+    if (row.kind === "market") path = "/us";
+    else if (row.kind === "platform") path = `/${row.key.slice("platform:".length)}`;
+    else if (row.kind === "category") path = `/categories/${row.key.slice("category:".length)}`;
+    if (path) {
+      publicEntries.push({ url: `${SITE}${path}`, changeFrequency: "hourly", priority: 0.8 });
+    }
+  }
+
+  for (const topic of topics) {
+    if (!topic.supported) continue;
+    publicEntries.push({
+      url: `${SITE}/topics/${topic.slug}`,
+      changeFrequency: "daily",
+      priority: 0.6,
+    });
+  }
+
+  return [...staticEntries, ...noteEntries, ...publicEntries];
 }
