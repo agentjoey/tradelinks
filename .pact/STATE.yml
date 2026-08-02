@@ -103,7 +103,7 @@ features:
         deps: [public-content-schema]
       - id: readiness-gated-hubs
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-readiness-gated-hubs.md
         evidence: null
