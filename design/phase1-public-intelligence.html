@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 1 Public Intelligence — T3 Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,600&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   MOCKUP HARNESS — the frame around the specimens. Never ships.
+   ══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: #101114; color: #e6e6e8; font-size: 15px; line-height: 1.55;
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+}
+h1,h2,h3,h4,p,ul,ol,figure,table,dl,dd { margin: 0; }
+ul,ol { padding: 0; list-style: none; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid #e8b44a; outline-offset: 2px; }
+
+.hbar {
+  position: sticky; top: 0; z-index: 60; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 1.25rem; padding: 0.875rem 1.75rem;
+  background: #17181c; border-bottom: 1px solid #2a2c33;
+}
+.hbar h1 { font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
+.hbar .jump { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.hbar .jump a {
+  padding: 0.25rem 0.625rem; border-radius: 4px; border: 1px solid #2a2c33;
+  font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: #a6a8b0;
+}
+.hbar .jump a:hover { color: #fff; border-color: #4a4d57; }
+.hbar .sp { margin-left: auto; }
+#themeBtn {
+  cursor: pointer; background: transparent; border: 1px solid #3a3d45; border-radius: 4px;
+  padding: 0.3125rem 0.75rem; font-family: "IBM Plex Mono", monospace; font-size: 0.75rem;
+}
+#themeBtn:hover { border-color: #6a6e79; }
+
+.note { max-width: 66ch; padding: 2rem 1.75rem 0; color: #b7b9c1; }
+.note strong { color: #fff; font-weight: 600; }
+.note code { font-family: "IBM Plex Mono", monospace; font-size: 0.8125em; background: #22242a; padding: 0.1em 0.4em; border-radius: 3px; }
+.note p + p { margin-top: 0.625rem; }
+
+.shead { padding: 3rem 1.75rem 1rem; max-width: 80ch; }
+.shead .tag { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: #8e919b; letter-spacing: 0.08em; }
+.shead h2 { font-size: 1.4375rem; font-weight: 600; letter-spacing: -0.02em; margin: 0.375rem 0 0.5rem; }
+.shead p { color: #b7b9c1; font-size: 0.9375rem; }
+
+.frames { display: flex; align-items: flex-start; gap: 1.25rem; padding: 0 1.75rem 1rem; flex-wrap: wrap; }
+.frame { border: 1px solid #2a2c33; border-radius: 8px; overflow: hidden; container-type: inline-size; }
+.flbl { font-family: "IBM Plex Mono", monospace; font-size: 0.6875rem; letter-spacing: 0.08em; color: #8e919b; padding: 0.4375rem 0.75rem; background: #17181c; border-bottom: 1px solid #2a2c33; }
+.vp-d { width: 1180px; max-width: 100%; }
+.vp-m { width: 390px; flex: none; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SPECIMEN — Direction A palette × Direction B3 card structure.
+   Tokens are the shipped BL-045 semantic set. LIGHT IS THE DEFAULT; dark is
+   the override. (Today's app/globals.css has this inverted — Task 2 flips it.)
+   ══════════════════════════════════════════════════════════════════════════ */
+.tl {
+  --c-bg: 244 241 232;
+  --c-surface: 251 249 243;
+  --c-surface2: 255 255 255;
+  --c-ink: 27 26 22;
+  --c-muted: 92 89 82;
+  --c-faint: 111 106 92;
+  --c-line: rgba(27, 26, 22, 0.12);
+  --c-linestrong: rgba(27, 26, 22, 0.22);
+  --c-signal: 138 90 11;
+  --c-urgent: 198 58 45;
+  --c-calm: 14 117 104;
+  --c-chipbg: 138 90 11;
+  --c-chipink: 255 248 234;
+  --halo: radial-gradient(120% 80% at 50% -10%, rgba(138, 90, 11, 0.05), transparent 60%);
+  --grid-line: rgba(27, 26, 22, 0.03);
+  --grain: 0.025;
+
+  --ff-display: "Fraunces", Georgia, serif;
+  --ff-sans: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  position: relative;
+  background-color: rgb(var(--c-bg));
+  background-image: var(--halo), linear-gradient(var(--grid-line) 1px, transparent 1px);
+  background-size: auto, 100% 34px;
+  color: rgb(var(--c-ink));
+  font-family: var(--ff-sans);
+  font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="dark"] .tl {
+  --c-bg: 8 9 12;
+  --c-surface: 14 16 21;
+  --c-surface2: 19 22 29;
+  --c-ink: 236 231 219;
+  --c-muted: 139 143 154;
+  --c-faint: 124 130 144;
+  --c-line: rgba(233, 228, 217, 0.1);
+  --c-linestrong: rgba(233, 228, 217, 0.2);
+  --c-signal: 232 180 74;
+  --c-urgent: 255 90 77;
+  --c-calm: 79 209 197;
+  --c-chipbg: 232 180 74;
+  --c-chipink: 8 9 12;
+  --halo: radial-gradient(120% 80% at 50% -10%, rgba(232, 180, 74, 0.06), transparent 60%);
+  --grid-line: rgba(233, 228, 217, 0.025);
+  --grain: 0.04;
+}
+.tl::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.tl > * { position: relative; z-index: 1; }
+.tl .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── shell ─────────────────────────────────────────────────────────────── */
+.tl .skip {
+  position: absolute; left: 1rem; top: 1rem; z-index: 40;
+  background: rgb(var(--c-chipbg)); color: rgb(var(--c-chipink));
+  padding: 0.4375rem 0.875rem; border-radius: 6px;
+  font-size: 0.8125rem; font-weight: 600;
+}
+.tl header.nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.875rem 2rem; border-bottom: 1px solid var(--c-line);
+}
+.tl .brandwrap { display: flex; align-items: center; gap: 2.25rem; min-width: 0; }
+.tl .brand { font-family: var(--ff-display); font-size: 22px; line-height: 1; letter-spacing: -0.02em; font-weight: 500; }
+.tl .brand i { font-style: italic; color: rgb(var(--c-signal)); }
+.tl .brand-k {
+  font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.3em; color: rgb(var(--c-signal)); margin-bottom: 3px;
+}
+.tl nav.primary { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.tl nav.primary a { font-size: 13px; color: rgb(var(--c-muted)); padding: 2px 0; border-bottom: 1px solid transparent; transition: color .18s ease, border-color .18s ease; }
+.tl nav.primary a:hover { color: rgb(var(--c-ink)); }
+.tl nav.primary a[aria-current] { color: rgb(var(--c-ink)); border-bottom-color: rgb(var(--c-signal)); font-weight: 500; }
+.tl .navright { display: flex; align-items: center; gap: 0.75rem; font-family: var(--ff-mono); font-size: 0.6875rem; color: rgb(var(--c-faint)); letter-spacing: 0.08em; flex: none; }
+.tl .navright .tbtn { border: 1px solid var(--c-line); border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; background: transparent; }
+.tl main { padding: 1.75rem 2rem 2.5rem; max-width: 64rem; }
+.tl main.wide { max-width: 88rem; }
+.tl footer.foot {
+  border-top: 1px solid var(--c-line); padding: 1.5rem 2rem; margin-top: 1rem;
+  display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgb(var(--c-faint));
+}
+.tl footer.foot a:hover { color: rgb(var(--c-signal)); }
+.tl footer.foot .sp { margin-left: auto; }
+
+/* ── page furniture ────────────────────────────────────────────────────── */
+.tl .crumbs { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-faint)); margin-bottom: 0.625rem; }
+.tl .crumbs a:hover { color: rgb(var(--c-signal)); }
+.tl .crumbs span { margin: 0 0.4375rem; }
+.tl h1.page {
+  font-family: var(--ff-display); font-size: 1.625rem; font-weight: 500;
+  letter-spacing: -0.015em; line-height: 1.25; text-wrap: balance;
+}
+.tl .lede { color: rgb(var(--c-muted)); font-size: 1.125rem; line-height: 1.55; margin-top: 0.5rem; max-width: 62ch; text-wrap: pretty; }
+.tl .sec {
+  margin-top: 2.25rem; padding-top: 1.25rem; border-top: 1px solid var(--c-line);
+  display: flex; align-items: baseline; gap: 0.875rem; flex-wrap: wrap;
+}
+.tl .sec h2 { font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500; letter-spacing: -0.01em; }
+.tl .sec p { font-size: 0.8125rem; color: rgb(var(--c-muted)); }
+.tl .sec .sp { margin-left: auto; }
+.tl .sec a.more { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-muted)); }
+.tl .sec a.more:hover { color: rgb(var(--c-signal)); }
+
+/* ── coverage status strip ─────────────────────────────────────────────── */
+.tl .cover {
+  display: flex; flex-wrap: wrap; gap: 0.375rem 1.5rem; align-items: baseline;
+  margin-top: 1.125rem; padding: 0.625rem 0.875rem;
+  border: 1px solid var(--c-line); border-radius: 8px; background: rgb(var(--c-surface));
+  font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-faint)); letter-spacing: 0.02em;
+}
+.tl .cover b { color: rgb(var(--c-ink)); font-weight: 500; }
+.tl .cover .bad { color: rgb(var(--c-urgent)); }
+.tl .cover a { color: rgb(var(--c-muted)); text-decoration: underline; text-decoration-color: rgb(var(--c-signal) / .4); text-underline-offset: 3px; }
+.tl .cover a:hover { text-decoration-color: rgb(var(--c-signal)); }
+
+/* ── scope tabs + filters ──────────────────────────────────────────────── */
+.tl .scopes { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.5rem 0 0.75rem; }
+.tl .scopes button {
+  cursor: pointer; background: transparent; border: 1px solid var(--c-line);
+  border-radius: 999px; padding: 0.3125rem 0.875rem; font-size: 0.8125rem;
+  color: rgb(var(--c-muted)); transition: color .18s ease, border-color .18s ease, background-color .18s ease;
+}
+.tl .scopes button:hover { color: rgb(var(--c-ink)); border-color: var(--c-linestrong); }
+.tl .scopes button[aria-pressed="true"] {
+  background: rgb(var(--c-chipbg)); color: rgb(var(--c-chipink));
+  border-color: rgb(var(--c-chipbg)); font-weight: 500;
+}
+.tl .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tl .filters .sel {
+  border: 1px solid var(--c-line); border-radius: 6px; padding: 0.3125rem 0.6875rem;
+  font-size: 0.8125rem; color: rgb(var(--c-muted)); background: rgb(var(--c-surface));
+  display: inline-flex; align-items: center; gap: 0.375rem;
+}
+.tl .filters .sel::after { content: "▾"; font-size: 0.625rem; color: rgb(var(--c-faint)); }
+
+/* ── EVIDENCE CARD ─────────────────────────────────────────────────────── */
+.tl .stack { display: flex; flex-direction: column; gap: 0.875rem; }
+.tl .card {
+  border: 1px solid var(--c-line); border-radius: 12px;
+  background: rgb(var(--c-surface)); padding: 1.125rem 1.25rem;
+  transition: border-color .18s ease;
+}
+.tl .card:hover { border-color: var(--c-linestrong); }
+.tl .card.open { border-color: var(--c-linestrong); }
+.tl .rdyline {
+  display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap;
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.tl .r-verified { color: rgb(var(--c-calm)); font-weight: 600; }
+.tl .r-monitored { color: rgb(var(--c-faint)); }
+.tl .r-experimental { color: rgb(var(--c-signal)); font-weight: 600; }
+.tl .r-stale { color: rgb(var(--c-urgent)); font-weight: 600; }
+.tl .rdyline .when { color: rgb(var(--c-faint)); letter-spacing: 0.04em; text-transform: none; font-size: 0.75rem; }
+.tl .card h3, .tl .card h2.ct {
+  font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500;
+  line-height: 1.32; letter-spacing: -0.01em; margin-top: 0.5rem; text-wrap: balance;
+}
+.tl .card h3 a:hover, .tl .card h2.ct a:hover { color: rgb(var(--c-signal)); }
+.tl .impact { margin-top: 0.5rem; font-size: 0.9375rem; color: rgb(var(--c-muted)); max-width: 68ch; text-wrap: pretty; }
+.tl .impact b { color: rgb(var(--c-ink)); font-weight: 500; }
+.tl .limit {
+  margin-top: 0.75rem; padding: 0.5625rem 0.75rem;
+  border: 1px solid rgb(var(--c-urgent) / 0.45); border-radius: 8px;
+  font-size: 0.875rem; color: rgb(var(--c-urgent)); max-width: 68ch;
+}
+.tl .ev { margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px solid var(--c-line); }
+.tl .ev-t {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgb(var(--c-faint)); margin-bottom: 0.4375rem;
+}
+.tl .ev-i { display: flex; gap: 0.75rem; align-items: baseline; padding: 0.25rem 0; font-size: 0.8125rem; }
+.tl .ev-i .k {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgb(var(--c-faint)); width: 5.5rem; flex: none;
+}
+.tl .ev-i .k.p { color: rgb(var(--c-calm)); font-weight: 600; }
+.tl .ev-i a {
+  color: rgb(var(--c-ink)); text-decoration: underline;
+  text-decoration-color: rgb(var(--c-signal) / 0.45); text-underline-offset: 3px;
+  transition: text-decoration-color .18s ease;
+}
+.tl .ev-i a:hover { text-decoration-color: rgb(var(--c-signal)); }
+.tl .ev-i .h { font-family: var(--ff-mono); font-size: 0.6875rem; color: rgb(var(--c-faint)); }
+.tl .ev-i .locked { color: rgb(var(--c-urgent)); font-family: var(--ff-mono); font-size: 0.6875rem; }
+.tl .ev-f {
+  margin-top: 0.625rem; font-family: var(--ff-mono); font-size: 0.6875rem;
+  color: rgb(var(--c-faint)); display: flex; flex-wrap: wrap; gap: 0.1875rem 0.875rem;
+}
+.tl .ev-f .corr { color: rgb(var(--c-urgent)); }
+.tl .ev-f a { text-decoration: underline; text-decoration-color: rgb(var(--c-signal) / .4); text-underline-offset: 3px; }
+
+/* ── hub tiles (home) ──────────────────────────────────────────────────── */
+.tl .hubs { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 0.875rem; margin-top: 1rem; }
+.tl .hub {
+  border: 1px solid var(--c-line); border-radius: 12px; padding: 1rem 1.125rem;
+  background: rgb(var(--c-surface)); display: flex; flex-direction: column; gap: 0.4375rem;
+  transition: border-color .18s ease;
+}
+.tl .hub:hover { border-color: var(--c-linestrong); }
+.tl .hub.lead { background: rgb(var(--c-surface2)); }
+.tl .hub h3 { font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500; letter-spacing: -0.01em; }
+.tl .hub .hmeta { font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.tl .hub p { font-size: 0.875rem; color: rgb(var(--c-muted)); }
+.tl .hub .gap { font-size: 0.8125rem; color: rgb(var(--c-urgent)); }
+.tl .catlist { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.875rem; }
+.tl .catlist a, .tl .catlist span {
+  border: 1px solid var(--c-line); border-radius: 999px; padding: 0.25rem 0.6875rem;
+  font-size: 0.8125rem; color: rgb(var(--c-muted));
+}
+.tl .catlist a:hover { border-color: var(--c-linestrong); color: rgb(var(--c-ink)); }
+.tl .catlist span.off { color: rgb(var(--c-faint)); border-style: dashed; }
+
+/* ── prose blocks ──────────────────────────────────────────────────────── */
+.tl .panel {
+  border: 1px solid var(--c-line); border-radius: 12px; background: rgb(var(--c-surface));
+  padding: 1rem 1.125rem; margin-top: 1rem;
+}
+.tl .panel h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.4375rem; }
+.tl .panel p { font-size: 0.9375rem; color: rgb(var(--c-muted)); max-width: 68ch; text-wrap: pretty; }
+.tl .panel p + p { margin-top: 0.5rem; }
+.tl .panel ul { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.3125rem; }
+/* hanging indent, NOT flex — a flex li makes every inline <b> its own flex
+   item and shreds the line ("Not affected" stacking mid-sentence). */
+.tl .panel li { font-size: 0.9375rem; color: rgb(var(--c-muted)); position: relative; padding-left: 1.25rem; text-wrap: pretty; }
+.tl .panel li::before { content: "—"; position: absolute; left: 0; top: 0; color: rgb(var(--c-faint)); }
+.tl .panel li b { color: rgb(var(--c-ink)); font-weight: 500; }
+.tl .panel.warnish { border-color: rgb(var(--c-urgent) / 0.4); }
+.tl .panel.warnish h3 { color: rgb(var(--c-urgent)); }
+
+/* ── detail page ───────────────────────────────────────────────────────── */
+.tl .detail { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: 2rem; align-items: start; }
+.tl .aside { border: 1px solid var(--c-line); border-radius: 12px; background: rgb(var(--c-surface)); padding: 0.875rem 1rem; }
+.tl .aside dt {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgb(var(--c-faint)); margin-top: 0.75rem;
+}
+.tl .aside dt:first-of-type { margin-top: 0; }
+.tl .aside dd { font-size: 0.8125rem; margin-top: 0.1875rem; word-break: break-word; }
+.tl .aside dd.mono { font-family: var(--ff-mono); font-size: 0.75rem; }
+.tl .aside dd a { text-decoration: underline; text-decoration-color: rgb(var(--c-signal) / .45); text-underline-offset: 3px; }
+.tl .aside .act {
+  display: block; margin-top: 1rem; text-align: center; border-radius: 6px;
+  background: rgb(var(--c-chipbg)); color: rgb(var(--c-chipink));
+  padding: 0.4375rem 0.75rem; font-size: 0.8125rem; font-weight: 600;
+}
+.tl .facts { display: flex; flex-wrap: wrap; gap: 0.25rem 1.75rem; margin-top: 0.875rem; font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-faint)); }
+.tl .facts b { color: rgb(var(--c-ink)); font-weight: 500; }
+.tl .vhist { margin-top: 0.625rem; display: flex; flex-direction: column; }
+.tl .vrow { display: grid; grid-template-columns: 3.25rem 6.5rem minmax(0,1fr); gap: 0.75rem; padding: 0.4375rem 0; border-top: 1px solid var(--c-line); font-size: 0.8125rem; align-items: baseline; }
+.tl .vrow:first-child { border-top: 0; }
+.tl .vrow .v { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-ink)); font-weight: 500; }
+.tl .vrow .d { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-faint)); }
+.tl .vrow.cur .v { color: rgb(var(--c-calm)); }
+.tl .vrow .w { color: rgb(var(--c-muted)); }
+
+/* ── coverage table ────────────────────────────────────────────────────── */
+.tl table.cov { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.tl table.cov th {
+  text-align: left; font-family: var(--ff-mono); font-weight: 500; font-size: 0.6875rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: rgb(var(--c-faint));
+  padding: 0.5rem 1rem 0.5rem 0; border-bottom: 1px solid var(--c-linestrong);
+}
+.tl table.cov td { padding: 0.75rem 1rem 0.75rem 0; border-bottom: 1px solid var(--c-line); vertical-align: top; font-size: 0.875rem; }
+.tl table.cov td.mono { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--c-faint)); white-space: nowrap; }
+.tl table.cov td.cap b { font-weight: 500; }
+.tl table.cov td .gapline { display: block; margin-top: 0.1875rem; font-size: 0.8125rem; color: rgb(var(--c-muted)); }
+.tl table.cov tr.stale td.mono.due { color: rgb(var(--c-urgent)); }
+
+/* ── states ────────────────────────────────────────────────────────────── */
+.tl .skel-h, .tl .skel-l, .tl .skel-s {
+  background: rgb(var(--c-ink) / 0.09); border-radius: 4px; animation: sk 1.5s ease-in-out infinite;
+}
+.tl .skel-h { height: 20px; width: 72%; }
+.tl .skel-l { height: 12px; width: 100%; margin-top: 0.5rem; }
+.tl .skel-l.s { width: 56%; }
+.tl .skel-s { height: 10px; width: 8.5rem; }
+@keyframes sk { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+.tl .empty, .tl .errbox {
+  border: 1px dashed var(--c-linestrong); border-radius: 12px; padding: 1.5rem 1.25rem;
+  text-align: left; background: rgb(var(--c-surface));
+}
+.tl .errbox { border-style: solid; border-color: rgb(var(--c-urgent) / 0.45); }
+.tl .empty h3, .tl .errbox h3 { font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500; }
+.tl .errbox h3 { color: rgb(var(--c-urgent)); }
+.tl .empty p, .tl .errbox p { margin-top: 0.375rem; color: rgb(var(--c-muted)); font-size: 0.9375rem; max-width: 62ch; }
+.tl .empty .hint, .tl .errbox .hint { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.tl .btn {
+  border: 1px solid var(--c-linestrong); border-radius: 6px; padding: 0.3125rem 0.75rem;
+  font-size: 0.8125rem; background: transparent; cursor: pointer; color: rgb(var(--c-ink));
+}
+.tl .btn.primary { background: rgb(var(--c-chipbg)); color: rgb(var(--c-chipink)); border-color: rgb(var(--c-chipbg)); font-weight: 500; }
+.tl .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.tl .stalebar {
+  display: flex; gap: 0.625rem; align-items: baseline; flex-wrap: wrap;
+  border: 1px solid rgb(var(--c-urgent) / 0.4); border-radius: 8px;
+  padding: 0.5625rem 0.875rem; font-size: 0.875rem; color: rgb(var(--c-urgent));
+}
+.tl .stalebar .m { font-family: var(--ff-mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.tl .restricted {
+  border: 1px solid var(--c-line); border-radius: 12px; background: rgb(var(--c-surface));
+  padding: 1rem 1.125rem;
+}
+.tl .restricted h3 { font-size: 0.9375rem; font-weight: 600; }
+.tl .restricted p { margin-top: 0.375rem; font-size: 0.9375rem; color: rgb(var(--c-muted)); max-width: 62ch; }
+
+.state-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1rem; }
+.state-cell .cap {
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgb(var(--c-faint)); margin-bottom: 0.5rem;
+}
+
+/* ── mobile / narrow container collapse ────────────────────────────────── */
+@container (max-width: 620px) {
+  .tl header.nav { flex-direction: column; align-items: stretch; gap: 0.75rem; padding: 0.875rem 1.125rem; }
+  .tl .brandwrap { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+  .tl nav.primary { gap: 1rem; overflow-x: auto; width: 100%; padding-bottom: 2px; }
+  .tl nav.primary a { white-space: nowrap; }
+  .tl .navright { justify-content: flex-end; }
+  .tl main, .tl main.wide { padding: 1.25rem 1.125rem 2rem; }
+  .tl footer.foot { padding: 1.25rem 1.125rem; }
+  .tl h1.page { font-size: 1.4375rem; }
+  .tl .lede { font-size: 1rem; }
+  .tl .hubs { grid-template-columns: minmax(0, 1fr); }
+  .tl .detail { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+  .tl .ev-i { flex-wrap: wrap; gap: 0.25rem 0.625rem; }
+  .tl .ev-i .k { width: auto; }
+  .tl .vrow { grid-template-columns: 2.75rem minmax(0,1fr); }
+  .tl .vrow .w { grid-column: 1 / -1; }
+  .tl table.cov thead { display: none; }
+  .tl table.cov tr { display: block; padding: 0.75rem 0; border-bottom: 1px solid var(--c-line); }
+  .tl table.cov td { display: block; padding: 0; border: 0; }
+  .tl table.cov td.mono { white-space: normal; margin-top: 0.25rem; }
+  .tl .state-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .tl .skel-h, .tl .skel-l, .tl .skel-s { opacity: 0.75; }
+}
+</style>
+</head>
+<body>
+
+<div class="hbar">
+  <h1>Phase 1 Public Intelligence — T3 Mockup</h1>
+  <div class="jump">
+    <a href="#s-home">1 Home</a>
+    <a href="#s-hub">2 Hub</a>
+    <a href="#s-changes">3 Changes</a>
+    <a href="#s-detail">4 Detail</a>
+    <a href="#s-coverage">5 Coverage</a>
+    <a href="#s-states">6 States</a>
+  </div>
+  <div class="sp"></div>
+  <button id="themeBtn" type="button" aria-pressed="false">☾ Dark</button>
+</div>
+
+<div class="note">
+  <p><strong>方向</strong>：Direction A 配色 × Direction B3 证据卡结构，<strong>亮色默认</strong>。语义分工——teal <code>--c-calm</code> = 证据强度（VERIFIED / PRIMARY），amber <code>--c-signal</code> = 品牌与交互，red <code>--c-urgent</code> = 读者不能错过的问题（纠错 / 覆盖受限 / 逾期）。readiness 永不只靠颜色区分，每个状态都渲染字面词。</p>
+  <p><strong>实现须知</strong>：当前 <code>app/globals.css</code> 是暗色在 <code>:root</code>、亮色在 <code>[data-theme="light"]</code>。Task 2 要把这两支对调（cookie / SSR / localStorage 机制不变）。BL-045 的报头开场动效、电报纸带、雷达扫描 glyph 与 live blip <strong>不带入</strong>公开 IA——它们在演示实时性，而 Phase 1 不承诺实时。</p>
+  <p><strong>内容</strong>为贴近真实形态的示例记录，非线上数据。右上角切暗色；<code>?only=&lt;id&gt;&amp;theme=dark</code> 为截图模式。</p>
+</div>
+
+<!-- ═══════════════════ 1 · HOME ═══════════════════ -->
+<div class="shead" id="s-home">
+  <div class="tag">SURFACE 1 · /</div>
+  <h2>Home</h2>
+  <p>首访卖家的落点。一句话说清这里是什么，立刻给出覆盖状态（含缺口），然后是最需要知道的变化——每张卡自带证据。Hub 入口显示各自的 readiness，达不到 Monitored 的类目不假装存在。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <a class="skip sr" href="#main">Skip to content</a>
+      <header class="nav">
+        <div class="brandwrap">
+          <div>
+            <div class="brand-k">US market intelligence</div>
+            <div class="brand">Trade<i>Links</i></div>
+          </div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#" aria-current="page">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#">Changes</a><a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+        <div class="navright"><button class="tbtn" type="button">☾</button><span>EN</span></div>
+      </header>
+      <main id="main">
+        <h1 class="page">What changed for sellers entering the US market</h1>
+        <p class="lede">Government rules, platform policies and compliance changes, traced to their primary sources. Every entry states how far the evidence supports it — and what we still cannot see.</p>
+        <div class="cover">
+          <span>LAST SOURCE CHECK <b>14:02 UTC</b></span>
+          <span>SOURCES WITHIN SLA <b>21 / 23</b></span>
+          <span class="bad">2 OVERDUE</span>
+          <span>KNOWN GAPS <b>6</b></span>
+          <span><a href="#">Coverage &amp; readiness →</a></span>
+        </div>
+
+        <div class="sec">
+          <h2>Changes to know now</h2>
+          <p>Verified first. Readiness is evidence strength, not importance.</p>
+          <span class="sp"></span><a class="more" href="#">All changes →</a>
+        </div>
+        <div class="stack">
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-09-15 · in 44 days</span></div>
+            <h3><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></h3>
+            <p class="impact">Hits <b>Toys &amp; Children's Products</b> and <b>Apparel &amp; Accessories</b> sellers importing finished garments. Children's Product Certificates issued before the effective date are not carried over.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Safety Standard for Children's Sleepwear; Final Rule</a> <span class="h">federalregister.gov · 2026-07-22</span></span></div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 1615 testing requirements</a> <span class="h">cpsc.gov · retrieved 2026-07-28</span></span></div>
+              <div class="ev-f"><span>v3 · published 2026-07-22</span><span class="corr">corrected 2026-07-30 — effective date restated</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-10-01 · in 60 days</span></div>
+            <h3><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></h3>
+            <p class="impact">Hits <b>Home &amp; Kitchen</b> sellers on <b>Amazon US</b> whose units fall in the oversize tiers.</p>
+            <p class="limit">We cannot verify this. Amazon's official fee page requires a seller login, so this entry rests on one public announcement plus two secondary summaries. Treat the exact tier thresholds as unconfirmed.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Selling partner fee schedule announcement</a> <span class="h">sellercentral.amazon.com · 2026-07-28</span></span></div>
+              <div class="ev-i"><span class="k">Supporting</span><span><a href="#">Fee change breakdown</a> <span class="h">ecommercebytes.com · 2026-07-29</span></span></div>
+              <div class="ev-f"><span>v1 · published 2026-07-29</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="sec"><h2>Where to look</h2><p>A hub appears only once its coverage reaches Monitored.</p></div>
+        <div class="hubs">
+          <a class="hub lead" href="#">
+            <span class="hmeta r-verified">Verified</span>
+            <h3>US Market</h3>
+            <p>Federal rules, customs, product safety and labeling that apply regardless of where you sell.</p>
+            <span class="hmeta" style="color:rgb(var(--c-faint))">18 CHANGES · 4 GUIDES</span>
+          </a>
+          <a class="hub" href="#">
+            <span class="hmeta r-monitored">Monitored</span>
+            <h3>Amazon US</h3>
+            <p>Fees, listing and account policy.</p>
+            <span class="gap">Official policy pages are login-walled.</span>
+          </a>
+          <a class="hub" href="#">
+            <span class="hmeta r-monitored">Monitored</span>
+            <h3>Shopify US</h3>
+            <p>Payments, chargebacks, merchant terms.</p>
+            <span class="hmeta" style="color:rgb(var(--c-faint))">6 CHANGES · 1 GUIDE</span>
+          </a>
+        </div>
+        <div class="catlist">
+          <a href="#">Consumer Electronics</a><a href="#">Pet Supplies</a><a href="#">Beauty &amp; Personal Care</a>
+          <a href="#">Toys &amp; Children's Products</a><a href="#">Home &amp; Kitchen</a><a href="#">Apparel &amp; Accessories</a>
+          <span class="off">Grocery — below Monitored, hidden</span>
+        </div>
+
+        <div class="sec"><h2>This week's briefing</h2><span class="sp"></span><a class="more" href="#">All briefings →</a></div>
+        <div class="panel">
+          <h3>Week 31 · 2026-07-27 → 2026-08-02</h3>
+          <p>Three verified changes and one correction. The CPSC sleepwear rule moved its effective date; the FTC narrowed its Made in USA scope to origin claims. Nothing qualified in Consumer Electronics this week — that is an absence, not an omission.</p>
+          <div class="hint" style="margin-top:.75rem;display:flex;gap:.5rem"><a class="btn" href="#">Read the briefing</a><a class="btn" href="#">RSS</a></div>
+        </div>
+      </main>
+      <footer class="foot">
+        <span>Evidence-backed · corrections are forward-only</span>
+        <span class="sp"></span>
+        <a href="#">RSS</a><a href="#">API v1</a><a href="#">Coverage</a><a href="#">Agent Skill</a>
+      </footer>
+    </div>
+  </div>
+  <div class="frame vp-m">
+    <div class="flbl">MOBILE 390</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#" aria-current="page">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a><a href="#">Categories</a><a href="#">Changes</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+      </header>
+      <main id="main-m1">
+        <h1 class="page">What changed for sellers entering the US market</h1>
+        <p class="lede">Rules and platform policies traced to primary sources.</p>
+        <div class="cover">
+          <span>CHECK <b>14:02 UTC</b></span><span>SLA <b>21/23</b></span><span class="bad">2 OVERDUE</span>
+        </div>
+        <div class="sec"><h2>Changes to know now</h2></div>
+        <div class="stack">
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-09-15</span></div>
+            <h3>CPSC expands third-party testing to imported children's sleepwear</h3>
+            <p class="impact">Hits <b>Toys &amp; Children's Products</b> and <b>Apparel &amp; Accessories</b> importers.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Final Rule</a> <span class="h">federalregister.gov</span></span></div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 1615</a> <span class="h">cpsc.gov</span></span></div>
+              <div class="ev-f"><span>v3</span><span class="corr">corrected 2026-07-30</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-10-01</span></div>
+            <h3>Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h3>
+            <p class="limit">We cannot verify this. Amazon's fee page requires a seller login; tier thresholds are unconfirmed.</p>
+          </article>
+        </div>
+        <div class="sec"><h2>Where to look</h2></div>
+        <div class="hubs">
+          <a class="hub lead" href="#"><span class="hmeta r-verified">Verified</span><h3>US Market</h3><p>Federal rules, customs, product safety, labeling.</p></a>
+          <a class="hub" href="#"><span class="hmeta r-monitored">Monitored</span><h3>Amazon US</h3><span class="gap">Official policy pages are login-walled.</span></a>
+        </div>
+      </main>
+      <footer class="foot"><span>Forward-only corrections</span><span class="sp"></span><a href="#">RSS</a></footer>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 2 · HUB ═══════════════════ -->
+<div class="shead" id="s-hub">
+  <div class="tag">SURFACE 2 · /amazon-us</div>
+  <h2>Platform hub</h2>
+  <p>最难做诚实的一面。Amazon 官方政策页需登录 ⇒ 这个 hub 永远到不了 Verified。「我们能看到什么 / 看不到什么」是页面主体的一部分而不是脚注，放在变化列表<strong>之前</strong>。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#">US Market</a><a href="#" aria-current="page">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#">Changes</a><a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+        <div class="navright"><button class="tbtn" type="button">☾</button><span>EN</span></div>
+      </header>
+      <main id="main2">
+        <div class="crumbs"><a href="#">TradeLinks</a><span>/</span><a href="#">US Market</a><span>/</span>Amazon US</div>
+        <h1 class="page">Amazon US</h1>
+        <div class="rdyline" style="margin-top:.625rem"><span class="r-monitored">Monitored</span><span class="when">coverage ceiling — this hub cannot reach Verified</span></div>
+        <p class="lede">Fee schedules, listing requirements and account-health policy for sellers on Amazon's US marketplace.</p>
+
+        <div class="panel warnish">
+          <h3>What we can and cannot see here</h3>
+          <p>Amazon publishes most seller policy behind a Seller Central login. We do not scrape authenticated sessions, so this hub is built from public announcements, the public help centre, and reviewed secondary reporting.</p>
+          <ul>
+            <li><b>We can see</b> — public fee announcements, public help-centre pages, and the seller forums Amazon publishes openly.</li>
+            <li><b>We cannot see</b> — the authenticated fee schedule, category-specific policy pages, and account-health thresholds.</li>
+            <li><b>What that means</b> — entries here stay Monitored. Exact numbers may lag or be restated. Confirm anything fee-critical in your own Seller Central before acting.</li>
+          </ul>
+        </div>
+
+        <div class="cover">
+          <span>SOURCES FEEDING THIS HUB <b>4</b></span>
+          <span>LAST SUCCESSFUL CHECK <b>2026-08-02 11:40 UTC</b></span>
+          <span>SLA <b>12h</b></span>
+          <span class="bad">1 SOURCE OVERDUE — 19h</span>
+        </div>
+
+        <div class="sec"><h2>Changes on Amazon US</h2><p>6 in the last 90 days</p><span class="sp"></span><a class="more" href="#">All →</a></div>
+        <div class="stack">
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-10-01 · in 60 days</span></div>
+            <h3><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></h3>
+            <p class="impact">Hits <b>Home &amp; Kitchen</b> sellers whose units fall in the oversize tiers.</p>
+            <p class="limit">We cannot verify this. The authoritative fee page is login-walled; tier thresholds are unconfirmed.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Selling partner fee schedule announcement</a> <span class="h">sellercentral.amazon.com · 2026-07-28</span></span></div>
+              <div class="ev-i"><span class="k">Supporting</span><span><a href="#">Fee change breakdown</a> <span class="h">ecommercebytes.com · 2026-07-29</span></span></div>
+              <div class="ev-i"><span class="k">Inaccessible</span><span><span class="locked">Category fee schedule — requires seller login, not retrievable</span></span></div>
+              <div class="ev-f"><span>v1 · published 2026-07-29</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-08-25 · in 23 days</span></div>
+            <h3><a href="#">Amazon extends the A-to-z claim response window for FBM orders</a></h3>
+            <p class="impact">Hits <b>merchant-fulfilled</b> sellers across every category.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Seller forums policy notice</a> <span class="h">sellercentral.amazon.com · 2026-07-24</span></span></div>
+              <div class="ev-f"><span>v1 · published 2026-07-25</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="sec"><h2>Guides for Amazon US</h2><p>Evergreen, sourced, and dated by last review.</p></div>
+        <div class="stack">
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">last reviewed 2026-07-12</span></div>
+            <h3><a href="#">How Amazon US referral fees actually work for imported goods</a></h3>
+            <p class="impact">What the public fee schedule covers, where it stops, and which numbers you must confirm in your own account.</p>
+          </article>
+        </div>
+      </main>
+      <footer class="foot"><span>Evidence-backed · corrections are forward-only</span><span class="sp"></span><a href="#">RSS for Amazon US</a><a href="#">API v1</a></footer>
+    </div>
+  </div>
+  <div class="frame vp-m">
+    <div class="flbl">MOBILE 390</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary"><a href="#">US Market</a><a href="#" aria-current="page">Amazon US</a><a href="#">Shopify US</a><a href="#">Changes</a><a href="#">Coverage</a></nav>
+        </div>
+      </header>
+      <main id="main2m">
+        <div class="crumbs"><a href="#">US Market</a><span>/</span>Amazon US</div>
+        <h1 class="page">Amazon US</h1>
+        <div class="rdyline" style="margin-top:.5rem"><span class="r-monitored">Monitored</span><span class="when">cannot reach Verified</span></div>
+        <div class="panel warnish">
+          <h3>What we can and cannot see here</h3>
+          <p>Amazon publishes most seller policy behind a login. We do not scrape authenticated sessions.</p>
+          <ul>
+            <li><b>Can see</b> — public announcements and help centre.</li>
+            <li><b>Cannot see</b> — authenticated fee schedule and account-health thresholds.</li>
+            <li><b>So</b> — entries stay Monitored; confirm fee-critical numbers in Seller Central.</li>
+          </ul>
+        </div>
+        <div class="cover"><span>SOURCES <b>4</b></span><span>CHECK <b>11:40 UTC</b></span><span class="bad">1 OVERDUE</span></div>
+        <div class="sec"><h2>Changes on Amazon US</h2></div>
+        <div class="stack">
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-10-01</span></div>
+            <h3>Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h3>
+            <p class="limit">We cannot verify this. The authoritative fee page is login-walled.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Fee schedule announcement</a> <span class="h">sellercentral.amazon.com</span></span></div>
+              <div class="ev-i"><span class="k">Inaccessible</span><span><span class="locked">Category fee schedule — requires login</span></span></div>
+            </div>
+          </article>
+        </div>
+      </main>
+      <footer class="foot"><span>Forward-only corrections</span><span class="sp"></span><a href="#">RSS</a></footer>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 3 · CHANGES ═══════════════════ -->
+<div class="shead" id="s-changes">
+  <div class="tag">SURFACE 3 · /changes</div>
+  <h2>Changes index</h2>
+  <p>默认 Verified。All Monitored 是<strong>需要显式选择</strong>的专家视图，切换时页面说清楚它多给了什么、代价是什么。Experimental demand 在一条分隔线之下，非承诺原文照写。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#" aria-current="page">Changes</a><a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+        <div class="navright"><button class="tbtn" type="button">☾</button><span>EN</span></div>
+      </header>
+      <main id="main3">
+        <h1 class="page">Changes affecting US-market sellers</h1>
+        <p class="lede">Each entry is one canonical record. Readiness states how far the evidence supports it — not how urgent it is.</p>
+        <div class="scopes">
+          <button type="button" aria-pressed="true">Verified</button>
+          <button type="button" aria-pressed="false">All Monitored</button>
+          <button type="button" aria-pressed="false">Experimental demand</button>
+        </div>
+        <div class="filters">
+          <span class="sel">All categories</span><span class="sel">All platforms</span><span class="sel">All topics</span>
+          <span class="sel">Effective date</span>
+        </div>
+        <div class="cover">
+          <span>SHOWING <b>12 verified changes</b></span>
+          <span>LAST SOURCE CHECK <b>14:02 UTC</b></span>
+          <span class="bad">2 SOURCES OVERDUE</span>
+          <span><a href="#">What this view excludes →</a></span>
+        </div>
+        <div class="stack" style="margin-top:1rem">
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-08-19 · in 17 days</span></div>
+            <h3><a href="#">FTC tightens Made in USA substantiation for imported components</a></h3>
+            <p class="impact">Hits any seller using origin claims on US listings, in every category.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Made in USA Labeling Rule enforcement policy statement</a> <span class="h">ftc.gov · 2026-07-15</span></span></div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 323</a> <span class="h">federalregister.gov · retrieved 2026-07-16</span></span></div>
+              <div class="ev-f"><span>v2 · published 2026-07-15</span><span class="corr">corrected 2026-07-19 — scope narrowed to origin claims</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-09-15 · in 44 days</span></div>
+            <h3><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></h3>
+            <p class="impact">Hits <b>Toys &amp; Children's Products</b> and <b>Apparel &amp; Accessories</b> sellers importing finished garments.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Safety Standard for Children's Sleepwear; Final Rule</a> <span class="h">federalregister.gov · 2026-07-22</span></span></div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 1615 testing requirements</a> <span class="h">cpsc.gov · retrieved 2026-07-28</span></span></div>
+              <div class="ev-i"><span class="k">Supporting</span><span><a href="#">What the sleepwear rule means for importers</a> <span class="h">practicalecommerce.com · 2026-07-24</span></span></div>
+              <div class="ev-f"><span>v3 · published 2026-07-22</span><span class="corr">corrected 2026-07-30 — effective date restated</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-11-01 · in 91 days</span></div>
+            <h3><a href="#">CBP requires advance entry data for Section 321 de minimis shipments</a></h3>
+            <p class="impact">Hits every seller shipping direct-to-consumer parcels into the US under the de minimis threshold.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Entry of Low-Value Shipments; Final Rule</a> <span class="h">federalregister.gov · 2026-06-30</span></span></div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">CSMS advance data guidance</a> <span class="h">cbp.gov · retrieved 2026-07-02</span></span></div>
+              <div class="ev-f"><span>v1 · published 2026-07-01</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="sec"><h2>Experimental demand</h2></div>
+        <div class="restricted">
+          <h3>Held apart on purpose</h3>
+          <p>Rank observations from public bestseller pages. <b>Not a bestseller list, not a launch recommendation, and not evidence that an opportunity exists.</b> These entries have not been reviewed and cannot support a compliance or sourcing conclusion.</p>
+          <div class="hint" style="margin-top:.75rem"><button class="btn" type="button">Show experimental demand (3)</button></div>
+        </div>
+      </main>
+      <footer class="foot"><span>Evidence-backed · corrections are forward-only</span><span class="sp"></span><a href="#">RSS</a><a href="#">API v1</a><a href="#">Coverage</a></footer>
+    </div>
+  </div>
+  <div class="frame vp-m">
+    <div class="flbl">MOBILE 390 · All Monitored 已选中</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary"><a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a><a href="#" aria-current="page">Changes</a><a href="#">Coverage</a></nav>
+        </div>
+      </header>
+      <main id="main3m">
+        <h1 class="page">Changes affecting US-market sellers</h1>
+        <div class="scopes">
+          <button type="button" aria-pressed="false">Verified</button>
+          <button type="button" aria-pressed="true">All Monitored</button>
+        </div>
+        <div class="stalebar" style="margin-bottom:1rem">
+          <span class="m">Expert view</span>
+          <span>Monitored entries are included. Their evidence has not reached primary-official strength — read each entry's limit before acting.</span>
+        </div>
+        <div class="stack">
+          <article class="card open">
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-08-19</span></div>
+            <h3>FTC tightens Made in USA substantiation for imported components</h3>
+            <p class="impact">Hits any seller using origin claims on US listings.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Enforcement policy statement</a> <span class="h">ftc.gov</span></span></div>
+              <div class="ev-f"><span>v2</span><span class="corr">corrected 2026-07-19</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-09-01</span></div>
+            <h3>Shopify Payments extends the chargeback response window to 15 days</h3>
+            <p class="impact">Hits <b>Shopify US</b> merchants using Shopify Payments.</p>
+            <div class="ev">
+              <div class="ev-t">Evidence</div>
+              <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Merchant terms changelog</a> <span class="h">shopify.com</span></span></div>
+              <div class="ev-f"><span>v1</span></div>
+            </div>
+          </article>
+        </div>
+      </main>
+      <footer class="foot"><span>Forward-only corrections</span><span class="sp"></span><a href="#">RSS</a></footer>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 4 · DETAIL ═══════════════════ -->
+<div class="shead" id="s-detail">
+  <div class="tag">SURFACE 4 · /changes/[slug]</div>
+  <h2>Canonical change detail</h2>
+  <p>永久链接页，也是 RSS / API / Telegram 指向的同一版本。行动建议只在 Verified 证据 + 已审核 action template 同时具备时出现。纠错历史是页面正文的一部分——旧版本仍可寻址，不被改写。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#" aria-current="page">Changes</a><a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+        <div class="navright"><button class="tbtn" type="button">☾</button><span>EN</span></div>
+      </header>
+      <main id="main4" class="wide">
+        <div class="crumbs"><a href="#">TradeLinks</a><span>/</span><a href="#">Changes</a><span>/</span>CPSC children's sleepwear testing</div>
+        <div class="detail">
+          <div>
+            <div class="rdyline"><span class="r-verified">Verified</span><span class="when">version 3 · current</span></div>
+            <h1 class="page" style="margin-top:.5rem">CPSC expands third-party testing to imported children's sleepwear</h1>
+            <div class="facts">
+              <span>EFFECTIVE <b>2026-09-15</b></span>
+              <span>PUBLISHED <b>2026-07-22</b></span>
+              <span>LAST REVIEWED <b>2026-07-30</b></span>
+              <span>AUTHORITY <b>CPSC — federal</b></span>
+            </div>
+
+            <div class="panel">
+              <h3>What changed</h3>
+              <p>The Commission extended the third-party testing requirement under 16 CFR Part 1615 to cover imported finished sleepwear garments in children's sizes 0–14, closing the prior exemption for garments tested at the fabric stage only.</p>
+              <p>Children's Product Certificates issued against fabric-stage testing before 2026-09-15 do not satisfy the new requirement and are not carried over.</p>
+            </div>
+
+            <div class="panel">
+              <h3>Who it hits</h3>
+              <ul>
+                <li><b>Toys &amp; Children's Products</b> — importers of finished sleepwear.</li>
+                <li><b>Apparel &amp; Accessories</b> — sellers listing children's sleepwear in sizes 0–14.</li>
+                <li><b>Not affected</b> — adult sizes, non-sleepwear children's apparel, and domestic manufacturers already testing finished garments.</li>
+              </ul>
+            </div>
+
+            <div class="panel">
+              <h3>Reviewed action template</h3>
+              <p>Available because this record has reviewed primary-official evidence <em>and</em> a reviewed action template. Templates are general guidance, not legal advice.</p>
+              <ul>
+                <li>Identify listings in children's sizes 0–14 classified as sleepwear.</li>
+                <li>Ask your testing lab whether existing certificates were issued at fabric or finished-garment stage.</li>
+                <li>Re-certify finished garments before 2026-09-15 where only fabric-stage testing exists.</li>
+              </ul>
+            </div>
+
+            <div class="sec"><h2>Evidence</h2><p>Every conclusion above rests on these records.</p></div>
+            <div class="card open">
+              <div class="ev" style="margin-top:0;padding-top:0;border-top:0">
+                <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Safety Standard for Children's Sleepwear; Final Rule</a> <span class="h">federalregister.gov · published 2026-07-22 · reviewed 2026-07-23</span></span></div>
+                <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 1615 testing requirements</a> <span class="h">cpsc.gov · retrieved 2026-07-28 · reviewed 2026-07-28</span></span></div>
+                <div class="ev-i"><span class="k">Supporting</span><span><a href="#">What the sleepwear rule means for importers</a> <span class="h">practicalecommerce.com · 2026-07-24</span></span></div>
+                <div class="ev-f"><span>Source text is never republished — evidence records carry normalized summaries and links.</span></div>
+              </div>
+            </div>
+
+            <div class="sec"><h2>Correction history</h2><p>Published versions are never rewritten.</p></div>
+            <div class="vhist">
+              <div class="vrow cur"><span class="v">v3</span><span class="d">2026-07-30</span><span class="w">Effective date restated to 2026-09-15 after the Commission's correcting notice. <a href="#" style="text-decoration:underline">View v3</a></span></div>
+              <div class="vrow"><span class="v">v2</span><span class="d">2026-07-25</span><span class="w">Size range clarified to 0–14. <a href="#" style="text-decoration:underline">View v2</a></span></div>
+              <div class="vrow"><span class="v">v1</span><span class="d">2026-07-22</span><span class="w">First publication. <a href="#" style="text-decoration:underline">View v1</a></span></div>
+            </div>
+
+            <div class="panel warnish">
+              <h3>What this does not tell you</h3>
+              <p>We do not track individual laboratory accreditation, state-level sleepwear rules that go beyond the federal standard, or whether a specific listing is classified as sleepwear in a marketplace's own taxonomy. This is general information, not legal advice.</p>
+            </div>
+          </div>
+
+          <aside class="aside">
+            <dl>
+              <dt>Permalink</dt>
+              <dd class="mono"><a href="#">tradelinks.us/changes/cpsc-childrens-sleepwear-third-party-testing</a></dd>
+              <dt>Version</dt><dd class="mono">3 · current</dd>
+              <dt>Readiness</dt><dd><span class="r-verified" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Verified</span></dd>
+              <dt>Topics</dt><dd>Product Safety &amp; Recalls</dd>
+              <dt>Categories</dt><dd>Toys &amp; Children's Products · Apparel &amp; Accessories</dd>
+              <dt>Markets</dt><dd>United States</dd>
+              <dt>Machine access</dt>
+              <dd class="mono"><a href="#">API v1</a> · <a href="#">RSS</a></dd>
+            </dl>
+            <a class="act" href="#">Track this change</a>
+            <p style="margin-top:.5rem;font-size:.75rem;color:rgb(var(--c-faint))">Tracking needs a free account. Reading never does.</p>
+          </aside>
+        </div>
+      </main>
+      <footer class="foot"><span>Evidence-backed · corrections are forward-only</span><span class="sp"></span><a href="#">RSS</a><a href="#">API v1</a></footer>
+    </div>
+  </div>
+  <div class="frame vp-m">
+    <div class="flbl">MOBILE 390</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary"><a href="#">US Market</a><a href="#">Amazon US</a><a href="#" aria-current="page">Changes</a><a href="#">Coverage</a></nav>
+        </div>
+      </header>
+      <main id="main4m">
+        <div class="crumbs"><a href="#">Changes</a><span>/</span>CPSC sleepwear testing</div>
+        <div class="rdyline"><span class="r-verified">Verified</span><span class="when">version 3 · current</span></div>
+        <h1 class="page" style="margin-top:.5rem">CPSC expands third-party testing to imported children's sleepwear</h1>
+        <div class="facts"><span>EFFECTIVE <b>2026-09-15</b></span><span>PUBLISHED <b>2026-07-22</b></span></div>
+        <div class="panel">
+          <h3>What changed</h3>
+          <p>Third-party testing under 16 CFR Part 1615 now covers imported finished sleepwear in children's sizes 0–14. Fabric-stage certificates issued before the effective date are not carried over.</p>
+        </div>
+        <div class="sec"><h2>Evidence</h2></div>
+        <div class="card open">
+          <div class="ev" style="margin-top:0;padding-top:0;border-top:0">
+            <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Final Rule</a> <span class="h">federalregister.gov · 2026-07-22</span></span></div>
+            <div class="ev-i"><span class="k p">Primary</span><span><a href="#">16 CFR Part 1615</a> <span class="h">cpsc.gov · 2026-07-28</span></span></div>
+          </div>
+        </div>
+        <div class="sec"><h2>Correction history</h2></div>
+        <div class="vhist">
+          <div class="vrow cur"><span class="v">v3</span><span class="d">2026-07-30</span><span class="w">Effective date restated.</span></div>
+          <div class="vrow"><span class="v">v2</span><span class="d">2026-07-25</span><span class="w">Size range clarified to 0–14.</span></div>
+          <div class="vrow"><span class="v">v1</span><span class="d">2026-07-22</span><span class="w">First publication.</span></div>
+        </div>
+        <div class="panel warnish">
+          <h3>What this does not tell you</h3>
+          <p>Not legal advice. We do not track lab accreditation or state rules beyond the federal standard.</p>
+        </div>
+      </main>
+      <footer class="foot"><span>Forward-only corrections</span><span class="sp"></span><a href="#">RSS</a></footer>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 5 · COVERAGE ═══════════════════ -->
+<div class="shead" id="s-coverage">
+  <div class="tag">SURFACE 5 · /coverage</div>
+  <h2>Coverage &amp; readiness</h2>
+  <p>产品最重要的诚实面，公开可读。worst-first 排序——最弱的能力排最前，不是最强的。每个 capability 必须写出非空的 known gap；Stale 状态只能由人工复审解除，不会自动恢复。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#">Changes</a><a href="#">Guides</a><a href="#">Briefings</a><a href="#" aria-current="page">Coverage</a>
+          </nav>
+        </div>
+        <div class="navright"><button class="tbtn" type="button">☾</button><span>EN</span></div>
+      </header>
+      <main id="main5" class="wide">
+        <h1 class="page">Coverage &amp; readiness</h1>
+        <p class="lede">What we watch, how often we reach it, and what we know we are missing. Weakest coverage first — a capability that cannot support a public conclusion is the most important thing on this page.</p>
+        <div class="cover">
+          <span>AS OF <b>2026-08-02 14:02 UTC</b></span>
+          <span>CAPABILITIES <b>10</b></span>
+          <span>SOURCES WITHIN SLA <b>21 / 23</b></span>
+          <span class="bad">2 OVERDUE · 1 STALE</span>
+        </div>
+        <table class="cov">
+          <thead>
+            <tr><th scope="col">Capability</th><th scope="col">Readiness</th><th scope="col">SLA</th><th scope="col">Last successful check</th></tr>
+          </thead>
+          <tbody>
+            <tr class="stale">
+              <td class="cap"><b>Amazon US seller policy — authoritative</b><span class="gapline">Official policy pages require a Seller Central login. We do not scrape authenticated sessions, so this capability cannot reach Verified by design.</span></td>
+              <td><span class="r-stale" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Unavailable</span></td>
+              <td class="mono">—</td>
+              <td class="mono due">never — login wall</td>
+            </tr>
+            <tr class="stale">
+              <td class="cap"><b>Amazon US demand signals (BSR)</b><span class="gapline">Rank observations only. Cannot support a bestseller claim, a launch recommendation, or a market-size estimate.</span></td>
+              <td><span class="r-experimental" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Experimental</span></td>
+              <td class="mono">12h</td>
+              <td class="mono due">2026-08-01 09:15 — 29h overdue</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>Amazon US public announcements</b><span class="gapline">Public forums and help centre only; category-specific policy is not visible.</span></td>
+              <td><span class="r-monitored" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Monitored</span></td>
+              <td class="mono">12h</td>
+              <td class="mono">2026-08-02 11:40</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>Shopify US merchant terms</b><span class="gapline">Changelog covers merchant terms and Payments; app-ecosystem policy is out of scope.</span></td>
+              <td><span class="r-monitored" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Monitored</span></td>
+              <td class="mono">12h</td>
+              <td class="mono">2026-08-02 13:10</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>US product safety &amp; recalls (CPSC)</b><span class="gapline">Federal standard only. State-level rules that exceed the federal floor are not tracked.</span></td>
+              <td><span class="r-verified" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Verified</span></td>
+              <td class="mono">6h</td>
+              <td class="mono">2026-08-02 13:58</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>US import &amp; customs (CBP, Federal Register)</b><span class="gapline">Published rules and guidance only. Individual ruling letters and port-level practice are not tracked.</span></td>
+              <td><span class="r-verified" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Verified</span></td>
+              <td class="mono">6h</td>
+              <td class="mono">2026-08-02 14:02</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>US labeling &amp; claims (FTC)</b><span class="gapline">Enforcement policy and rulemaking. Individual consent orders are not tracked.</span></td>
+              <td><span class="r-verified" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Verified</span></td>
+              <td class="mono">6h</td>
+              <td class="mono">2026-08-02 13:44</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="panel warnish">
+          <h3>How to read this page</h3>
+          <p><b>Unavailable</b> means we have no lawful public route to the authoritative source and never will under the current design. <b>Experimental</b> means observed but unreviewed — it cannot support a conclusion. <b>Stale</b> means a source missed its SLA; a stale capability is only restored by human re-review, never automatically.</p>
+        </div>
+      </main>
+      <footer class="foot"><span>Evidence-backed · corrections are forward-only</span><span class="sp"></span><a href="#">API v1 coverage</a><a href="#">Sources</a></footer>
+    </div>
+  </div>
+  <div class="frame vp-m">
+    <div class="flbl">MOBILE 390 · 表格转堆叠行</div>
+    <div class="tl">
+      <header class="nav">
+        <div class="brandwrap">
+          <div><div class="brand-k">US market intelligence</div><div class="brand">Trade<i>Links</i></div></div>
+          <nav class="primary" aria-label="Primary"><a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Changes</a><a href="#" aria-current="page">Coverage</a></nav>
+        </div>
+      </header>
+      <main id="main5m" class="wide">
+        <h1 class="page">Coverage &amp; readiness</h1>
+        <p class="lede">Weakest coverage first.</p>
+        <div class="cover"><span>AS OF <b>14:02 UTC</b></span><span>CAPABILITIES <b>10</b></span><span class="bad">2 OVERDUE · 1 STALE</span></div>
+        <table class="cov">
+          <tbody>
+            <tr class="stale">
+              <td class="cap"><b>Amazon US seller policy — authoritative</b><span class="gapline">Official pages require a Seller Central login; cannot reach Verified by design.</span></td>
+              <td><span class="r-stale" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Unavailable</span></td>
+              <td class="mono due">SLA — · never — login wall</td>
+            </tr>
+            <tr class="stale">
+              <td class="cap"><b>Amazon US demand signals (BSR)</b><span class="gapline">Rank observations only. Cannot support a bestseller claim.</span></td>
+              <td><span class="r-experimental" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Experimental</span></td>
+              <td class="mono due">SLA 12h · 29h overdue</td>
+            </tr>
+            <tr>
+              <td class="cap"><b>US product safety &amp; recalls (CPSC)</b><span class="gapline">Federal standard only; state rules not tracked.</span></td>
+              <td><span class="r-verified" style="font-family:var(--ff-mono);font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase">Verified</span></td>
+              <td class="mono">SLA 6h · 2026-08-02 13:58</td>
+            </tr>
+          </tbody>
+        </table>
+      </main>
+      <footer class="foot"><span>Forward-only corrections</span><span class="sp"></span><a href="#">API</a></footer>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 6 · STATE MATRIX ═══════════════════ -->
+<div class="shead" id="s-states">
+  <div class="tag">SURFACE 6 · state matrix</div>
+  <h2>States, rendered</h2>
+  <p>不是表格里的一行字，是实际组件。骨架屏保留标题结构，数据落地时不重排；空态解释这个界面，不写「暂无数据」；错误态说明退回到了什么并给出下一步；stale 说明后果不只是打个标记。</p>
+</div>
+<div class="frames">
+  <div class="frame vp-d">
+    <div class="flbl">DESKTOP 1180</div>
+    <div class="tl">
+      <main id="main6" class="wide">
+        <div class="state-grid">
+
+          <div class="state-cell">
+            <div class="cap">Loading · changes</div>
+            <div class="stack">
+              <article class="card" aria-busy="true">
+                <div class="skel-s"></div>
+                <div class="skel-h" style="margin-top:.75rem"></div>
+                <div class="skel-l"></div><div class="skel-l s"></div>
+                <div class="ev"><div class="ev-t">Evidence</div><div class="skel-l" style="width:78%"></div><div class="skel-l" style="width:64%"></div></div>
+                <span class="sr">Loading changes</span>
+              </article>
+              <article class="card" aria-busy="true">
+                <div class="skel-s"></div>
+                <div class="skel-h" style="margin-top:.75rem;width:60%"></div>
+                <div class="skel-l"></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="state-cell">
+            <div class="cap">Empty · filtered changes</div>
+            <div class="empty">
+              <h3>No qualified changes in this filter</h3>
+              <p>Nothing reached Verified for <b>Consumer Electronics</b> in the last 90 days. That is an absence, not a gap in this filter — we do not manufacture entries to fill a category.</p>
+              <div class="hint">
+                <button class="btn" type="button">Include Monitored</button>
+                <button class="btn" type="button">Clear category</button>
+                <a class="btn" href="#">See what we watch</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="state-cell">
+            <div class="cap">Error · read model unreachable</div>
+            <div class="errbox">
+              <h3>Showing the last published copy</h3>
+              <p>We could not reach the live record just now, so this page is served from cache as of <b>13:31 UTC</b>. Nothing here is invented — it is simply older than usual.</p>
+              <div class="hint"><button class="btn primary" type="button">Retry</button><a class="btn" href="#">Status</a></div>
+            </div>
+          </div>
+
+          <div class="state-cell">
+            <div class="cap">Stale · source missed SLA</div>
+            <div class="stalebar" style="margin-bottom:.75rem">
+              <span class="m">Stale</span>
+              <span>The CPSC feed last succeeded 19 hours ago against a 6-hour SLA. A change published in that window would not appear below yet.</span>
+            </div>
+            <article class="card">
+              <div class="rdyline"><span class="r-verified">Verified</span><span class="when">effective 2026-09-15 · source last checked 19h ago</span></div>
+              <h3>CPSC expands third-party testing to imported children's sleepwear</h3>
+              <p class="impact">Hits <b>Toys &amp; Children's Products</b> importers.</p>
+            </article>
+          </div>
+
+          <div class="state-cell">
+            <div class="cap">Restricted · Monitored needs explicit selection</div>
+            <div class="restricted">
+              <h3>Monitored entries are hidden by default</h3>
+              <p>The default view shows only records with reviewed primary-official evidence. Monitored records are real, but their evidence has not reached that bar — each one states its own limit.</p>
+              <div class="hint" style="margin-top:.75rem;display:flex;gap:.5rem">
+                <button class="btn primary" type="button">Show All Monitored</button>
+                <button class="btn" type="button" disabled>Show drafts</button>
+              </div>
+              <p style="margin-top:.5rem;font-size:.8125rem;color:rgb(var(--c-faint))">Drafts and rejected records are never public, for anyone.</p>
+            </div>
+          </div>
+
+          <div class="state-cell">
+            <div class="cap">Restricted · inaccessible evidence, labeled</div>
+            <article class="card">
+              <div class="rdyline"><span class="r-monitored">Monitored</span><span class="when">effective 2026-10-01</span></div>
+              <h3>Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h3>
+              <div class="ev">
+                <div class="ev-t">Evidence</div>
+                <div class="ev-i"><span class="k p">Primary</span><span><a href="#">Fee schedule announcement</a> <span class="h">sellercentral.amazon.com · 2026-07-28</span></span></div>
+                <div class="ev-i"><span class="k">Inaccessible</span><span><span class="locked">Category fee schedule — requires seller login, not retrievable</span></span></div>
+                <div class="ev-i"><span class="k">Disallowed</span><span><span class="locked">Vendor pricing portal — terms prohibit automated access</span></span></div>
+              </div>
+            </article>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div class="note" style="padding-top:3rem;padding-bottom:4rem">
+  <p><strong>本 mockup 未覆盖、留给后续任务的</strong>：<code>/guides/[slug]</code> 长文排版（Task 5）、<code>/briefings/weekly/[year]/[week]</code> 周报版式（Task 5）、<code>/topics/[topic]</code> 聚合页（Task 3）、以及 RSS / OpenAPI / Agent Skill 的机器可读契约（Task 6–7）。它们各自的 T3 面在对应任务里补。</p>
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById("themeBtn");
+  var root = document.documentElement;
+  function setTheme(next) {
+    root.setAttribute("data-theme", next);
+    btn.setAttribute("aria-pressed", String(next === "dark"));
+    btn.textContent = next === "dark" ? "☀ Light" : "☾ Dark";
+  }
+  btn.addEventListener("click", function () {
+    setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+
+  /* Capture mode for the headless screenshot pass. Reviewers never see this. */
+  var q = new URLSearchParams(location.search);
+  if (q.get("theme") === "dark") setTheme("dark");
+  var only = q.get("only");
+  if (only) {
+    var head = document.getElementById("s-" + only);
+    var frames = head && head.nextElementSibling;
+    document.querySelectorAll(".shead, .frames, .note, .hbar").forEach(function (el) {
+      if (el !== head && el !== frames) el.remove();
+    });
+    if (head) head.style.paddingTop = "1.75rem";
+    document.body.style.paddingBottom = "1.75rem";
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 1 Public Intelligence — Direction Probe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,600&family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   DIRECTION PROBE — chrome (the harness around the four lanes).
+   Deliberately neutral so it never competes with the specimens.
+   ══════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+  background: #101114;
+  color: #e6e6e8;
+  font-size: 15px;
+  line-height: 1.55;
+}
+h1, h2, h3, h4, p, ul, ol, figure, table { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+
+.probe-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem;
+  padding: 0.875rem 1.75rem;
+  background: #17181c;
+  border-bottom: 1px solid #2a2c33;
+}
+.probe-bar h1 {
+  font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em;
+}
+.probe-bar .jump { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.probe-bar .jump a {
+  text-decoration: none; padding: 0.25rem 0.625rem; border-radius: 4px;
+  font-family: "IBM Plex Mono", monospace; font-size: 0.75rem;
+  color: #a6a8b0; border: 1px solid #2a2c33;
+}
+.probe-bar .jump a:hover { color: #fff; border-color: #4a4d57; }
+.probe-bar .spacer { margin-left: auto; }
+#themeBtn {
+  cursor: pointer; background: transparent; border: 1px solid #3a3d45;
+  border-radius: 4px; padding: 0.3125rem 0.75rem;
+  font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; letter-spacing: 0.04em;
+}
+#themeBtn:hover { border-color: #6a6e79; }
+:focus-visible { outline: 2px solid #e8b44a; outline-offset: 2px; }
+
+.probe-intro { max-width: 62ch; padding: 2rem 1.75rem 0; color: #b7b9c1; font-size: 0.9375rem; }
+.probe-intro strong { color: #fff; font-weight: 600; }
+.probe-intro code {
+  font-family: "IBM Plex Mono", monospace; font-size: 0.8125em;
+  background: #22242a; padding: 0.1em 0.4em; border-radius: 3px;
+}
+
+.lane-head { padding: 3.25rem 1.75rem 1rem; max-width: 78ch; }
+.lane-head .tag {
+  font-family: "IBM Plex Mono", monospace; font-size: 0.75rem;
+  color: #8e919b; letter-spacing: 0.08em;
+}
+.lane-head h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin: 0.375rem 0 0.5rem; }
+.lane-head p { color: #b7b9c1; font-size: 0.9375rem; }
+.lane-head .anchors {
+  margin-top: 0.75rem; font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem; color: #8e919b;
+}
+
+.frames { display: flex; align-items: flex-start; gap: 1.25rem; padding: 0 1.75rem 1rem; flex-wrap: wrap; }
+.frame { border: 1px solid #2a2c33; border-radius: 8px; overflow: hidden; container-type: inline-size; }
+.frame-lbl {
+  font-family: "IBM Plex Mono", monospace; font-size: 0.6875rem; letter-spacing: 0.08em;
+  color: #8e919b; padding: 0.4375rem 0.75rem; background: #17181c; border-bottom: 1px solid #2a2c33;
+}
+.vp-desktop { width: 1180px; max-width: 100%; }
+.vp-mobile  { width: 390px; flex: none; }
+
+/* ══════════════════════════════════════════════════════════════════
+   SHARED SPECIMEN RESET — each lane owns its own tokens below.
+   ══════════════════════════════════════════════════════════════════ */
+.spec {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+  font-family: var(--ff-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.spec a { text-decoration: none; }
+.spec .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ─────────────────────────── LANE A ───────────────────────────────
+   Instrument Desk — continues BL-045. Amber signal, editorial serif
+   wordmark, mono metadata, tier carried by chip + 1px border.
+   ─────────────────────────────────────────────────────────────────── */
+.lane-a {
+  --bg: 244 241 232; --surface: 251 249 243; --ink: 27 26 22;
+  --muted: 92 89 82; --faint: 111 106 92;
+  --line: rgba(27, 26, 22, 0.12); --line-strong: rgba(27, 26, 22, 0.22);
+  --signal: 138 90 11; --urgent: 198 58 45; --calm: 14 117 104;
+  --chip-bg: 138 90 11; --chip-ink: 255 248 234;
+  --ff-body: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-display: "Fraunces", Georgia, serif;
+  --ff-mono: "IBM Plex Mono", monospace;
+}
+[data-theme="dark"] .lane-a {
+  --bg: 8 9 12; --surface: 14 16 21; --ink: 236 231 219;
+  --muted: 139 143 154; --faint: 124 130 144;
+  --line: rgba(233, 228, 217, 0.1); --line-strong: rgba(233, 228, 217, 0.2);
+  --signal: 232 180 74; --urgent: 255 90 77; --calm: 79 209 197;
+  --chip-bg: 232 180 74; --chip-ink: 8 9 12;
+}
+.lane-a .masthead {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.875rem 1.75rem; border-bottom: 1px solid var(--line);
+  background: rgb(var(--bg));
+}
+.lane-a .brand-kicker {
+  font-family: var(--ff-mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.3em; color: rgb(var(--signal)); margin-bottom: 3px;
+}
+.lane-a .brand {
+  font-family: var(--ff-display); font-size: 22px; line-height: 1;
+  letter-spacing: -0.02em; font-weight: 500;
+}
+.lane-a .brand i { font-style: italic; color: rgb(var(--signal)); }
+.lane-a nav.primary { display: flex; gap: 1.375rem; flex-wrap: wrap; }
+.lane-a nav.primary a {
+  font-size: 13px; color: rgb(var(--muted)); padding: 2px 0;
+  border-bottom: 1px solid transparent;
+}
+.lane-a nav.primary a[aria-current] { color: rgb(var(--ink)); border-bottom-color: rgb(var(--signal)); }
+.lane-a .desk { padding: 1.75rem 1.75rem 2.5rem; }
+.lane-a .page-h {
+  font-family: var(--ff-display); font-size: 1.625rem; font-weight: 500;
+  letter-spacing: -0.015em; line-height: 1.25;
+}
+.lane-a .page-sub { color: rgb(var(--muted)); font-size: 0.9375rem; margin-top: 0.375rem; max-width: 62ch; }
+.lane-a .coverbar {
+  display: flex; flex-wrap: wrap; gap: 0.375rem 1.25rem; align-items: baseline;
+  margin-top: 1rem; padding: 0.625rem 0.875rem;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: rgb(var(--surface));
+  font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint));
+}
+.lane-a .coverbar b { color: rgb(var(--ink)); font-weight: 500; }
+.lane-a .coverbar .warn { color: rgb(var(--urgent)); }
+.lane-a .filters { display: flex; gap: 0.5rem; margin: 1.5rem 0 1rem; flex-wrap: wrap; }
+.lane-a .filters button {
+  cursor: pointer; border-radius: 999px; padding: 0.3125rem 0.875rem;
+  font-size: 0.8125rem; background: transparent;
+  border: 1px solid var(--line); color: rgb(var(--muted));
+}
+.lane-a .filters button[aria-pressed="true"] {
+  background: rgb(var(--chip-bg)); color: rgb(var(--chip-ink));
+  border-color: rgb(var(--chip-bg)); font-weight: 500;
+}
+.lane-a .stream { display: flex; flex-direction: column; gap: 0.75rem; }
+.lane-a article.sig {
+  border: 1px solid var(--line); border-radius: 8px;
+  background: rgb(var(--surface)); padding: 1rem 1.125rem;
+}
+.lane-a article.sig.lead { border-color: var(--line-strong); }
+.lane-a .sig-top { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.lane-a .chip {
+  font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 0.1875rem 0.5rem; border-radius: 3px;
+  border: 1px solid transparent;
+}
+.lane-a .chip.verified { background: rgb(var(--chip-bg)); color: rgb(var(--chip-ink)); font-weight: 600; }
+.lane-a .chip.monitored { border-color: var(--line-strong); color: rgb(var(--muted)); }
+.lane-a .chip.experimental { border-color: rgb(var(--calm) / 0.5); color: rgb(var(--calm)); }
+.lane-a .sig-when { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint)); }
+.lane-a .sig-h {
+  font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500;
+  line-height: 1.35; letter-spacing: -0.01em; text-wrap: balance;
+}
+.lane-a .sig-h a:hover { color: rgb(var(--signal)); }
+.lane-a .sig-meta {
+  display: flex; flex-wrap: wrap; gap: 0.25rem 0.875rem; margin-top: 0.625rem;
+  font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint));
+}
+.lane-a .sig-meta .ev { color: rgb(var(--muted)); }
+.lane-a .sig-gap { margin-top: 0.5rem; font-size: 0.8125rem; color: rgb(var(--urgent)); }
+.lane-a .xhead {
+  margin: 2rem 0 0.75rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+  display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+}
+.lane-a .xhead h3 { font-family: var(--ff-display); font-size: 1.3125rem; font-weight: 500; }
+.lane-a .xhead p { font-size: 0.8125rem; color: rgb(var(--muted)); }
+
+/* ─────────────────────────── LANE B1 ──────────────────────────────
+   Public Record — sequential, table-first, date is the primary key.
+   Near-zero colour; readiness is a word, not a hue. Prints cleanly.
+   ─────────────────────────────────────────────────────────────────── */
+.lane-b1 {
+  --bg: 253 253 252; --surface: 253 253 252; --ink: 22 21 19;
+  --muted: 82 80 76; --faint: 103 101 96;
+  --line: rgba(22, 21, 19, 0.14); --line-strong: rgba(22, 21, 19, 0.42);
+  --accent: 122 47 31;
+  --ff-body: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-display: "Fraunces", Georgia, serif;
+  --ff-mono: "IBM Plex Mono", monospace;
+}
+[data-theme="dark"] .lane-b1 {
+  --bg: 18 18 17; --surface: 18 18 17; --ink: 234 232 227;
+  --muted: 154 151 145; --faint: 137 134 128;
+  --line: rgba(234, 232, 227, 0.16); --line-strong: rgba(234, 232, 227, 0.46);
+  --accent: 226 138 116;
+}
+.lane-b1 .rec-head { padding: 1.25rem 2rem; border-bottom: 2px solid rgb(var(--ink)); }
+.lane-b1 .rec-brand {
+  font-family: var(--ff-display); font-size: 1.375rem; font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.lane-b1 .rec-strap {
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgb(var(--muted)); margin-top: 0.25rem;
+}
+.lane-b1 nav.primary {
+  display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 0.625rem 2rem;
+  border-bottom: 1px solid var(--line);
+}
+.lane-b1 nav.primary a {
+  font-size: 0.8125rem; color: rgb(var(--muted));
+  text-decoration: underline; text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+.lane-b1 nav.primary a[aria-current] {
+  color: rgb(var(--ink)); font-weight: 600; text-decoration-color: currentColor;
+}
+.lane-b1 .rec-body { padding: 2rem; }
+.lane-b1 h1 {
+  font-family: var(--ff-display); font-size: 1.75rem; font-weight: 600;
+  letter-spacing: -0.02em; line-height: 1.2; text-wrap: balance;
+}
+.lane-b1 .rec-note { max-width: 68ch; margin-top: 0.625rem; color: rgb(var(--muted)); font-size: 0.9375rem; }
+.lane-b1 .rec-status {
+  margin-top: 1.125rem; padding: 0.75rem 0; border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 0.25rem 2rem;
+  font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint));
+}
+.lane-b1 .rec-status b { color: rgb(var(--ink)); font-weight: 500; }
+.lane-b1 .rec-status .flag { color: rgb(var(--accent)); }
+.lane-b1 .scopes { display: flex; gap: 1.25rem; margin: 1.25rem 0 0.5rem; font-size: 0.8125rem; flex-wrap: wrap; }
+.lane-b1 .scopes a { color: rgb(var(--muted)); padding-bottom: 3px; border-bottom: 1px solid transparent; }
+.lane-b1 .scopes a[aria-current] { color: rgb(var(--ink)); font-weight: 600; border-bottom-color: rgb(var(--ink)); }
+.lane-b1 table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+.lane-b1 thead th {
+  text-align: left; font-family: var(--ff-mono); font-weight: 500;
+  font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgb(var(--faint)); padding: 0.5rem 1rem 0.5rem 0;
+  border-bottom: 1px solid rgb(var(--ink));
+}
+.lane-b1 tbody td { padding: 0.875rem 1rem 0.875rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.lane-b1 td.c-date { font-family: var(--ff-mono); font-size: 0.8125rem; white-space: nowrap; width: 1%; }
+.lane-b1 td.c-ready { width: 1%; white-space: nowrap; }
+.lane-b1 .ready-word {
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.lane-b1 .ready-word.verified { color: rgb(var(--ink)); font-weight: 600; border-bottom: 2px solid rgb(var(--ink)); padding-bottom: 1px; }
+.lane-b1 .ready-word.monitored { color: rgb(var(--muted)); border-bottom: 1px dotted rgb(var(--muted)); padding-bottom: 1px; }
+.lane-b1 .rec-title { font-size: 0.9375rem; font-weight: 500; line-height: 1.4; }
+.lane-b1 .rec-sub {
+  margin-top: 0.25rem; font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint));
+  display: flex; flex-wrap: wrap; gap: 0.125rem 0.875rem;
+}
+.lane-b1 .rec-sub .corr { color: rgb(var(--accent)); }
+.lane-b1 .rec-limit { margin-top: 0.375rem; font-size: 0.8125rem; color: rgb(var(--accent)); }
+.lane-b1 .rec-end {
+  padding: 1rem 0; font-family: var(--ff-mono); font-size: 0.75rem;
+  color: rgb(var(--faint)); text-align: center; letter-spacing: 0.06em;
+}
+.lane-b1 .sep-band {
+  margin-top: 2rem; padding-top: 1.25rem; border-top: 2px solid rgb(var(--ink));
+}
+.lane-b1 .sep-band h2 { font-family: var(--ff-display); font-size: 1.25rem; font-weight: 600; }
+.lane-b1 .sep-band p { font-size: 0.8125rem; color: rgb(var(--muted)); margin-top: 0.25rem; max-width: 68ch; }
+
+/* ─────────────────────────── LANE B2 ──────────────────────────────
+   Reference Manual — persistent left tree, content column, on-this-page
+   rail. Cool neutrals, one blue accent, search-first.
+   ─────────────────────────────────────────────────────────────────── */
+.lane-b2 {
+  --bg: 255 255 255; --surface: 246 247 249; --ink: 26 29 33;
+  --muted: 91 98 107; --faint: 111 118 128;
+  --line: rgba(26, 29, 33, 0.11); --line-strong: rgba(26, 29, 33, 0.2);
+  --accent: 31 95 208; --accent-soft: 31 95 208;
+  --ff-body: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-display: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-mono: "IBM Plex Mono", monospace;
+}
+[data-theme="dark"] .lane-b2 {
+  --bg: 15 17 20; --surface: 21 24 28; --ink: 231 234 238;
+  --muted: 150 158 168; --faint: 138 146 157;
+  --line: rgba(231, 234, 238, 0.1); --line-strong: rgba(231, 234, 238, 0.2);
+  --accent: 122 168 255; --accent-soft: 122 168 255;
+}
+.lane-b2 .doc-top {
+  display: flex; align-items: center; gap: 1.25rem;
+  padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--line);
+}
+.lane-b2 .doc-brand { font-weight: 700; font-size: 0.9375rem; letter-spacing: -0.01em; }
+.lane-b2 .doc-search {
+  flex: 1; max-width: 30rem; display: flex; align-items: center; gap: 0.5rem;
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  padding: 0.375rem 0.625rem; background: rgb(var(--surface));
+  font-size: 0.8125rem; color: rgb(var(--faint));
+}
+.lane-b2 .doc-search .kbd {
+  margin-left: auto; font-family: var(--ff-mono); font-size: 0.6875rem;
+  border: 1px solid var(--line-strong); border-radius: 3px; padding: 0 0.25rem;
+}
+.lane-b2 .doc-grid { display: grid; grid-template-columns: 200px minmax(0, 1fr) 176px; }
+.lane-b2 .doc-side { border-right: 1px solid var(--line); padding: 1.25rem 0.875rem; background: rgb(var(--surface)); }
+.lane-b2 .doc-side .grp {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgb(var(--faint)); padding: 0 0.5rem; margin: 1rem 0 0.375rem;
+}
+.lane-b2 .doc-side .grp:first-child { margin-top: 0; }
+.lane-b2 .doc-side a {
+  display: block; padding: 0.3125rem 0.5rem; border-radius: 4px;
+  font-size: 0.8125rem; color: rgb(var(--muted));
+}
+.lane-b2 .doc-side a:hover { background: rgb(var(--ink) / 0.05); color: rgb(var(--ink)); }
+.lane-b2 .doc-side a[aria-current] {
+  background: rgb(var(--accent) / 0.1); color: rgb(var(--accent)); font-weight: 600;
+}
+.lane-b2 .doc-main { padding: 1.75rem 2rem; min-width: 0; }
+.lane-b2 .crumbs { font-size: 0.75rem; color: rgb(var(--faint)); margin-bottom: 0.625rem; }
+.lane-b2 .crumbs span { margin: 0 0.375rem; }
+.lane-b2 .doc-main h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; text-wrap: balance; }
+.lane-b2 .doc-lede { color: rgb(var(--muted)); margin-top: 0.5rem; max-width: 70ch; }
+.lane-b2 .badgerow { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.875rem; }
+.lane-b2 .badge {
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.06em;
+  padding: 0.1875rem 0.5rem; border-radius: 4px; border: 1px solid var(--line-strong);
+  color: rgb(var(--muted));
+}
+.lane-b2 .badge.on { background: rgb(var(--accent) / 0.12); border-color: rgb(var(--accent) / 0.4); color: rgb(var(--accent)); font-weight: 600; }
+.lane-b2 .doc-callout {
+  margin-top: 1.25rem; border: 1px solid var(--line-strong); border-radius: 6px;
+  padding: 0.75rem 0.875rem; background: rgb(var(--surface)); font-size: 0.875rem;
+}
+.lane-b2 .doc-callout b { display: block; margin-bottom: 0.125rem; }
+.lane-b2 .rows { margin-top: 1.5rem; border-top: 1px solid var(--line); }
+.lane-b2 .row { display: grid; grid-template-columns: 108px minmax(0,1fr) auto; gap: 1rem; padding: 0.875rem 0.5rem; border-bottom: 1px solid var(--line); align-items: start; }
+.lane-b2 .row:hover { background: rgb(var(--ink) / 0.03); }
+.lane-b2 .row .when { font-family: var(--ff-mono); font-size: 0.75rem; color: rgb(var(--faint)); padding-top: 2px; }
+.lane-b2 .row h3 { font-size: 0.9375rem; font-weight: 600; line-height: 1.4; }
+.lane-b2 .row h3 a:hover { color: rgb(var(--accent)); }
+.lane-b2 .row .facets { margin-top: 0.25rem; font-size: 0.75rem; color: rgb(var(--faint)); display: flex; flex-wrap: wrap; gap: 0.125rem 0.75rem; }
+.lane-b2 .row .facets .warn { color: rgb(var(--accent)); }
+.lane-b2 .row .rdy {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.1875rem 0.4375rem; border-radius: 3px; white-space: nowrap;
+}
+.lane-b2 .row .rdy.verified { background: rgb(var(--ink)); color: rgb(var(--bg)); font-weight: 600; }
+.lane-b2 .row .rdy.monitored { border: 1px solid var(--line-strong); color: rgb(var(--muted)); }
+.lane-b2 .doc-rail { border-left: 1px solid var(--line); padding: 1.75rem 1rem; }
+.lane-b2 .doc-rail .ttl {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgb(var(--faint)); margin-bottom: 0.5rem;
+}
+.lane-b2 .doc-rail a { display: block; font-size: 0.8125rem; color: rgb(var(--muted)); padding: 0.1875rem 0; }
+.lane-b2 .doc-rail a[aria-current] { color: rgb(var(--accent)); font-weight: 600; }
+@container (max-width: 720px) {
+  .lane-b2 .doc-grid { grid-template-columns: minmax(0, 1fr); }
+  .lane-b2 .doc-side, .lane-b2 .doc-rail { display: none; }
+  .lane-b2 .doc-mobilenav { display: flex; }
+  .lane-b2 .doc-main { padding: 1.25rem; }
+  .lane-b2 .row { grid-template-columns: minmax(0,1fr) auto; }
+  .lane-b2 .row .when { grid-column: 1 / -1; order: -1; }
+}
+.lane-b2 .doc-mobilenav {
+  display: none; gap: 0.375rem; overflow-x: auto; padding: 0.625rem 1.25rem;
+  border-bottom: 1px solid var(--line); background: rgb(var(--surface));
+}
+.lane-b2 .doc-mobilenav a {
+  white-space: nowrap; font-size: 0.8125rem; color: rgb(var(--muted));
+  border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.25rem 0.6875rem;
+}
+.lane-b2 .doc-mobilenav a[aria-current] { color: rgb(var(--accent)); border-color: rgb(var(--accent) / 0.5); font-weight: 600; }
+
+/* ─────────────────────────── LANE B3 ──────────────────────────────
+   Evidence Card — conclusion and its sources are one indivisible unit.
+   Density varies by readiness: Verified opens its evidence, Monitored
+   states its limit. Single teal-ink accent for source links.
+   ─────────────────────────────────────────────────────────────────── */
+.lane-b3 {
+  --bg: 244 244 243; --surface: 255 255 255; --ink: 23 23 26;
+  --muted: 88 88 94; --faint: 106 106 113;
+  --line: rgba(23, 23, 26, 0.12); --line-strong: rgba(23, 23, 26, 0.24);
+  --accent: 11 90 80; --flag: 158 47 34;
+  --ff-body: "Schibsted Grotesk", system-ui, sans-serif;
+  --ff-display: "Fraunces", Georgia, serif;
+  --ff-mono: "IBM Plex Mono", monospace;
+}
+[data-theme="dark"] .lane-b3 {
+  --bg: 17 18 20; --surface: 24 26 29; --ink: 234 234 238;
+  --muted: 152 154 162; --faint: 137 139 148;
+  --line: rgba(234, 234, 238, 0.11); --line-strong: rgba(234, 234, 238, 0.22);
+  --accent: 90 200 182; --flag: 240 130 112;
+}
+.lane-b3 .ec-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.875rem 1.5rem; border-bottom: 1px solid var(--line); background: rgb(var(--surface));
+}
+.lane-b3 .ec-brand { font-family: var(--ff-display); font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; }
+.lane-b3 nav.primary { display: flex; gap: 1.125rem; flex-wrap: wrap; }
+.lane-b3 nav.primary a { font-size: 0.8125rem; color: rgb(var(--muted)); }
+.lane-b3 nav.primary a[aria-current] { color: rgb(var(--ink)); font-weight: 600; }
+.lane-b3 .ec-body { padding: 1.5rem 1.5rem 2.5rem; max-width: 58rem; }
+.lane-b3 .ec-h { font-family: var(--ff-display); font-size: 1.625rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.lane-b3 .ec-sub { color: rgb(var(--muted)); margin-top: 0.375rem; max-width: 64ch; font-size: 0.9375rem; }
+.lane-b3 .ec-scope {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.125rem 0 1.25rem;
+  padding-bottom: 0.875rem; border-bottom: 1px solid var(--line);
+}
+.lane-b3 .ec-scope button {
+  cursor: pointer; background: transparent; border: 1px solid var(--line-strong);
+  border-radius: 6px; padding: 0.3125rem 0.75rem; font-size: 0.8125rem; color: rgb(var(--muted));
+}
+.lane-b3 .ec-scope button[aria-pressed="true"] { background: rgb(var(--ink)); color: rgb(var(--bg)); border-color: rgb(var(--ink)); font-weight: 500; }
+.lane-b3 .ec-stack { display: flex; flex-direction: column; gap: 0.875rem; }
+.lane-b3 .card {
+  border: 1px solid var(--line); border-radius: 10px; background: rgb(var(--surface));
+  padding: 1.125rem 1.25rem;
+}
+.lane-b3 .card.open { border-color: var(--line-strong); }
+.lane-b3 .card-rdy {
+  display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap;
+  font-family: var(--ff-mono); font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.lane-b3 .card-rdy .w-verified { color: rgb(var(--accent)); font-weight: 600; }
+.lane-b3 .card-rdy .w-monitored { color: rgb(var(--faint)); }
+.lane-b3 .card-rdy .when { color: rgb(var(--faint)); letter-spacing: 0.04em; text-transform: none; font-size: 0.75rem; }
+.lane-b3 .card h3 {
+  font-family: var(--ff-display); font-size: 1.25rem; font-weight: 600; line-height: 1.3;
+  letter-spacing: -0.01em; margin-top: 0.5rem; text-wrap: balance;
+}
+.lane-b3 .card .hits { margin-top: 0.5rem; font-size: 0.875rem; color: rgb(var(--muted)); }
+.lane-b3 .card .hits b { color: rgb(var(--ink)); font-weight: 500; }
+.lane-b3 .ev-block { margin-top: 0.875rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.lane-b3 .ev-ttl {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgb(var(--faint)); margin-bottom: 0.4375rem;
+}
+.lane-b3 .ev-item { display: flex; gap: 0.625rem; align-items: baseline; padding: 0.25rem 0; font-size: 0.8125rem; }
+.lane-b3 .ev-item .kind {
+  font-family: var(--ff-mono); font-size: 0.625rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgb(var(--faint)); width: 5.25rem; flex: none;
+}
+.lane-b3 .ev-item .kind.pri { color: rgb(var(--accent)); font-weight: 600; }
+.lane-b3 .ev-item a { color: rgb(var(--ink)); text-decoration: underline; text-decoration-color: rgb(var(--accent) / 0.45); text-underline-offset: 3px; }
+.lane-b3 .ev-item a:hover { text-decoration-color: rgb(var(--accent)); }
+.lane-b3 .ev-item .host { font-family: var(--ff-mono); font-size: 0.6875rem; color: rgb(var(--faint)); }
+.lane-b3 .ev-foot {
+  margin-top: 0.625rem; font-family: var(--ff-mono); font-size: 0.6875rem;
+  color: rgb(var(--faint)); display: flex; flex-wrap: wrap; gap: 0.125rem 0.875rem;
+}
+.lane-b3 .ev-foot .corr { color: rgb(var(--flag)); }
+.lane-b3 .limit-note {
+  margin-top: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--line-strong);
+  border-radius: 6px; font-size: 0.8125rem; color: rgb(var(--flag));
+}
+.lane-b3 .ec-split {
+  margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--line-strong);
+}
+.lane-b3 .ec-split h2 { font-family: var(--ff-display); font-size: 1.25rem; font-weight: 600; }
+.lane-b3 .ec-split p { font-size: 0.8125rem; color: rgb(var(--muted)); margin-top: 0.25rem; max-width: 64ch; }
+
+/* mobile collapse shared by A / B1 / B3 */
+@container (max-width: 560px) {
+  .lane-a .masthead { flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 0.875rem 1.125rem; }
+  .lane-a nav.primary { gap: 0.875rem; overflow-x: auto; width: 100%; padding-bottom: 2px; }
+  .lane-a nav.primary a { white-space: nowrap; }
+  .lane-a .desk { padding: 1.25rem 1.125rem 2rem; }
+  .lane-a .page-h { font-size: 1.375rem; }
+
+  .lane-b1 .rec-head, .lane-b1 nav.primary { padding-left: 1.125rem; padding-right: 1.125rem; }
+  .lane-b1 nav.primary { overflow-x: auto; }
+  .lane-b1 nav.primary a { white-space: nowrap; }
+  .lane-b1 .rec-body { padding: 1.25rem 1.125rem; }
+  .lane-b1 h1 { font-size: 1.375rem; }
+  .lane-b1 thead { display: none; }
+  .lane-b1 tbody tr { display: block; padding: 0.875rem 0; border-bottom: 1px solid var(--line); }
+  .lane-b1 tbody td { display: block; padding: 0; border: 0; }
+  .lane-b1 tbody td.c-date { width: auto; }
+  .lane-b1 tbody td.c-ready { width: auto; margin: 0.25rem 0 0.375rem; }
+
+  .lane-b3 .ec-top { flex-direction: column; align-items: flex-start; gap: 0.625rem; padding: 0.875rem 1.125rem; }
+  .lane-b3 nav.primary { overflow-x: auto; width: 100%; }
+  .lane-b3 nav.primary a { white-space: nowrap; }
+  .lane-b3 .ec-body { padding: 1.25rem 1.125rem 2rem; }
+  .lane-b3 .ec-h { font-size: 1.375rem; }
+  .lane-b3 .ev-item { flex-wrap: wrap; }
+  .lane-b3 .ev-item .kind { width: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="probe-bar">
+  <h1>Phase 1 Public Intelligence — Direction Probe</h1>
+  <div class="jump">
+    <a href="#lane-a">A · Instrument Desk</a>
+    <a href="#lane-b1">B1 · Public Record</a>
+    <a href="#lane-b2">B2 · Reference Manual</a>
+    <a href="#lane-b3">B3 · Evidence Card</a>
+  </div>
+  <div class="spacer"></div>
+  <button id="themeBtn" type="button" aria-pressed="false">☾ Dark</button>
+</div>
+
+<div class="probe-intro">
+  <p>四条 lane 渲染<strong>完全相同的内容</strong>——同样 5 条 canonical change、同样的 readiness、同样的证据数与版本号、同样的 coverage 缺口。差异只在结构、密度、色彩策略与排版声音。默认主题为<strong>亮色</strong>（首访卖家看到的那一眼）；右上角可整页切到暗色。</p>
+  <p style="margin-top:.75rem">看这几件事：① 5 秒内能否分辨 <code>VERIFIED</code> 与 <code>MONITORED</code>；② 「Amazon 官方政策页需登录」这个缺口是否躲不掉；③ 证据离结论有多远；④ 390px 下密度是否还成立。</p>
+</div>
+
+<!-- ══════════════════ LANE A ══════════════════ -->
+<div class="lane-head" id="lane-a">
+  <div class="tag">DIRECTION A</div>
+  <h2>Instrument Desk</h2>
+  <p>延续 BL-045 已上线的视觉身份：琥珀信号色、Fraunces 报头、mono 元数据、tier 由 chip + 1px 边框承载。品牌连续性最强，token 与对比度已验证过一轮。</p>
+  <div class="anchors">锚点 · 现有 TradeLinks Wire · Bloomberg 终端配色克制版 · 编辑部 signal desk</div>
+</div>
+<div class="frames">
+  <div class="frame vp-desktop">
+    <div class="frame-lbl">DESKTOP 1180 × auto</div>
+    <div class="spec lane-a">
+      <header class="masthead">
+        <div style="display:flex;align-items:center;gap:2.25rem">
+          <div>
+            <div class="brand-kicker">Cross-border intelligence</div>
+            <div class="brand">Trade<i>Links</i></div>
+          </div>
+          <nav class="primary" aria-label="Primary">
+            <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+            <a href="#">Categories</a><a href="#" aria-current="page">Changes</a>
+            <a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+          </nav>
+        </div>
+        <div style="font-family:var(--ff-mono);font-size:.6875rem;color:rgb(var(--faint));letter-spacing:.1em">EN · ☀</div>
+      </header>
+      <div class="desk">
+        <h1 class="page-h">Changes affecting US-market sellers</h1>
+        <p class="page-sub">Every entry is a canonical record built from reviewed evidence. Readiness states how far we can stand behind it — not how important it is.</p>
+        <div class="coverbar">
+          <span>LAST SOURCE CHECK <b>14:02 UTC</b></span>
+          <span>SOURCES OK <b>21 / 23</b></span>
+          <span class="warn">2 OVERDUE</span>
+          <span>KNOWN GAPS <b>6</b></span>
+        </div>
+        <div class="filters">
+          <button type="button" aria-pressed="true">Verified</button>
+          <button type="button" aria-pressed="false">All Monitored</button>
+          <button type="button" aria-pressed="false">Experimental demand</button>
+        </div>
+        <div class="stream">
+          <article class="sig lead">
+            <div class="sig-top">
+              <span class="chip verified">Verified</span>
+              <span class="sig-when">EFFECTIVE 2026-09-15 · in 44 days</span>
+            </div>
+            <h2 class="sig-h"><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></h2>
+            <div class="sig-meta">
+              <span class="ev">2 primary sources</span><span>v3 · corrected 2026-07-30</span>
+              <span>Toys &amp; Children's Products</span><span>Apparel &amp; Accessories</span>
+            </div>
+          </article>
+          <article class="sig">
+            <div class="sig-top">
+              <span class="chip verified">Verified</span>
+              <span class="sig-when">EFFECTIVE 2026-11-01 · in 91 days</span>
+            </div>
+            <h2 class="sig-h"><a href="#">CBP requires advance entry data for Section 321 de minimis shipments</a></h2>
+            <div class="sig-meta">
+              <span class="ev">2 primary sources</span><span>v1</span><span>Import &amp; Customs</span>
+            </div>
+          </article>
+          <article class="sig">
+            <div class="sig-top">
+              <span class="chip monitored">Monitored</span>
+              <span class="sig-when">EFFECTIVE 2026-10-01 · in 60 days</span>
+            </div>
+            <h2 class="sig-h"><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></h2>
+            <div class="sig-meta">
+              <span class="ev">1 primary · 2 supporting</span><span>v1</span><span>Amazon US</span><span>Home &amp; Kitchen</span>
+            </div>
+            <p class="sig-gap">Coverage limit — Amazon's official policy page requires seller login. Monitored from public announcements only.</p>
+          </article>
+          <article class="sig">
+            <div class="sig-top">
+              <span class="chip verified">Verified</span>
+              <span class="sig-when">EFFECTIVE 2026-08-19 · in 17 days</span>
+            </div>
+            <h2 class="sig-h"><a href="#">FTC tightens Made in USA substantiation for imported components</a></h2>
+            <div class="sig-meta">
+              <span class="ev">2 primary sources</span><span>v2 · corrected 2026-07-19</span><span>Labeling &amp; Claims</span>
+            </div>
+          </article>
+          <article class="sig">
+            <div class="sig-top">
+              <span class="chip monitored">Monitored</span>
+              <span class="sig-when">EFFECTIVE 2026-09-01 · in 30 days</span>
+            </div>
+            <h2 class="sig-h"><a href="#">Shopify Payments extends the chargeback response window to 15 days</a></h2>
+            <div class="sig-meta">
+              <span class="ev">1 primary source</span><span>v1</span><span>Shopify US</span><span>Fees &amp; Payments</span>
+            </div>
+          </article>
+        </div>
+        <div class="xhead">
+          <h3>Experimental demand</h3>
+          <p>Weak signals kept separate. Not a bestseller list and not a launch recommendation.</p>
+        </div>
+        <article class="sig">
+          <div class="sig-top">
+            <span class="chip experimental">Experimental</span>
+            <span class="sig-when">OBSERVED 2026-08-01</span>
+          </div>
+          <h2 class="sig-h">Pet cooling mats moved up the Amazon US Pet Supplies rank window</h2>
+          <div class="sig-meta"><span>rank observation only</span><span>1 source · unreviewed</span><span>Pet Supplies</span></div>
+        </article>
+      </div>
+    </div>
+  </div>
+  <div class="frame vp-mobile">
+    <div class="frame-lbl">MOBILE 390</div>
+    <div class="spec lane-a">
+      <header class="masthead">
+        <div>
+          <div class="brand-kicker">Cross-border intelligence</div>
+          <div class="brand">Trade<i>Links</i></div>
+        </div>
+        <nav class="primary" aria-label="Primary">
+          <a href="#">US</a><a href="#">Amazon</a><a href="#">Shopify</a>
+          <a href="#">Categories</a><a href="#" aria-current="page">Changes</a><a href="#">Coverage</a>
+        </nav>
+      </header>
+      <div class="desk">
+        <h1 class="page-h">Changes affecting US-market sellers</h1>
+        <div class="coverbar">
+          <span>CHECK <b>14:02 UTC</b></span><span>OK <b>21/23</b></span><span class="warn">2 OVERDUE</span>
+        </div>
+        <div class="filters">
+          <button type="button" aria-pressed="true">Verified</button>
+          <button type="button" aria-pressed="false">All Monitored</button>
+        </div>
+        <div class="stream">
+          <article class="sig lead">
+            <div class="sig-top"><span class="chip verified">Verified</span><span class="sig-when">EFF 2026-09-15</span></div>
+            <h2 class="sig-h">CPSC expands third-party testing to imported children's sleepwear</h2>
+            <div class="sig-meta"><span class="ev">2 primary</span><span>v3 · corrected</span></div>
+          </article>
+          <article class="sig">
+            <div class="sig-top"><span class="chip monitored">Monitored</span><span class="sig-when">EFF 2026-10-01</span></div>
+            <h2 class="sig-h">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h2>
+            <div class="sig-meta"><span class="ev">1 primary · 2 supporting</span><span>v1</span></div>
+            <p class="sig-gap">Coverage limit — official policy page requires seller login.</p>
+          </article>
+          <article class="sig">
+            <div class="sig-top"><span class="chip verified">Verified</span><span class="sig-when">EFF 2026-08-19</span></div>
+            <h2 class="sig-h">FTC tightens Made in USA substantiation for imported components</h2>
+            <div class="sig-meta"><span class="ev">2 primary</span><span>v2 · corrected</span></div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LANE B1 ══════════════════ -->
+<div class="lane-head" id="lane-b1">
+  <div class="tag">DIRECTION B1</div>
+  <h2>Public Record</h2>
+  <p>序列式公报。日期是主键，事实进表格，readiness 是一个<strong>词</strong>而不是一种颜色。全页几乎无装饰色——唯一的强调色只留给「已纠错」和「覆盖受限」。可打印、可引用、可归档。</p>
+  <div class="anchors">锚点 · Federal Register · GOV.UK · FT 法律版</div>
+</div>
+<div class="frames">
+  <div class="frame vp-desktop">
+    <div class="frame-lbl">DESKTOP 1180 × auto</div>
+    <div class="spec lane-b1">
+      <header class="rec-head">
+        <div class="rec-brand">TradeLinks</div>
+        <div class="rec-strap">US market intelligence · public record</div>
+      </header>
+      <nav class="primary" aria-label="Primary">
+        <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+        <a href="#">Categories</a><a href="#" aria-current="page">Changes</a>
+        <a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+      </nav>
+      <div class="rec-body">
+        <h1>Changes affecting US-market sellers</h1>
+        <p class="rec-note">Each row is one canonical record. Readiness states how far the evidence supports the entry. Corrections never overwrite: they publish a new version and keep the old one addressable.</p>
+        <div class="rec-status">
+          <span>LAST SOURCE CHECK <b>2026-08-02 14:02 UTC</b></span>
+          <span>SOURCES <b>21 of 23 within SLA</b></span>
+          <span class="flag">2 OVERDUE</span>
+          <span>KNOWN GAPS <b>6</b></span>
+        </div>
+        <div class="scopes">
+          <a href="#" aria-current="page">Verified</a>
+          <a href="#">All Monitored</a>
+          <a href="#">Experimental demand</a>
+        </div>
+        <table>
+          <thead>
+            <tr><th scope="col">Effective</th><th scope="col">Readiness</th><th scope="col">Change</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="c-date">2026-09-15</td>
+              <td class="c-ready"><span class="ready-word verified">Verified</span></td>
+              <td>
+                <div class="rec-title"><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></div>
+                <div class="rec-sub">
+                  <span>2 primary sources</span><span class="corr">v3 · corrected 2026-07-30</span>
+                  <span>Toys &amp; Children's Products; Apparel &amp; Accessories</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">2026-10-01</td>
+              <td class="c-ready"><span class="ready-word monitored">Monitored</span></td>
+              <td>
+                <div class="rec-title"><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></div>
+                <div class="rec-sub"><span>1 primary, 2 supporting</span><span>v1</span><span>Amazon US; Home &amp; Kitchen</span></div>
+                <p class="rec-limit">Coverage limit — Amazon's official policy page requires seller login; monitored from public announcements only.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">2026-08-19</td>
+              <td class="c-ready"><span class="ready-word verified">Verified</span></td>
+              <td>
+                <div class="rec-title"><a href="#">FTC tightens Made in USA substantiation for imported components</a></div>
+                <div class="rec-sub"><span>2 primary sources</span><span class="corr">v2 · corrected 2026-07-19</span><span>Labeling &amp; Claims</span></div>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">2026-09-01</td>
+              <td class="c-ready"><span class="ready-word monitored">Monitored</span></td>
+              <td>
+                <div class="rec-title"><a href="#">Shopify Payments extends the chargeback response window to 15 days</a></div>
+                <div class="rec-sub"><span>1 primary source</span><span>v1</span><span>Shopify US; Fees &amp; Payments</span></div>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">2026-11-01</td>
+              <td class="c-ready"><span class="ready-word verified">Verified</span></td>
+              <td>
+                <div class="rec-title"><a href="#">CBP requires advance entry data for Section 321 de minimis shipments</a></div>
+                <div class="rec-sub"><span>2 primary sources</span><span>v1</span><span>Import &amp; Customs</span></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="rec-end">— no further qualified changes in this scope —</p>
+        <div class="sep-band">
+          <h2>Experimental demand</h2>
+          <p>Rank observations held apart from the record. Not a bestseller list, not a launch recommendation, and not evidence of an opportunity.</p>
+          <table>
+            <tbody>
+              <tr>
+                <td class="c-date">2026-08-01</td>
+                <td class="c-ready"><span class="ready-word monitored">Experimental</span></td>
+                <td>
+                  <div class="rec-title">Pet cooling mats moved up the Amazon US Pet Supplies rank window</div>
+                  <div class="rec-sub"><span>rank observation only</span><span>1 source, unreviewed</span><span>Pet Supplies</span></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame vp-mobile">
+    <div class="frame-lbl">MOBILE 390</div>
+    <div class="spec lane-b1">
+      <header class="rec-head">
+        <div class="rec-brand">TradeLinks</div>
+        <div class="rec-strap">US market · public record</div>
+      </header>
+      <nav class="primary" aria-label="Primary">
+        <a href="#">US</a><a href="#">Amazon</a><a href="#">Shopify</a>
+        <a href="#" aria-current="page">Changes</a><a href="#">Coverage</a>
+      </nav>
+      <div class="rec-body">
+        <h1>Changes affecting US-market sellers</h1>
+        <div class="rec-status">
+          <span>CHECK <b>14:02 UTC</b></span><span>SOURCES <b>21/23</b></span><span class="flag">2 OVERDUE</span>
+        </div>
+        <div class="scopes"><a href="#" aria-current="page">Verified</a><a href="#">All Monitored</a></div>
+        <table>
+          <tbody>
+            <tr>
+              <td class="c-date">EFFECTIVE 2026-09-15</td>
+              <td class="c-ready"><span class="ready-word verified">Verified</span></td>
+              <td>
+                <div class="rec-title">CPSC expands third-party testing to imported children's sleepwear</div>
+                <div class="rec-sub"><span>2 primary sources</span><span class="corr">v3 · corrected</span></div>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">EFFECTIVE 2026-10-01</td>
+              <td class="c-ready"><span class="ready-word monitored">Monitored</span></td>
+              <td>
+                <div class="rec-title">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</div>
+                <div class="rec-sub"><span>1 primary, 2 supporting</span><span>v1</span></div>
+                <p class="rec-limit">Coverage limit — official policy page requires seller login.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="c-date">EFFECTIVE 2026-08-19</td>
+              <td class="c-ready"><span class="ready-word verified">Verified</span></td>
+              <td>
+                <div class="rec-title">FTC tightens Made in USA substantiation for imported components</div>
+                <div class="rec-sub"><span>2 primary sources</span><span class="corr">v2 · corrected</span></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LANE B2 ══════════════════ -->
+<div class="lane-head" id="lane-b2">
+  <div class="tag">DIRECTION B2</div>
+  <h2>Reference Manual</h2>
+  <p>左侧常驻导航树 + 内容列 + 右侧 on-this-page。冷中性灰阶 + 单一蓝强调，搜索优先。假设卖家是<strong>反复回查</strong>而不是一次性浏览：深链、面包屑、检索是主要动作。</p>
+  <div class="anchors">锚点 · Stripe Docs · Linear · Cloudflare Docs</div>
+</div>
+<div class="frames">
+  <div class="frame vp-desktop">
+    <div class="frame-lbl">DESKTOP 1180 × auto</div>
+    <div class="spec lane-b2">
+      <div class="doc-top">
+        <div class="doc-brand">TradeLinks</div>
+        <div class="doc-search"><span>Search changes, guides, sources…</span><span class="kbd">⌘K</span></div>
+        <div style="font-family:var(--ff-mono);font-size:.75rem;color:rgb(var(--faint))">EN</div>
+      </div>
+      <div class="doc-mobilenav">
+        <a href="#">US</a><a href="#">Amazon</a><a href="#">Shopify</a>
+        <a href="#" aria-current="page">Changes</a><a href="#">Guides</a><a href="#">Coverage</a>
+      </div>
+      <div class="doc-grid">
+        <aside class="doc-side">
+          <div class="grp">Markets</div>
+          <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+          <div class="grp">Browse</div>
+          <a href="#">Categories</a><a href="#">Topics</a>
+          <a href="#" aria-current="page">Changes</a>
+          <div class="grp">Library</div>
+          <a href="#">Guides</a><a href="#">Briefings</a>
+          <div class="grp">Transparency</div>
+          <a href="#">Coverage &amp; readiness</a><a href="#">Sources</a><a href="#">API &amp; feeds</a>
+        </aside>
+        <main class="doc-main">
+          <div class="crumbs">TradeLinks<span>/</span>US Market<span>/</span>Changes</div>
+          <h1>Changes affecting US-market sellers</h1>
+          <p class="doc-lede">Canonical records built from reviewed evidence. Readiness states how far the evidence supports each entry — it is not a priority ranking.</p>
+          <div class="badgerow">
+            <span class="badge on">Verified</span>
+            <span class="badge">All Monitored</span>
+            <span class="badge">Experimental demand</span>
+          </div>
+          <div class="doc-callout">
+            <b>Coverage status — last source check 14:02 UTC</b>
+            21 of 23 sources within SLA · 2 overdue · 6 known gaps. Amazon's official policy pages require seller login, so Amazon entries are monitored from public announcements only.
+          </div>
+          <div class="rows">
+            <div class="row">
+              <div class="when">2026-09-15</div>
+              <div>
+                <h3><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></h3>
+                <div class="facets"><span>2 primary sources</span><span>v3 · corrected 2026-07-30</span><span>Toys &amp; Children's Products</span><span>Apparel &amp; Accessories</span></div>
+              </div>
+              <div><span class="rdy verified">Verified</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-10-01</div>
+              <div>
+                <h3><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></h3>
+                <div class="facets"><span>1 primary · 2 supporting</span><span>v1</span><span>Amazon US</span><span class="warn">login-walled source</span></div>
+              </div>
+              <div><span class="rdy monitored">Monitored</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-08-19</div>
+              <div>
+                <h3><a href="#">FTC tightens Made in USA substantiation for imported components</a></h3>
+                <div class="facets"><span>2 primary sources</span><span>v2 · corrected 2026-07-19</span><span>Labeling &amp; Claims</span></div>
+              </div>
+              <div><span class="rdy verified">Verified</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-09-01</div>
+              <div>
+                <h3><a href="#">Shopify Payments extends the chargeback response window to 15 days</a></h3>
+                <div class="facets"><span>1 primary source</span><span>v1</span><span>Shopify US</span><span>Fees &amp; Payments</span></div>
+              </div>
+              <div><span class="rdy monitored">Monitored</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-11-01</div>
+              <div>
+                <h3><a href="#">CBP requires advance entry data for Section 321 de minimis shipments</a></h3>
+                <div class="facets"><span>2 primary sources</span><span>v1</span><span>Import &amp; Customs</span></div>
+              </div>
+              <div><span class="rdy verified">Verified</span></div>
+            </div>
+          </div>
+        </main>
+        <aside class="doc-rail">
+          <div class="ttl">On this page</div>
+          <a href="#" aria-current="true">Coverage status</a>
+          <a href="#">Verified changes</a>
+          <a href="#">Monitored changes</a>
+          <a href="#">Experimental demand</a>
+          <a href="#">How readiness works</a>
+          <a href="#">Subscribe · RSS</a>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div class="frame vp-mobile">
+    <div class="frame-lbl">MOBILE 390 · 侧栏折叠为横向 chip 条</div>
+    <div class="spec lane-b2">
+      <div class="doc-top">
+        <div class="doc-brand">TradeLinks</div>
+        <div class="doc-search"><span>Search…</span><span class="kbd">⌘K</span></div>
+      </div>
+      <div class="doc-mobilenav">
+        <a href="#">US</a><a href="#">Amazon</a><a href="#">Shopify</a>
+        <a href="#" aria-current="page">Changes</a><a href="#">Guides</a><a href="#">Coverage</a>
+      </div>
+      <div class="doc-grid">
+        <aside class="doc-side"></aside>
+        <main class="doc-main">
+          <div class="crumbs">US Market<span>/</span>Changes</div>
+          <h1>Changes affecting US-market sellers</h1>
+          <div class="badgerow">
+            <span class="badge on">Verified</span><span class="badge">All Monitored</span>
+          </div>
+          <div class="doc-callout">
+            <b>Coverage — checked 14:02 UTC</b>
+            21/23 sources within SLA · 2 overdue · 6 known gaps.
+          </div>
+          <div class="rows">
+            <div class="row">
+              <div class="when">2026-09-15</div>
+              <div>
+                <h3><a href="#">CPSC expands third-party testing to imported children's sleepwear</a></h3>
+                <div class="facets"><span>2 primary</span><span>v3 · corrected</span></div>
+              </div>
+              <div><span class="rdy verified">Verified</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-10-01</div>
+              <div>
+                <h3><a href="#">Amazon US raises referral fees for oversize Home &amp; Kitchen listings</a></h3>
+                <div class="facets"><span>1 primary · 2 supporting</span><span class="warn">login-walled source</span></div>
+              </div>
+              <div><span class="rdy monitored">Monitored</span></div>
+            </div>
+            <div class="row">
+              <div class="when">2026-08-19</div>
+              <div>
+                <h3><a href="#">FTC tightens Made in USA substantiation for imported components</a></h3>
+                <div class="facets"><span>2 primary</span><span>v2 · corrected</span></div>
+              </div>
+              <div><span class="rdy verified">Verified</span></div>
+            </div>
+          </div>
+        </main>
+        <aside class="doc-rail"></aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LANE B3 ══════════════════ -->
+<div class="lane-head" id="lane-b3">
+  <div class="tag">DIRECTION B3</div>
+  <h2>Evidence Card</h2>
+  <p>结论与它的证据是<strong>不可分割的一个单位</strong>。Verified 条目直接摊开来源清单，Monitored 条目直接写出自己的边界。密度随 readiness 变化，不是等大卡片阵列。单一 teal 强调色只标记来源链接。</p>
+  <div class="anchors">锚点 · 情报简报 · Perplexity 引用块 · Are.na 区块</div>
+</div>
+<div class="frames">
+  <div class="frame vp-desktop">
+    <div class="frame-lbl">DESKTOP 1180 × auto</div>
+    <div class="spec lane-b3">
+      <div class="ec-top">
+        <div class="ec-brand">TradeLinks</div>
+        <nav class="primary" aria-label="Primary">
+          <a href="#">US Market</a><a href="#">Amazon US</a><a href="#">Shopify US</a>
+          <a href="#">Categories</a><a href="#" aria-current="page">Changes</a>
+          <a href="#">Guides</a><a href="#">Briefings</a><a href="#">Coverage</a>
+        </nav>
+      </div>
+      <div class="ec-body">
+        <h1 class="ec-h">Changes affecting US-market sellers</h1>
+        <p class="ec-sub">Every conclusion ships with the sources it rests on. If we cannot reach a primary source, the entry says so instead of quietly ranking lower.</p>
+        <div class="ec-scope">
+          <button type="button" aria-pressed="true">Verified</button>
+          <button type="button" aria-pressed="false">All Monitored</button>
+          <button type="button" aria-pressed="false">Experimental demand</button>
+          <span style="margin-left:auto;align-self:center;font-family:var(--ff-mono);font-size:.75rem;color:rgb(var(--faint))">CHECKED 14:02 UTC · 6 KNOWN GAPS</span>
+        </div>
+        <div class="ec-stack">
+          <article class="card open">
+            <div class="card-rdy"><span class="w-verified">Verified</span><span class="when">effective 2026-09-15 · in 44 days</span></div>
+            <h3>CPSC expands third-party testing to imported children's sleepwear</h3>
+            <p class="hits">Hits <b>Toys &amp; Children's Products</b> and <b>Apparel &amp; Accessories</b> sellers importing finished garments. Existing CPC certificates issued before the effective date are not carried over.</p>
+            <div class="ev-block">
+              <div class="ev-ttl">Evidence</div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">Safety Standard for Children's Sleepwear; Final Rule</a> <span class="host">federalregister.gov · 2026-07-22</span></span></div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">16 CFR Part 1615 testing requirements</a> <span class="host">cpsc.gov · retrieved 2026-07-28</span></span></div>
+              <div class="ev-item"><span class="kind">Supporting</span><span><a href="#">What the sleepwear rule means for importers</a> <span class="host">practicalecommerce.com · 2026-07-24</span></span></div>
+              <div class="ev-foot"><span>v3 · published 2026-07-22</span><span class="corr">corrected 2026-07-30 — effective date restated</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-rdy"><span class="w-monitored">Monitored</span><span class="when">effective 2026-10-01 · in 60 days</span></div>
+            <h3>Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h3>
+            <p class="hits">Hits <b>Home &amp; Kitchen</b> sellers on <b>Amazon US</b> whose units fall in the oversize tiers.</p>
+            <p class="limit-note">We cannot verify this. Amazon's official policy page requires a seller login, so this entry rests on one public announcement plus two secondary summaries. Treat the exact tier thresholds as unconfirmed.</p>
+            <div class="ev-block">
+              <div class="ev-ttl">Evidence</div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">Selling partner fee schedule announcement</a> <span class="host">sellercentral.amazon.com · 2026-07-28</span></span></div>
+              <div class="ev-item"><span class="kind">Supporting</span><span><a href="#">Fee change breakdown</a> <span class="host">ecommercebytes.com · 2026-07-29</span></span></div>
+              <div class="ev-foot"><span>v1 · published 2026-07-29</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+          <article class="card open">
+            <div class="card-rdy"><span class="w-verified">Verified</span><span class="when">effective 2026-08-19 · in 17 days</span></div>
+            <h3>FTC tightens Made in USA substantiation for imported components</h3>
+            <p class="hits">Hits any seller using origin claims on US listings, regardless of category.</p>
+            <div class="ev-block">
+              <div class="ev-ttl">Evidence</div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">Made in USA Labeling Rule enforcement policy statement</a> <span class="host">ftc.gov · 2026-07-15</span></span></div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">16 CFR Part 323</a> <span class="host">federalregister.gov · retrieved 2026-07-16</span></span></div>
+              <div class="ev-foot"><span>v2 · published 2026-07-15</span><span class="corr">corrected 2026-07-19 — scope narrowed to origin claims</span><span><a href="#">version history</a></span></div>
+            </div>
+          </article>
+        </div>
+        <div class="ec-split">
+          <h2>Experimental demand</h2>
+          <p>Rank observations, held apart on purpose. Not a bestseller list, not a launch recommendation, and not evidence that an opportunity exists.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame vp-mobile">
+    <div class="frame-lbl">MOBILE 390</div>
+    <div class="spec lane-b3">
+      <div class="ec-top">
+        <div class="ec-brand">TradeLinks</div>
+        <nav class="primary" aria-label="Primary">
+          <a href="#">US</a><a href="#">Amazon</a><a href="#">Shopify</a>
+          <a href="#" aria-current="page">Changes</a><a href="#">Coverage</a>
+        </nav>
+      </div>
+      <div class="ec-body">
+        <h1 class="ec-h">Changes affecting US-market sellers</h1>
+        <div class="ec-scope">
+          <button type="button" aria-pressed="true">Verified</button>
+          <button type="button" aria-pressed="false">All Monitored</button>
+        </div>
+        <div class="ec-stack">
+          <article class="card open">
+            <div class="card-rdy"><span class="w-verified">Verified</span><span class="when">effective 2026-09-15</span></div>
+            <h3>CPSC expands third-party testing to imported children's sleepwear</h3>
+            <p class="hits">Hits <b>Toys &amp; Children's Products</b> and <b>Apparel &amp; Accessories</b> importers.</p>
+            <div class="ev-block">
+              <div class="ev-ttl">Evidence</div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">Final Rule</a> <span class="host">federalregister.gov</span></span></div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">16 CFR Part 1615</a> <span class="host">cpsc.gov</span></span></div>
+              <div class="ev-foot"><span>v3</span><span class="corr">corrected 2026-07-30</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-rdy"><span class="w-monitored">Monitored</span><span class="when">effective 2026-10-01</span></div>
+            <h3>Amazon US raises referral fees for oversize Home &amp; Kitchen listings</h3>
+            <p class="limit-note">We cannot verify this. Amazon's policy page requires a seller login; tier thresholds are unconfirmed.</p>
+            <div class="ev-block">
+              <div class="ev-ttl">Evidence</div>
+              <div class="ev-item"><span class="kind pri">Primary</span><span><a href="#">Fee schedule announcement</a> <span class="host">sellercentral.amazon.com</span></span></div>
+              <div class="ev-foot"><span>v1</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="probe-intro" style="padding-bottom:4rem;padding-top:3rem">
+  <p><strong>取舍速记</strong></p>
+  <p style="margin-top:.5rem">· <strong>A</strong> 品牌连续、token 已验证，但「仪表盘」暗示实时性——而 Phase 1 明确不承诺 real-time。</p>
+  <p>· <strong>B1</strong> 可信度与可引用性最强、最省渲染成本，SEO 友好；代价是气质偏冷，弱化了「对卖家的后果」。</p>
+  <p>· <strong>B2</strong> 回查体验最好、深链与检索天然；代价是三栏在 390px 下要丢掉两栏，且看起来像文档站而非情报产品。</p>
+  <p>· <strong>B3</strong> 最贴合 PRODUCT.md 的「evidence before action」；代价是首屏条数最少，列表页密度低，长列表滚动成本高。</p>
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById("themeBtn");
+  var root = document.documentElement;
+  function setTheme(next) {
+    root.setAttribute("data-theme", next);
+    btn.setAttribute("aria-pressed", String(next === "dark"));
+    btn.textContent = next === "dark" ? "☀ Light" : "☾ Dark";
+  }
+  btn.addEventListener("click", function () {
+    setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+
+  /* Capture mode — used by the headless screenshot pass, not by reviewers.
+     ?only=<a|b1|b2|b3> isolates one lane; &theme=dark opens in dark. */
+  var q = new URLSearchParams(location.search);
+  if (q.get("theme") === "dark") setTheme("dark");
+  var only = q.get("only");
+  if (only) {
+    var keepHead = document.getElementById("lane-" + only);
+    var keepFrames = keepHead && keepHead.nextElementSibling;
+    document.querySelectorAll(".lane-head, .frames, .probe-intro, .probe-bar").forEach(function (el) {
+      if (el !== keepHead && el !== keepFrames) el.remove();
+    });
+    if (keepHead) keepHead.style.paddingTop = "1.75rem";
+    document.body.style.paddingBottom = "1.75rem";
+  }
+})();
+</script>
+</body>
+</html>
