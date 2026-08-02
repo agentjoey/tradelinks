@@ -1,15 +1,15 @@
-import { getTrendsView, getBestsellers, getRadarKpis, getMovers } from "../../src/trends/db.js";
-import { getViralX, getHotTopicsX } from "../../src/social/db.js";
-import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../src/config/sources.js";
-import { getDict } from "../lib/i18n";
-import { CAT_LABEL, REGION_LABEL } from "../lib/labels";
+import { getTrendsView, getBestsellers, getRadarKpis, getMovers } from "../../../src/trends/db.js";
+import { getViralX, getHotTopicsX } from "../../../src/social/db.js";
+import { SOURCES, BESTSELLER_SOURCE_IDS } from "../../../src/config/sources.js";
+import { getDict } from "../../lib/i18n";
+import { CAT_LABEL, REGION_LABEL } from "../../lib/labels";
 import { BestsellersBoard } from "./BestsellersBoard";
-import { SignalCard } from "../components/SignalCard";
-import { PageHeader } from "../components/PageHeader";
-import { EmptyState } from "../components/EmptyState";
-import { SectionHeader } from "../components/SectionHeader";
-import { RadarGlyph } from "../components/RadarGlyph";
-import { DiffusionArc } from "../components/DiffusionArc";
+import { SignalCard } from "../../components/SignalCard";
+import { PageHeader } from "../../components/PageHeader";
+import { EmptyState } from "../../components/EmptyState";
+import { SectionHeader } from "../../components/SectionHeader";
+import { RadarGlyph } from "../../components/RadarGlyph";
+import { DiffusionArc } from "../../components/DiffusionArc";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

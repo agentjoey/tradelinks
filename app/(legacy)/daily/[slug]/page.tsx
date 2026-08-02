@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getNoteBySlug, getNoteSiblingSlug } from "../../../src/daily/db.js";
-import { getDict } from "../../lib/i18n";
-import { addLocale } from "../../lib/locale";
+import { getNoteBySlug, getNoteSiblingSlug } from "../../../../src/daily/db.js";
+import { getDict } from "../../../lib/i18n";
+import { addLocale } from "../../../lib/locale";
 import { Markdown } from "../Markdown";
 
 export const dynamic = "force-dynamic";

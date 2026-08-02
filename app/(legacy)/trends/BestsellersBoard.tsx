@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { BestsellerRow } from "../../src/trends/db";
-import { track } from "../lib/track";
-import { REGION_LABEL } from "../lib/labels";
+import type { BestsellerRow } from "../../../src/trends/db";
+import { track } from "../../lib/track";
+import { REGION_LABEL } from "../../lib/labels";
 
 const REGION_FULL: Record<string, string> = {
   north_america: "North America", europe: "Europe", southeast_asia: "SE Asia",

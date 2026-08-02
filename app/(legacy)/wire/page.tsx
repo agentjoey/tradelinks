@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { getAlerts, type AlertRow } from "../lib/alerts";
-import { getDict, type Dict } from "../lib/i18n";
-import { addLocale } from "../lib/locale";
-import { localizeAlerts } from "../lib/i18n-content";
-import { bucketAlerts } from "../lib/buckets";
-import { cardMode } from "../lib/home";
-import { Filters } from "../components/Filters";
-import { PageHeader } from "../components/PageHeader";
-import { EmptyState } from "../components/EmptyState";
-import { SignalCard, type SignalTone } from "../components/SignalCard";
-import { tierStyle, CAT_LABEL, REGION_LABEL, domainOf, hhmm } from "../components/alert-style";
+import { getAlerts, type AlertRow } from "../../lib/alerts";
+import { getDict, type Dict } from "../../lib/i18n";
+import { addLocale } from "../../lib/locale";
+import { localizeAlerts } from "../../lib/i18n-content";
+import { bucketAlerts } from "../../lib/buckets";
+import { cardMode } from "../../lib/home";
+import { Filters } from "../../components/Filters";
+import { PageHeader } from "../../components/PageHeader";
+import { EmptyState } from "../../components/EmptyState";
+import { SignalCard, type SignalTone } from "../../components/SignalCard";
+import { tierStyle, CAT_LABEL, REGION_LABEL, domainOf, hhmm } from "../../components/alert-style";
 
 export const dynamic = "force-dynamic";
 

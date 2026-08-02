@@ -1,5 +1,5 @@
-import { SubscribeForm } from "../components/SubscribeForm";
-import { PageHeader } from "../components/PageHeader";
+import { SubscribeForm } from "../../components/SubscribeForm";
+import { PageHeader } from "../../components/PageHeader";
 
 export const metadata = {
   title: "Subscribe — TradeLinks Cross-Border Brief",

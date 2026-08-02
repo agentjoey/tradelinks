@@ -25,3 +25,6 @@ design/*.png
 
 # git worktrees
 .worktrees/
+
+# Playwright run artifacts
+test-results/

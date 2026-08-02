@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { getPublishedNotes } from "../../src/daily/db.js";
-import { getDict } from "../lib/i18n";
-import { addLocale } from "../lib/locale";
-import { PageHeader } from "../components/PageHeader";
-import { EmptyState } from "../components/EmptyState";
+import { getPublishedNotes } from "../../../src/daily/db.js";
+import { getDict } from "../../lib/i18n";
+import { addLocale } from "../../lib/locale";
+import { PageHeader } from "../../components/PageHeader";
+import { EmptyState } from "../../components/EmptyState";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
