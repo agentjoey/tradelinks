@@ -139,8 +139,15 @@ rather than extending it, which drops the built-in `dist`, `.cache`, `.git`, `.i
 `desktop-chromium` (1440×900) and `mobile-chromium` (390×844), and starts `pnpm start`
 after a production build.
 
-The full existing suite must stay green. Adding a vitest config that changes which files are
-collected is a regression, not a passing gate.
+**Baseline is not fully green.** Task 1's accepted evidence records `pnpm test` at
+540/542 passing with 2 pre-existing failures on this branch. Before you change anything,
+run the full suite once, record the exact names of those 2 failures, and put them in your
+report. Your gate is *no new failures relative to that recorded baseline* — not "542/542".
+Do not "fix" the 2 pre-existing failures; they are out of scope and silently repairing them
+hides whether your change regressed something.
+
+Adding a vitest config that changes which files are collected is a regression, not a
+passing gate: the collected-file count must not drop.
 
 ## shadcn
 
