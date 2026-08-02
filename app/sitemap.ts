@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getPublishedNotes } from "../src/daily/db.js";
 import { prisma } from "../src/db/client.js";
+import { briefingPath } from "../src/public-intelligence/briefings.js";
+import type { BriefingKind } from "../src/public-intelligence/briefings.js";
 import {
   canRenderHub,
   getCoverageMatrix,
@@ -46,7 +48,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/categories`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE}/topics`, changeFrequency: "daily", priority: 0.6 },
     { url: `${SITE}/changes`, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${SITE}/briefings`, changeFrequency: "daily", priority: 0.7 },
   ];
+
+  // Task 5: published briefings only — draft briefings, empty periods and
+  // the locked guide corpus never appear. (The /guides index itself renders
+  // the honest-absence state and is deliberately not a crawl target while
+  // zero guides are published.)
+  try {
+    const briefings = await prisma.briefing.findMany({
+      where: { editorialStatus: "PUBLISHED" },
+      select: { kind: true, periodKey: true, publishedAt: true },
+      orderBy: { publishedAt: "desc" },
+      take: 500,
+    });
+    for (const briefing of briefings) {
+      publicEntries.push({
+        url: `${SITE}${briefingPath(briefing.kind as BriefingKind, briefing.periodKey)}`,
+        lastModified: briefing.publishedAt ?? undefined,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+  } catch {
+    // A read failure must not take the rest of the sitemap down.
+  }
 
   // Published canonical changes (Task 4): every public permalink is an
   // entry; unknown, unpublished or below-Monitored slugs never appear

@@ -145,11 +145,18 @@ describe("seedPhase1Coverage", () => {
   }, 60000);
 
   it("gives every launch category linked sources and a non-empty known-gaps list", async () => {
+    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
+    // this invariant covers the Phase 1 contract keys ONLY. Querying
+    // `startsWith: "category:"` sweeps in other suites' run-scoped fixtures
+    // mid-creation/mid-deletion (a capability whose source links are not
+    // written yet reads as sources.length === 0) and fails on their state,
+    // not ours.
+    const categoryKeys = INITIAL_PUBLIC_CATEGORIES.map((c) => `category:${categorySlug(c)}`);
     const categories = await prisma.coverageCapability.findMany({
-      where: { key: { startsWith: "category:" } },
+      where: { key: { in: categoryKeys } },
       include: { sources: true },
     });
-    expect(categories.length).toBeGreaterThanOrEqual(6);
+    expect(categories.length).toBe(INITIAL_PUBLIC_CATEGORIES.length);
     for (const cap of categories) {
       expect(cap.sources.length).toBeGreaterThan(0);
       expect(cap.knownGaps.length).toBeGreaterThan(0);
@@ -288,19 +295,40 @@ describe("recomputeCapabilityReadiness", () => {
 
 describe("refreshCapabilityReadiness (health integration)", () => {
   it("drives stale transitions for every stored capability at the injected clock", async () => {
-    const stale = await seedFixtureCapability({
-      readiness: "MONITORED",
-      sources: [{ slaMinutes: 60, lastOkAt: minutesAgo(24 * 60) }],
+    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
+    // refreshCapabilityReadiness recomputes EVERY row of the shared
+    // CoverageCapability table, including fixtures belonging to suites
+    // running in parallel. Snapshot every readiness first and restore it in
+    // finally, so a concurrent suite never keeps observing our flips and a
+    // failing assertion never leaves one behind. Standing rule (Tasks 6-9):
+    // any test invoking a recompute/refresh of ALL rows of a shared table
+    // must snapshot and restore that table.
+    const snapshot = await prisma.coverageCapability.findMany({
+      select: { id: true, readiness: true },
     });
-    const healthy = await seedFixtureCapability({
-      readiness: "MONITORED",
-      sources: [{ slaMinutes: 24 * 60, lastOkAt: minutesAgo(30) }],
-    });
+    try {
+      const stale = await seedFixtureCapability({
+        readiness: "MONITORED",
+        sources: [{ slaMinutes: 60, lastOkAt: minutesAgo(24 * 60) }],
+      });
+      const healthy = await seedFixtureCapability({
+        readiness: "MONITORED",
+        sources: [{ slaMinutes: 24 * 60, lastOkAt: minutesAgo(30) }],
+      });
 
-    const results = await refreshCapabilityReadiness(NOW);
-    const byId = new Map(results.map((r) => [r.id, r.readiness]));
-    expect(byId.get(stale.id)).toBe("STALE");
-    expect(byId.get(healthy.id)).toBe("MONITORED");
-    // Recomputes every stored capability — one remote round trip each.
+      const results = await refreshCapabilityReadiness(NOW);
+      const byId = new Map(results.map((r) => [r.id, r.readiness]));
+      expect(byId.get(stale.id)).toBe("STALE");
+      expect(byId.get(healthy.id)).toBe("MONITORED");
+      // Recomputes every stored capability — one remote round trip each.
+    } finally {
+      // updateMany: rows a parallel suite deleted mid-run are skipped, not errors.
+      for (const row of snapshot) {
+        await prisma.coverageCapability.updateMany({
+          where: { id: row.id },
+          data: { readiness: row.readiness },
+        });
+      }
+    }
   }, 300000);
 });

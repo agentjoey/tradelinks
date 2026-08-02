@@ -360,8 +360,17 @@ describe("getHub content", () => {
   beforeAll(async () => {
     const seedId = nextSeed();
     slug = seedId;
-    const okSource = await seedSource({ lastOkAt: new Date("2026-08-02T11:00:00Z"), slaMinutes: 720 });
-    const overdueSource = await seedSource({ lastOkAt: null, slaMinutes: 360 });
+    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
+    // coverage-readiness' refreshCapabilityReadiness test recomputes EVERY
+    // stored CoverageCapability row and persists STALE transitions. A
+    // fixture whose required sources are overdue at that suite's recompute
+    // clock (2026-07-26T12:00Z) gets flipped to STALE mid-run and getHub
+    // returns null. Both sources below are therefore NOT overdue at that
+    // clock: okSource's lastOkAt is after it, and overdueSource is only
+    // overdue at this file's fixture clock NOW (2026-08-02T12:00Z), which
+    // is what the overdue-display assertions below actually need.
+    const okSource = await seedSource({ lastOkAt: new Date("2026-08-02T11:00:00Z"), slaMinutes: 2880 });
+    const overdueSource = await seedSource({ lastOkAt: new Date("2026-07-26T08:00:00Z"), slaMinutes: 360 });
     okSourceId = okSource.id;
     overdueSourceId = overdueSource.id;
     await seedCapability({
