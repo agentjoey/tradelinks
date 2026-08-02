@@ -110,7 +110,7 @@ features:
         deps: [public-ia-design-gate]
       - id: canonical-changes-experience
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-canonical-changes-experience.md
         evidence: null
