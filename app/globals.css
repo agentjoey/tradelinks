@@ -2,28 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Phase 1 public IA: light is the default theme (DESIGN.md). Dark remains a
+   first-class alternative behind the tl-theme cookie; the cookie, the SSR
+   data-theme attribute and the localStorage fallback are unchanged — only
+   which branch is the default. */
 :root {
-  color-scheme: dark;
-  --c-bg: 8 9 12;
-  --c-surface: 14 16 21;
-  --c-surface2: 19 22 29;
-  --c-ink: 236 231 219;
-  --c-muted: 139 143 154;
-  --c-faint: 124 130 144; /* was #5a5f6b (3.1:1) → #7c8290 (5.2:1) */
-  --c-line: rgba(233, 228, 217, 0.1);
-  --c-linestrong: rgba(233, 228, 217, 0.2);
-  --c-signal: 232 180 74;
-  --c-urgent: 255 90 77;
-  --c-calm: 79 209 197;
-  --c-chip-bg: 232 180 74;
-  --c-chip-ink: 8 9 12;
-  --c-eyebrow: rgba(232, 180, 74, 0.8);
-  --halo: radial-gradient(120% 80% at 50% -10%, rgba(232, 180, 74, 0.06), transparent 60%);
-  --grid-line: rgba(233, 228, 217, 0.025);
-  --grain-opacity: 0.04;
-}
-
-[data-theme="light"] {
   color-scheme: light;
   --c-bg: 244 241 232;
   --c-surface: 251 249 243;
@@ -42,6 +25,27 @@
   --halo: radial-gradient(120% 80% at 50% -10%, rgba(138, 90, 11, 0.05), transparent 60%);
   --grid-line: rgba(27, 26, 22, 0.03);
   --grain-opacity: 0.025;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: 8 9 12;
+  --c-surface: 14 16 21;
+  --c-surface2: 19 22 29;
+  --c-ink: 236 231 219;
+  --c-muted: 139 143 154;
+  --c-faint: 124 130 144; /* was #5a5f6b (3.1:1) → #7c8290 (5.2:1) */
+  --c-line: rgba(233, 228, 217, 0.1);
+  --c-linestrong: rgba(233, 228, 217, 0.2);
+  --c-signal: 232 180 74;
+  --c-urgent: 255 90 77;
+  --c-calm: 79 209 197;
+  --c-chip-bg: 232 180 74;
+  --c-chip-ink: 8 9 12;
+  --c-eyebrow: rgba(232, 180, 74, 0.8);
+  --halo: radial-gradient(120% 80% at 50% -10%, rgba(232, 180, 74, 0.06), transparent 60%);
+  --grid-line: rgba(233, 228, 217, 0.025);
+  --grain-opacity: 0.04;
 }
 
 @layer base {
@@ -93,6 +97,30 @@
 }
 
 @layer components {
+  /* Phase 1 public shell skip link: visually hidden until focused, then a
+     chip above the header (DESIGN.md accessibility floor). */
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    z-index: 50;
+    padding: 0.4375rem 0.875rem;
+    border-radius: 6px;
+    background: rgb(var(--c-chip-bg));
+    color: rgb(var(--c-chip-ink));
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .skip-link:not(:focus):not(:focus-visible) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   /* ① masthead entrance — masked lines + focus pull (once per load) */
   .lm { display: inline-block; overflow: hidden; vertical-align: bottom; }
   .li { display: inline-block; white-space: pre-wrap; /* keep locale fragment edge spaces (EN pre ends with one) */ animation: line-up 0.7s cubic-bezier(0.16,1,0.3,1) both; }
@@ -147,4 +175,14 @@
     animation: none !important;
   }
   .tape-viewport { overflow-x: auto; }
+}
+
+/* Consent banner (app/components/Analytics.tsx): its 4rem mobile bottom
+   clearance existed for the MobileTabBar, which no shell renders after the
+   Phase 1 route-group split. Return the banner to the bottom edge on mobile.
+   (The banner component itself is outside Task 2's file scope.) */
+@media (max-width: 767.98px) {
+  [class*="bottom-[calc(4rem"] {
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
 }
