@@ -138,7 +138,7 @@ features:
         deps: [canonical-feeds]
       - id: public-distribution-and-seo
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-public-distribution-and-seo.md
         evidence: null
