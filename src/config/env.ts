@@ -1,7 +1,7 @@
 import "dotenv/config"; // load .env into process.env before parsing (workers + scripts)
 import { z } from "zod";
 
-const EnvSchema = z.object({
+export const EnvSchema = z.object({
   DATABASE_URL: z.string().optional(), // Neon pooled (ADR-003), runtime queries
   DIRECT_URL: z.string().optional(), // Neon direct (ADR-003/004): migrations + pg-boss
   // AI providers — MiniMax is primary when set (OpenAI-compatible); DeepSeek/Qwen are fallbacks
@@ -79,6 +79,14 @@ const EnvSchema = z.object({
   // 32-byte HMAC secret signing anonymous-API cursors. Absent → the API fails
   // closed (deterministic 500 CURSOR_NOT_CONFIGURED, never an unsigned cursor).
   PUBLIC_API_CURSOR_SECRET: z.string().optional(),
+  // --- Public Intelligence cutover (Phase 1 Task 9a) ---
+  // Gates the legacy→public 308 redirects (src/public-intelligence/legacy-redirects.ts).
+  // Default OFF. Cutover is a config flip, not a code deploy: rollback is
+  // instant, and legacy routes keep serving until the Task 9b decision.
+  PUBLIC_CUTOVER_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 });
 
 export const env = EnvSchema.parse(process.env);
