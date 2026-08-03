@@ -75,6 +75,10 @@ const EnvSchema = z.object({
   // auto-push alerts at/above this urgency to Telegram (with in-chat Approve/Reject)
   PUSH_THRESHOLD: z.coerce.number().default(4.5),
   LOG_LEVEL: z.string().default("info"),
+  // --- Public API v1 (Phase 1 Task 7) ---
+  // 32-byte HMAC secret signing anonymous-API cursors. Absent → the API fails
+  // closed (deterministic 500 CURSOR_NOT_CONFIGURED, never an unsigned cursor).
+  PUBLIC_API_CURSOR_SECRET: z.string().optional(),
 });
 
 export const env = EnvSchema.parse(process.env);
