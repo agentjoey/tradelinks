@@ -131,7 +131,7 @@ features:
         deps: [guides-and-briefings]
       - id: public-api-and-skill
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-public-api-and-skill.md
         evidence: null
