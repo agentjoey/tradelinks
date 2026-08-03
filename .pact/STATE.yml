@@ -145,7 +145,7 @@ features:
         deps: [public-api-and-skill]
       - id: cutover-readiness
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-cutover-readiness.md
         evidence: null
