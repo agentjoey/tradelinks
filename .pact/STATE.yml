@@ -124,7 +124,7 @@ features:
         deps: [canonical-changes-experience]
       - id: canonical-feeds
         owner: kimi
-        status: assigned
+        status: in_progress
         reviewer: claude
         spec: .pact/tasks/phase1-public-intelligence-canonical-feeds.md
         evidence: null
