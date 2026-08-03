@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReadinessLevel } from "@prisma/client";
 import type { PublishedBriefing } from "../../src/public-intelligence/briefings.js";
 import { IntelligenceCard, MONITORED_LIMIT_NOTE, formatDate } from "./IntelligenceCard";
+import { JsonLd, articleJsonLd, breadcrumbJsonLd } from "./JsonLd";
 import { ReadinessBadge } from "./ReadinessBadge";
 
 /**
@@ -66,6 +67,21 @@ const KIND_LABELS: Record<string, string> = {
 export function BriefingPeriodView({ briefing }: { briefing: PublishedBriefing }) {
   return (
     <>
+      <JsonLd
+        data={[
+          articleJsonLd({
+            title: briefing.title,
+            summary: briefing.summary,
+            path: briefing.path,
+            datePublished: briefing.publishedAt,
+          }),
+          breadcrumbJsonLd([
+            { name: "TradeLinks", path: "/" },
+            { name: "Briefings", path: "/briefings" },
+            { name: `${KIND_LABELS[briefing.kind]} ${briefing.periodKey}`, path: briefing.path },
+          ]),
+        ]}
+      />
       <nav
         aria-label="Breadcrumb"
         className="ticker mb-3 flex flex-wrap gap-2 text-label uppercase tracking-[0.08em] text-faint"

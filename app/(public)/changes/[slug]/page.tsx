@@ -23,6 +23,42 @@ export const dynamic = "force-dynamic";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tradelinks-mvp.vercel.app";
 
+/**
+ * Structured data for the change detail page (Task 8): one Article plus the
+ * BreadcrumbList the page already renders visually. Every claim is drawn
+ * from the record itself — headline/summary/dates/permalink only. Readiness
+ * is a coverage statement about US, not a quality or endorsement signal
+ * about the record, so it never appears in structured data (no rating,
+ * no review fields, no readiness property). Exported for
+ * test/public-seo.test.ts.
+ */
+export function buildChangeJsonLd(detail: Pick<PublicChangeDetail, "record">) {
+  const { record } = detail;
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: record.title,
+      description: record.summary,
+      datePublished: record.sourcePublishedAt,
+      dateModified: record.reviewedAt,
+      mainEntityOfPage: record.permalink,
+      isAccessibleForFree: true,
+      author: { "@type": "Organization", name: "TradeLinks", url: SITE },
+      publisher: { "@type": "Organization", name: "TradeLinks", url: SITE },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "TradeLinks", item: `${SITE}/` },
+        { "@type": "ListItem", position: 2, name: "Changes", item: `${SITE}/changes` },
+        { "@type": "ListItem", position: 3, name: record.title, item: record.permalink },
+      ],
+    },
+  ];
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -86,6 +122,10 @@ export default async function CanonicalChangePage({
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildChangeJsonLd(detail)).replace(/</g, "\\u003c") }}
+      />
       <div>
         <nav
           aria-label="Breadcrumb"

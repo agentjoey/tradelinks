@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PUBLIC_CACHE } from "../../../../src/public-intelligence/cache.js";
 import { getTopicHub } from "../../../../src/public-intelligence/coverage.js";
 import { GuideCard, IntelligenceCard } from "../../IntelligenceCard";
+import { JsonLd, breadcrumbJsonLd } from "../../JsonLd";
 import { StatePanel } from "../../StatePanel";
 
 export const revalidate = PUBLIC_CACHE.canonicalChangeRevalidate;
@@ -42,6 +43,7 @@ export default async function TopicHubPage({ params, searchParams }: PageParams)
 
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "TradeLinks", path: "/" }, { name: "Topics", path: "/topics" }, { name: hub.label, path: `/topics/${hub.slug}` }])} />
       <nav aria-label="Breadcrumb" className="ticker mb-3 flex flex-wrap gap-2 text-label uppercase tracking-[0.08em] text-faint">
         <Link href="/" className="transition-colors duration-200 hover:text-signal">TradeLinks</Link>
         <span>/</span>

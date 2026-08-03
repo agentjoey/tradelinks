@@ -3,6 +3,7 @@ import { getPublishedNotes } from "../src/daily/db.js";
 import { prisma } from "../src/db/client.js";
 import { briefingPath } from "../src/public-intelligence/briefings.js";
 import type { BriefingKind } from "../src/public-intelligence/briefings.js";
+import { listPublishedGuides } from "../src/public-intelligence/guides.js";
 import {
   canRenderHub,
   getCoverageMatrix,
@@ -51,10 +52,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/briefings`, changeFrequency: "daily", priority: 0.7 },
   ];
 
-  // Task 5: published briefings only — draft briefings, empty periods and
-  // the locked guide corpus never appear. (The /guides index itself renders
-  // the honest-absence state and is deliberately not a crawl target while
-  // zero guides are published.)
+  // Task 5: published briefings only — draft briefings and empty periods
+  // never appear. Task 8: published guides via the accepted read layer
+  // (listPublishedGuides returns PUBLISHED only — drafts cannot leak), and
+  // the /guides index becomes a crawl target only while at least one guide
+  // is published; with zero published guides the index renders the
+  // honest-absence state and stays out.
   try {
     const briefings = await prisma.briefing.findMany({
       where: { editorialStatus: "PUBLISHED" },
@@ -69,6 +72,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly",
         priority: 0.7,
       });
+    }
+  } catch {
+    // A read failure must not take the rest of the sitemap down.
+  }
+
+  try {
+    const guides = await listPublishedGuides();
+    if (guides.length > 0) {
+      publicEntries.push({ url: `${SITE}/guides`, changeFrequency: "weekly", priority: 0.7 });
+      for (const guide of guides) {
+        publicEntries.push({
+          url: `${SITE}/guides/${guide.slug}`,
+          lastModified: guide.lastReviewedAt,
+          changeFrequency: "monthly",
+          priority: 0.7,
+        });
+      }
     }
   } catch {
     // A read failure must not take the rest of the sitemap down.

@@ -10,6 +10,7 @@ import {
 } from "../../../../src/domain/intelligence/taxonomy.js";
 import type { ProductCategory } from "@prisma/client";
 import { ReadinessBadge } from "../../ReadinessBadge";
+import { JsonLd, articleJsonLd, breadcrumbJsonLd } from "../../JsonLd";
 import { formatDate } from "../../IntelligenceCard";
 
 export const revalidate = PUBLIC_CACHE.canonicalChangeRevalidate;
@@ -124,6 +125,21 @@ export default async function GuidePage({ params }: { params: { slug: string } }
 
   return (
     <>
+      <JsonLd
+        data={[
+          articleJsonLd({
+            title: guide.title,
+            summary: guide.summary,
+            path: `/guides/${guide.slug}`,
+            dateModified: guide.lastReviewedAt,
+          }),
+          breadcrumbJsonLd([
+            { name: "TradeLinks", path: "/" },
+            { name: "Guides", path: "/guides" },
+            { name: guide.title, path: `/guides/${guide.slug}` },
+          ]),
+        ]}
+      />
       <nav
         aria-label="Breadcrumb"
         className="ticker mb-3 flex flex-wrap gap-2 text-label uppercase tracking-[0.08em] text-faint"

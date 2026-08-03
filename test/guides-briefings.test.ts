@@ -634,7 +634,11 @@ describe("published briefing read path", () => {
     expect(listed.some((entry) => entry.periodKey === draftKey)).toBe(false);
   }, 120000);
 
-  it("sitemap includes published briefing periods only — no drafts, no empty periods, no guides", async () => {
+  it("sitemap includes published briefing periods and published guides — no drafts, no empty periods", async () => {
+    // Task 8 amended the Task 5 contract: published guides ARE sitemap
+    // entries (drafts never are). The old "no guides" assertion encoded the
+    // locked-corpus state and was superseded; the guide fixtures here pin
+    // the new rule with run-scoped rows.
     const periodKey = `${runId}-S1`;
     const v = await seedChangeVersion({});
     await seedQualificationRun({
@@ -653,11 +657,36 @@ describe("published briefing read path", () => {
     });
     await generateBriefing({ kind: "WEEKLY", periodKey: draftOnlyKey });
 
+    for (const [slug, status] of [
+      [`${runId}-published-guide`, "PUBLISHED"],
+      [`${runId}-draft-guide`, "DRAFT"],
+    ] as const) {
+      await prisma.guide.create({
+        data: {
+          slug,
+          title: `Guide ${slug}`,
+          summary: `Summary ${slug}`,
+          bodyMarkdown: "body",
+          platforms: [],
+          productCategories: [],
+          riskAttributes: [],
+          readiness: "MONITORED",
+          editorialStatus: status,
+          lastReviewedAt: new Date("2026-07-20T00:00:00Z"),
+          reviewedBy: "reviewer-y",
+        },
+      });
+    }
+
     const { default: sitemap } = await import("../app/sitemap");
     const urls = (await sitemap()).map((entry) => entry.url);
     expect(urls.some((u) => u.endsWith(briefingPath("WEEKLY", periodKey)))).toBe(true);
     expect(urls.some((u) => u.endsWith(briefingPath("WEEKLY", draftOnlyKey)))).toBe(false);
-    expect(urls.some((u) => u.includes("/guides/"))).toBe(false);
     expect(urls.some((u) => u.endsWith(briefingPath("WEEKLY", "2026-W99")))).toBe(false);
+    // Published guide is an entry (and the /guides index is too, now that a
+    // published guide exists); the draft guide never appears.
+    expect(urls.some((u) => u.endsWith(`/guides/${runId}-published-guide`))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/guides"))).toBe(true);
+    expect(urls.some((u) => u.includes(`${runId}-draft-guide`))).toBe(false);
   }, 120000);
 });

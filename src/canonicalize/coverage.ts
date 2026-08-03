@@ -15,7 +15,18 @@
  *
  * `seedPhase1Coverage` upserts the ten Phase 1 capability keys from the
  * Source Readiness Matrix. It is idempotent and NEVER rewrites a stored
- * readiness: re-seeding refreshes summaries, gaps, and source links only.
+ * readiness that carries meaning beyond the seed: a human review
+ * (`lastReviewedAt` past the epoch sentinel) or an automated STALE
+ * transition always survives re-seeding. A never-reviewed, non-STALE row
+ * merely holds the seed's reviewed ceiling, so re-seeding syncs it when the
+ * contract's ceiling changes (owner decision 4 of 2026-08-02 regraded
+ * platform:amazon-us UNAVAILABLE → MONITORED this way).
+ *
+ * `CAPABILITY_HARD_CEILINGS` pins grades no automated path may cross:
+ * platform:amazon-us can never reach VERIFIED while the authoritative
+ * Seller Central channel is login-walled. The clamp runs inside
+ * `recomputeCapabilityReadiness`, so it holds even against an erroneous
+ * stored raise.
  */
 
 import type { Prisma } from "@prisma/client";
@@ -53,7 +64,12 @@ const CAPABILITY_SEEDS: CapabilitySeed[] = [
   {
     key: "platform:amazon-us",
     platform: "AMAZON",
-    readiness: "UNAVAILABLE",
+    // Owner decision 4 (2026-08-02): a lawful public route exists (public
+    // announcements, pricing-page diffs, F01/F11) but the authoritative
+    // Seller Central channel is login-walled — that is MONITORED by the
+    // coverage page's own glossary, and the hard ceiling below keeps it
+    // from ever reaching VERIFIED while the login wall stands.
+    readiness: "MONITORED",
     summary: "Amazon US seller-policy coverage.",
     knownGaps: [
       "No authorized Seller Central policy channel — public announcements and pricing-page diffs only",
@@ -152,6 +168,35 @@ const CAPABILITY_SEEDS: CapabilitySeed[] = [
 
 export const PHASE1_CAPABILITY_KEYS = CAPABILITY_SEEDS.map((seed) => seed.key);
 
+/**
+ * Grades no path in this module may cross, regardless of source health or a
+ * stored raise. `platform:amazon-us`: the authoritative Seller Central
+ * channel is login-walled, so VERIFIED is unreachable by definition — the
+ * coverage page glossary reserves VERIFIED for confirmed-to-that-standard
+ * coverage. STALE is a transitional state, never a ceiling target.
+ */
+export const CAPABILITY_HARD_CEILINGS: Readonly<Record<string, ReadinessLevel>> = {
+  "platform:amazon-us": "MONITORED",
+};
+
+const GRADE_RANK: Partial<Record<ReadinessLevel, number>> = {
+  UNAVAILABLE: 0,
+  EXPERIMENTAL: 1,
+  MONITORED: 2,
+  VERIFIED: 3,
+};
+
+/** Clamp a grade to the capability's hard ceiling (no-op when none is set). */
+export function clampToHardCeiling(key: string, readiness: ReadinessLevel): ReadinessLevel {
+  const ceiling = CAPABILITY_HARD_CEILINGS[key];
+  if (!ceiling) return readiness;
+  const rank = GRADE_RANK[readiness];
+  const ceilingRank = GRADE_RANK[ceiling]!;
+  // STALE has no rank: it is a transitional state, not a grade to clamp.
+  if (rank == null) return readiness;
+  return rank > ceilingRank ? ceiling : readiness;
+}
+
 // Fail fast at module load: a capability must never reference a source that
 // has no Phase 1 contract, and every capability must carry an explicit gap.
 for (const seed of CAPABILITY_SEEDS) {
@@ -249,7 +294,17 @@ export async function seedPhase1Coverage(): Promise<void> {
   for (const seed of CAPABILITY_SEEDS) {
     const wanted = new Set(seed.sources);
     const existing = capByKey.get(seed.key);
+    // A stored readiness is rewritten by seeding ONLY when it carries no
+    // meaning beyond the seed: never human-reviewed (the epoch sentinel) and
+    // not holding an automated STALE transition. Human reviews and STALE
+    // rows always survive re-seeding.
+    const syncSeedCeiling =
+      existing != null &&
+      existing.lastReviewedAt.getTime() === 0 &&
+      existing.readiness !== "STALE" &&
+      existing.readiness !== seed.readiness;
     const capability = existing &&
+      !syncSeedCeiling &&
       existing.platform === (seed.platform ?? null) &&
       existing.category === (seed.category ?? null) &&
       existing.summary === seed.summary &&
@@ -257,20 +312,23 @@ export async function seedPhase1Coverage(): Promise<void> {
       ? existing
       : await prisma.coverageCapability.upsert({
           where: { key: seed.key },
-          // Never rewrite readiness/lastReviewedAt — those belong to review
-          // and to automated stale transitions, not to seeding.
+          // Never rewrite a human-reviewed or STALE readiness — those belong
+          // to review and to automated stale transitions, not to seeding.
           update: {
             platform: seed.platform ?? null,
             category: seed.category ?? null,
             summary: seed.summary,
             knownGaps: seed.knownGaps,
+            ...(syncSeedCeiling
+              ? { readiness: clampToHardCeiling(seed.key, seed.readiness) }
+              : {}),
           },
           create: {
             key: seed.key,
             market: "US",
             platform: seed.platform ?? null,
             category: seed.category ?? null,
-            readiness: seed.readiness,
+            readiness: clampToHardCeiling(seed.key, seed.readiness),
             summary: seed.summary,
             knownGaps: seed.knownGaps,
             lastReviewedAt: new Date(0), // seeded, never human-reviewed yet
@@ -331,7 +389,13 @@ export async function recomputeCapabilityReadiness(
 
   const stale = capability.readiness !== "STALE" &&
     capability.sources.some((link) => isSourceOverdue(link.source, now));
-  const effective: ReadinessLevel = stale ? "STALE" : capability.readiness;
+  // The hard ceiling applies last: even an erroneous stored raise (e.g. a
+  // VERIFIED that snuck past review) is clamped back — automated checks only
+  // ever lower, and the ceiling defines how far they may leave a grade.
+  const effective: ReadinessLevel = clampToHardCeiling(
+    capability.key,
+    stale ? "STALE" : capability.readiness,
+  );
 
   if (effective !== capability.readiness) {
     await prisma.coverageCapability.update({

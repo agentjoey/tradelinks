@@ -35,14 +35,14 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(SITE),
     title: "TradeLinks — Cross-Border Intelligence Wire",
     description:
-      "Real-time regulatory, platform-policy, logistics and trend alerts for cross-border sellers across 6 regions.",
+      "Evidence-backed US market-entry intelligence for cross-border sellers — regulatory, platform-policy and compliance changes with sources, readiness and review dates.",
     alternates: {
       canonical: alt.canonical,
       languages: { en: alt.languages.en, "zh-Hans": alt.languages.zh, "x-default": alt.xDefault },
     },
     openGraph: {
       title: "TradeLinks",
-      description: "Global cross-border e-commerce alerts & trend signals.",
+      description: "Evidence-backed US market intelligence for cross-border sellers.",
       type: "website",
       locale: lang === "zh" ? "zh_CN" : "en_US",
     },

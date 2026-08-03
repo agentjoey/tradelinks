@@ -7,6 +7,7 @@ import { getHub } from "../../../src/public-intelligence/coverage.js";
 import type { PublicHub } from "../../../src/public-intelligence/coverage.js";
 import type { CanonicalPublicRecord } from "../../../src/public-intelligence/types.js";
 import { CoveragePanel } from "../CoveragePanel";
+import { JsonLd, breadcrumbJsonLd } from "../JsonLd";
 import {
   CompactChangeRow,
   GuideCard,
@@ -101,6 +102,7 @@ export default async function UsMarketHubPage() {
 
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "TradeLinks", path: "/" }, { name: hub.title, path: "/us" }])} />
       <nav aria-label="Breadcrumb" className="ticker mb-3 flex flex-wrap gap-2 text-label uppercase tracking-[0.08em] text-faint">
         <Link href="/" className="transition-colors duration-200 hover:text-signal">TradeLinks</Link>
         <span>/</span>

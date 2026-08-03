@@ -114,15 +114,46 @@ describe("seedPhase1Coverage", () => {
     expect(PHASE1_CAPABILITY_KEYS).toHaveLength(10);
   }, 60000);
 
-  it("never seeds Amazon policy above UNAVAILABLE or BSR above EXPERIMENTAL", async () => {
+  it("seeds Amazon policy at MONITORED (hard-ceilinged below VERIFIED) and BSR at EXPERIMENTAL", async () => {
+    // Owner decision 4 (2026-08-02) + Public Intelligence Task 8 Debt 1:
+    // platform:amazon-us is MONITORED — a lawful public route exists but the
+    // authoritative channel is login-walled, so it can never reach VERIFIED.
     const amazon = await prisma.coverageCapability.findUniqueOrThrow({
       where: { key: "platform:amazon-us" },
     });
     const bsr = await prisma.coverageCapability.findUniqueOrThrow({
       where: { key: "demand:amazon-bsr" },
     });
-    expect(amazon.readiness).toBe("UNAVAILABLE");
+    expect(amazon.readiness).toBe("MONITORED");
     expect(bsr.readiness).toBe("EXPERIMENTAL");
+  }, 60000);
+
+  it("re-seeding lifts a never-reviewed, non-STALE stored grade to the seed ceiling", async () => {
+    // Debt 1's re-seed path: the stored UNAVAILABLE grade predates owner
+    // decision 4. A row that was never human-reviewed (lastReviewedAt is the
+    // epoch sentinel) and is not carrying an automated STALE transition
+    // tracks the seed's reviewed ceiling; human reviews and STALE rows never
+    // move. Snapshot/restore so other suites see the contract state.
+    const before = await prisma.coverageCapability.findUniqueOrThrow({
+      where: { key: "platform:amazon-us" },
+    });
+    try {
+      await prisma.coverageCapability.update({
+        where: { key: "platform:amazon-us" },
+        data: { readiness: "UNAVAILABLE", lastReviewedAt: new Date(0) },
+      });
+      await seedPhase1Coverage();
+      const after = await prisma.coverageCapability.findUniqueOrThrow({
+        where: { key: "platform:amazon-us" },
+      });
+      expect(after.id).toBe(before.id);
+      expect(after.readiness).toBe("MONITORED");
+    } finally {
+      await prisma.coverageCapability.updateMany({
+        where: { id: before.id },
+        data: { readiness: before.readiness, lastReviewedAt: before.lastReviewedAt },
+      });
+    }
   }, 60000);
 
   it("never seeds the US market, Shopify, or any launch category above MONITORED", async () => {
@@ -278,6 +309,71 @@ describe("recomputeCapabilityReadiness", () => {
     expect(stored.readiness).toBe("STALE");
   }, 60000);
 
+  it("holds the platform:amazon-us hard ceiling below VERIFIED even with every source healthy", async () => {
+    // Debt 1 (Public Intelligence Task 8): while the authoritative Seller
+    // Central channel is login-walled, platform:amazon-us can never reach
+    // VERIFIED — not by healthy sources (automation never promotes anyway)
+    // and not by an erroneous stored raise (the recompute clamps it back).
+    // Touches the shared capability row and its four contract sources, so
+    // snapshot everything and restore in finally.
+    const capBefore = await prisma.coverageCapability.findUniqueOrThrow({
+      where: { key: "platform:amazon-us" },
+      include: { sources: { include: { source: true } } },
+    });
+    const sourceBefore = capBefore.sources.map((link) => ({
+      id: link.source.id,
+      isActive: link.source.isActive,
+      freshnessSlaMinutes: link.source.freshnessSlaMinutes,
+      lastOkAt: link.source.lastOkAt,
+    }));
+    try {
+      // Every required source healthy and inside its SLA.
+      for (const link of capBefore.sources) {
+        await prisma.source.update({
+          where: { id: link.source.id },
+          data: {
+            isActive: true,
+            freshnessSlaMinutes: link.source.freshnessSlaMinutes ?? 720,
+            lastOkAt: minutesAgo(1),
+          },
+        });
+      }
+
+      // Healthy sources never promote the seeded ceiling.
+      await prisma.coverageCapability.update({
+        where: { id: capBefore.id },
+        data: { readiness: "MONITORED" },
+      });
+      await expect(recomputeCapabilityReadiness("platform:amazon-us", NOW)).resolves.toBe("MONITORED");
+
+      // Even a stored VERIFIED (an erroneous raise) is clamped back below it.
+      await prisma.coverageCapability.update({
+        where: { id: capBefore.id },
+        data: { readiness: "VERIFIED" },
+      });
+      await expect(recomputeCapabilityReadiness("platform:amazon-us", NOW)).resolves.toBe("MONITORED");
+      const stored = await prisma.coverageCapability.findUniqueOrThrow({
+        where: { id: capBefore.id },
+      });
+      expect(stored.readiness).toBe("MONITORED");
+    } finally {
+      await prisma.coverageCapability.updateMany({
+        where: { id: capBefore.id },
+        data: { readiness: capBefore.readiness, lastReviewedAt: capBefore.lastReviewedAt },
+      });
+      for (const s of sourceBefore) {
+        await prisma.source.updateMany({
+          where: { id: s.id },
+          data: {
+            isActive: s.isActive,
+            freshnessSlaMinutes: s.freshnessSlaMinutes,
+            lastOkAt: s.lastOkAt,
+          },
+        });
+      }
+    }
+  }, 60000);
+
   it("accepts the capability id as well as the key", async () => {
     const cap = await seedFixtureCapability({
       readiness: "MONITORED",
@@ -316,7 +412,23 @@ describe("refreshCapabilityReadiness (health integration)", () => {
         sources: [{ slaMinutes: 24 * 60, lastOkAt: minutesAgo(30) }],
       });
 
-      const results = await refreshCapabilityReadiness(NOW);
+      // Cross-suite race guard (test code only, per the standing rule): a
+      // parallel suite can delete its own fixture capability between
+      // refreshCapabilityReadiness' list-all and its per-row recompute,
+      // which then throws "unknown capability" on a row that no longer
+      // exists. Retry the refresh rather than product-hardening a window
+      // that cannot occur in production (curated capabilities are never
+      // deleted).
+      let results: Awaited<ReturnType<typeof refreshCapabilityReadiness>> | null = null;
+      for (let attempt = 0; attempt < 4 && results === null; attempt++) {
+        try {
+          results = await refreshCapabilityReadiness(NOW);
+        } catch (e) {
+          if (!String(e).includes("unknown capability")) throw e;
+          await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+        }
+      }
+      if (results === null) throw new Error("refreshCapabilityReadiness kept hitting deleted fixtures");
       const byId = new Map(results.map((r) => [r.id, r.readiness]));
       expect(byId.get(stale.id)).toBe("STALE");
       expect(byId.get(healthy.id)).toBe("MONITORED");
