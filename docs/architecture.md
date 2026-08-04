@@ -263,3 +263,84 @@ point (or from the untouched production parent as appropriate); never overwrite
 production in place.
 
 **Accepted verification snapshot (2026-07-28).** Repeated backfill dry-runs produced fingerprint `7b91ebd2cf2a6179c42c7f67af964cc3ae38318e96b3a1b905a87880c7ec5332`, all five pending-write counters were zero after apply/replay, and 18 legacy Alerts were explicitly rejected as `SOURCE_NOT_FOUND`. The integrated gate passed Prisma validation, TypeScript, 53 test files / 426 tests, and the Next.js production build. See `docs/superpowers/verification/2026-07-28-tradelinks-phase1-foundation-verification.md`.
+
+## Phase 1 Public Intelligence (accepted, merged to `main`, not on production)
+
+Migration `0013_phase1_public_content` is additive and forward-only: five new
+tables, zero destructive statements, nothing dropped or renamed. It sits beside
+both the legacy tables and the `0011`/`0012` canonical chain.
+
+> **Numbering trap.** The plan calls the *retirement* migration
+> `0013_retire_wire_radar_daily`. `0013` is taken by this one. The retirement
+> migration is **`0014`** and has not been written.
+
+```
+CanonicalChangeVersion ──→ BriefingEntry ──→ Briefing
+Guide ──→ GuideEvidence ──→ Source
+LegacyRedirect (old path → new path, default 308)
+```
+
+- `Guide` / `GuideEvidence` — evergreen sourced guides. A guide is publishable
+  only with at least two official source records, a non-null `reviewedBy` and
+  `lastReviewedAt`, and readiness at `MONITORED` or better. The Phase 1 corpus
+  is nine machine-authored **drafts** that fail every one of those gates by
+  construction and therefore cannot render publicly.
+- `Briefing` / `BriefingEntry` — weekly, monthly and conditional-daily reports.
+  Each entry **pins a version id**, so a briefing is a stable snapshot rather
+  than a live query. A correction produces a new fingerprint and review event;
+  published briefings are never edited in place. Weekly consumes the Operations
+  shadow-qualification run through `PipelineRun` (`jobType: BRIEFING`,
+  `outputFingerprint`, ordered ids in `metadata`) — never by importing Track A
+  code. No finished run means no weekly briefing, never a locally computed
+  ordering.
+- `LegacyRedirect` — old-path → new-path rows for the cutover, default status
+  308. Written by Task 9b only; Task 9a ships the plan, not the rows.
+
+### The public read contract
+
+Every public surface — pages, RSS, API v1, briefings, Telegram — reads through
+one serializer, and the invariant is enforced in `src/public-intelligence/query.ts`:
+
+```
+isCurrent AND editorialStatus = PUBLISHED AND reviewedAt IS NOT NULL
+       AND readiness IN ('MONITORED','VERIFIED')
+```
+
+Nothing else is public. The Foundation backfill deliberately produces
+`EXPERIMENTAL` / `IN_REVIEW` / non-current versions with `SECONDARY_CONTEXT`
+evidence, so **backfilled rows are not publishable content** — only human
+editorial review through `/admin/review` moves a version across that line.
+
+Two consequences worth stating because they look like bugs and are not:
+
+- A hub whose `CoverageCapability` is below `MONITORED` — including `STALE` from
+  overdue sources — returns a **real 404**, not an empty page. A route-group
+  `loading.tsx` above such a route would flush the shell before `notFound()` and
+  turn that into a soft 200; `test/e2e/public-hubs.spec.ts` locks against it.
+- With no data pipeline running, the public site is largely empty *by design*.
+  That is the product refusing to imply coverage it does not have.
+
+### Theme default
+
+`app/globals.css` carries light values on `:root` and dark on
+`[data-theme="dark"]` — inverted from the BL-045 arrangement. The `tl-theme`
+cookie, SSR `data-theme` attribute and localStorage fallback are unchanged, and
+`prefers-color-scheme` is deliberately not read.
+
+### Test isolation
+
+DB-backed suites run against one Postgres schema per vitest worker
+(`vitest_w<N>`), provisioned by `test/global-setup.ts` and selected by
+`test/setup-db-schema.ts`. Product code has no knowledge of tests;
+`refreshCapabilityReadiness` keeps its whole-table semantics. Before this,
+parallel suites sharing one schema produced five distinct nondeterministic
+failures across Tasks 5–9a. See
+`docs/superpowers/verification/2026-08-02-phase1-public-intelligence/test-isolation.md`.
+
+### Rollback
+
+Everything in this milestone is additive. A code rollback leaves the five new
+tables in place — never run a down migration. Staging pre-migration checkpoint:
+`staging-pre-0013-public-content` (`br-shy-band-aol21p63`, parent
+`br-delicate-snow-aoi9sgtw`, expires 2026-08-18). Production has **not** received
+`0013`.

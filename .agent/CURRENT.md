@@ -1,18 +1,42 @@
 # Current Status — TradeLinks
 
-## 🆕 Public Intelligence Task 1 (2026-07-29)
+Version:        v0.12.0 + Phase 1 Foundation + Public Intelligence（已合并 main，未上生产）
+Sprint:         Phase 1 Product Refresh — Public Intelligence
+Sprint Status:  ✅ 10/10 Pact tasks accepted · 已合并 `main` `08c0d6b` · staging 已部署验证 · **production 未变更**
+Last Updated:   2026-08-04 by Claude Opus 5（Public Intelligence 10 任务验收、合并 main、staging 部署与验证）
+Sprint File:    docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md
+验证记录:        docs/superpowers/verification/2026-08-02-phase1-public-intelligence/
+切换 Runbook:    docs/superpowers/verification/2026-08-02-phase1-public-intelligence/cutover-runbook.md
+Agent Handoff:  .agent/HANDOFF.md
+Efficiency:     docs/superpowers/plans/2026-07-28-tradelinks-development-efficiency-optimization.md（计划已写，门禁尚未启用）
 
-- **public-content-schema**: ✅ Accepted by independent Claude Opus 5 review after two rework rounds. Migration 0013 is additive (BriefingKind plus Guide/GuideEvidence/Briefing/BriefingEntry/LegacyRedirect); CanonicalPublicRecord, serializer, query, cursor pagination, and PUBLIC_CACHE are implemented. 54 new tests pass; the final targeted gate is 76/76 including canonical-publication regression coverage. The temporary Neon branch was reset after a reviewer shadow-database incident, then migrations 0011–0013 and all final gates were replayed successfully. Production and staging were not changed. Branch: feat-phase1-public-intelligence.
+## Phase 1 Public Intelligence（2026-08-04，已合并 main，production 未切换）
 
----
+**10/10 Pact 任务 accepted。** 实现 worker 为 Kimi Code `kimi-code/k3`（Task 1 与 Task 10 提交由 OpenCode `deepseek/deepseek-v4-pro`），独立 reviewer 为 Claude Opus 5 全程。逐任务审查记录见上方验证目录。
 
-Version:        v0.12.0 + Phase 1 Foundation（未发布）
-Sprint:         Phase 1 Product Refresh — Foundation
-Sprint Status:  ✅ 8/8 Pact tasks accepted · Draft PR #3 · staging 已部署 · production 未变更
-Last Updated:   2026-07-28 by Codex (Foundation staging migration、Preview 与冒烟验收完成)
-Sprint File:    docs/superpowers/plans/2026-07-23-tradelinks-phase1-foundation.md
+- **公开产品已完整**：`/` `/changes` `/changes/[slug]` `/us` `/amazon-us` `/shopify-us` `/categories(/[c])` `/topics(/[t])` `/guides(/[slug])` `/briefings(weekly|monthly|daily)` `/coverage`，加 RSS 四路、匿名 API v1、OpenAPI 3.1、Agent Skill v1.0.0。
+- **设计门禁**：Direction A 配色 × Direction B3 证据卡，**亮色默认**（`app/globals.css` 的 `:root` 与 `[data-theme="dark"]` 已对调）。`DESIGN.md` 为契约。
+- **测试套件已确定性**：schema-per-worker 隔离（`test/global-setup.ts` + `test/setup-db-schema.ts`）。全量 **778 passed / 2 failed / 780**，五轮连跑失败集逐字节一致；仅剩的 2 条是 `foundation-backfill` 的端点白名单拒绝，设计如此。代价是全量从 ~380s 变 ~450–550s，换取可信度。
+- **内链零死链**：`test/e2e/public-link-integrity.spec.ts` 爬 22 页 25 链，0 个非 200。
+- **指南语料库为不可发布草稿**：9 篇（1558–1857 词），`readiness: EXPERIMENTAL` / `reviewedBy: null` / `citationsVerified: false`，`publishGuide` 对每个条件分别抛错，`--import` 全数拒绝。`/guides` 渲染诚实缺席态。
 
-## Phase 1 Foundation 状态（2026-07-28，未部署）
+### staging 状态（2026-08-04）
+
+- Git `staging` 已快进至 `08c0d6b`；Vercel Preview 构建 Ready，稳定 alias `https://tradelinks-git-staging-agentjoeys-projects.vercel.app`（保持 Deployment Protection）。
+- Neon staging `br-delicate-snow-aoi9sgtw` / `ep-odd-violet-ao98q1jy`：**13/13 migrations**（本轮应用 `0013_phase1_public_content`，纯增量、5 张新表、0 条破坏性语句）。迁移前检查点 `br-shy-band-aol21p63`，2026-08-18 自动过期。
+- 新增 Vercel 变量 `PUBLIC_API_CURSOR_SECRET`（Preview/staging 作用域，32 字节）。`PUBLIC_CUTOVER_ENABLED` **故意不设**——默认 false，legacy 路由在验证期保持可用。
+- 路由实测：新公开面、机器契约、`robots.txt`/`sitemap.xml` 全 200；`/feed.xml` 308；`/wire` `/trends` `/daily` `/subscribe` 仍 200。
+- **`/us` `/amazon-us` `/shopify-us` 返回 404，这是产品在按设计工作**：staging 无 worker 进程（Railway 为生产专用），源最后成功抓取为 2026-07-02、27 个源从未成功，readiness 判为 `STALE`，而 `canRenderHub` 只接受 `MONITORED`/`VERIFIED`。没有新鲜来源就不假装有覆盖。
+
+### 生产切换（Task 9b）未开始，两条前置条件未满足
+
+切换机器已就绪且完全可逆——重定向映射在 `PUBLIC_CUTOVER_ENABLED` 开关后（默认 off，未接入任何路由）、`planPublicBackfill` 仅 dry-run 无 `--apply`、`0014` 退役 migration **尚未编写**。
+
+- ⛔ **Operations 七天 P0 报告从未运行**（Track A）。
+- ⛔ **生产零条可发布 canonical 记录**：`CanonicalChange` 0，公开契约要求 `isCurrent` + `PUBLISHED` + `reviewedAt` + `MONITORED|VERIFIED`。Foundation backfill 产出 `EXPERIMENTAL`/`IN_REVIEW`/非 current，**按设计不满足**该契约。今日切换 = 用空站替换有内容的站（生产 legacy 现有 570 alerts / 22 daily notes / 3743 items）。
+- 使可发布内容存在，需人工在 `/admin/review` 审核约 570 条 alert 与 22 篇日报——**数周编辑工作量，不是部署步骤**。详见 cutover-runbook.md。
+
+## Phase 1 Foundation 状态（2026-07-28，production 未部署）
 
 - Pact feature `phase1-foundation` 的 8 个任务已全部由 Claude Opus 5 独立接受；实现分支为 `feat-phase1-foundation`，Draft PR 为 [#3](https://github.com/agentjoey/tradelinks/pull/3)。本地 `main` 已 fast-forward 验证，远端 `main` 尚未合并。
 - Prisma migrations `0011_phase1_intelligence_foundation` 与 `0012_phase1_publication_review_fields` 已在获批的非生产 Neon 隔离分支验证，并已应用到 Neon staging；production 数据库未变更。
