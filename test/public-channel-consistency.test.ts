@@ -217,22 +217,12 @@ describe("listPublicChanges produces channel-consistent records", () => {
   it("every item in a listing has the same fingerprint computed by the serializer", async () => {
     await seedPublicVersion();
 
-    // Standing rule (Tasks 6-9): parallel suites share this branch, and
-    // another suite's FK-safe cleanup can delete a row between Prisma's
-    // relation fetches ("Inconsistent query result"). Retry that exact
-    // string in test code only — curated public rows are never deleted in
-    // production. Same pattern as test/public-feeds.test.ts's withDbRetry.
-    let page: Awaited<ReturnType<typeof listPublicChanges>> | null = null;
-    for (let attempt = 0; attempt < 4 && page === null; attempt++) {
-      try {
-        page = await listPublicChanges({ pool: "verified", limit: 100 });
-      } catch (e) {
-        if (!String(e).includes("Inconsistent query result")) throw e;
-        await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
-      }
-    }
-    if (page === null) throw new Error("listPublicChanges kept hitting deleted rows");
-    // Filter to run-scoped slugs to avoid cross-suite flakiness
+    // Task 10: each vitest worker has its own schema, so no other suite can
+    // delete rows mid-query; the "Inconsistent query result" retry that used
+    // to guard this read is retired.
+    const page = await listPublicChanges({ pool: "verified", limit: 100 });
+    // Filter to run-scoped slugs: the listing legitimately sees rows left by
+    // earlier files that shared this worker's schema.
     const runItems = page.items.filter((item) => item.slug.startsWith(runId));
     expect(runItems.length).toBeGreaterThan(0);
 

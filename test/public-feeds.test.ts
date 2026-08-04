@@ -30,12 +30,11 @@ import { GET as platformFeedGET } from "../app/feeds/platforms/[platform]/route.
 //
 // Requires DATABASE_URL pointing at an isolated branch with migration 0012+.
 //
-// Fixture strategy for the shared database branch: all rows are written in
-// ONE beforeAll burst (minimising the window in which this file's inserts
-// can interleave with a parallel suite's queries) and carry a far-future
-// reviewedAt so they always sort into every feed's top-50 — making this
-// suite independent of how many verified rows other suites leave behind.
-// All ids are run-scoped and cleaned in FK-safe order in afterAll.
+// Fixture strategy: all rows are written in ONE beforeAll burst and carry a
+// far-future reviewedAt so they always sort into every feed's top-50 — feeds
+// are unscoped top-N listings, and this keeps the suite independent of any
+// rows left behind by earlier files on this worker's schema. All ids are
+// run-scoped and cleaned in FK-safe order in afterAll.
 
 const prisma = new PrismaClient();
 
@@ -222,24 +221,6 @@ function parseXml(xml: string): Document {
   return doc;
 }
 
-// Parallel suites share one database branch; another file's FK-safe cleanup
-// can delete a row between Prisma's relation fetches ("Inconsistent query
-// result"). That is a test-environment artifact — curated public rows are
-// never deleted in production — so retry it here rather than in product code.
-async function withDbRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
-  let lastErr: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      lastErr = e;
-      if (!String(e).includes("Inconsistent query result")) throw e;
-      await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-    }
-  }
-  throw lastErr;
-}
-
 function findItem(doc: Document, guid: string): Element {
   const items = [...doc.querySelectorAll("item")];
   const item = items.find((i) => i.querySelector("guid")?.textContent === guid);
@@ -281,7 +262,7 @@ function fakeRecord(i: number): CanonicalPublicRecord {
 
 describe("rendered XML is byte-identical to the serializer output", () => {
   it("guid, link and fingerprint in the XML string equal the serializer's, exactly", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     const xml = await res.text();
 
     // Over the rendered STRING, not a projection object.
@@ -297,7 +278,7 @@ describe("rendered XML is byte-identical to the serializer output", () => {
   }, 60000);
 
   it("renders every item field the contract requires", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     const doc = parseXml(await res.text());
     const item = findItem(doc, recAmazonPets.versionId);
 
@@ -317,7 +298,7 @@ describe("rendered XML is byte-identical to the serializer output", () => {
 
 describe("XML escaping", () => {
   it("round-trips a title containing &, <, a straight quote and an apostrophe", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     const xml = await res.text();
 
     expect(xml).toContain("&amp;");
@@ -339,7 +320,7 @@ describe("XML escaping", () => {
 
 describe("feed contract", () => {
   it("serves RSS content type and cache headers derived from PUBLIC_CACHE only", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/rss+xml; charset=utf-8");
     expect(res.headers.get("cache-control")).toBe(
@@ -381,7 +362,7 @@ describe("feed contract", () => {
   });
 
   it("change feeds never include monitored-pool records", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     const xml = await res.text();
     expect(xml).not.toContain(recMonitoredId);
   }, 60000);
@@ -398,7 +379,7 @@ describe("feed contract", () => {
   });
 
   it("quotes evidence links and normalized data, never third-party full text or private fields", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "changes" }));
+    const res = await renderPublicFeed({ kind: "changes" });
     const xml = await res.text();
 
     expect(xml).toContain(recAmazonPets.evidence[0]!.url.replace(/&/g, "&amp;"));
@@ -415,7 +396,7 @@ describe("feed contract", () => {
 
 describe("scoped feeds", () => {
   it("platform scope includes only that platform's records", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "platform", slug: "amazon-us", platform: "AMAZON" }));
+    const res = await renderPublicFeed({ kind: "platform", slug: "amazon-us", platform: "AMAZON" });
     const xml = await res.text();
     const doc = parseXml(xml);
 
@@ -428,7 +409,7 @@ describe("scoped feeds", () => {
   }, 60000);
 
   it("category scope includes only that category's records", async () => {
-    const res = await withDbRetry(() => renderPublicFeed({ kind: "category", slug: "pet-supplies", category: "PET_SUPPLIES" }));
+    const res = await renderPublicFeed({ kind: "category", slug: "pet-supplies", category: "PET_SUPPLIES" });
     const xml = await res.text();
     const doc = parseXml(xml);
 
@@ -477,16 +458,16 @@ describe("scope resolution", () => {
 
 describe("route handlers", () => {
   it("changes.xml returns 200 RSS", async () => {
-    const res = await withDbRetry(() => changesFeedGET());
+    const res = await changesFeedGET();
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/rss+xml; charset=utf-8");
     parseXml(await res.text());
   }, 60000);
 
   it("platform route: 200 with suffix, 404 without it or for unknown scopes", async () => {
-    const ok = await withDbRetry(() => platformFeedGET(new Request("http://localhost/feeds/platforms/amazon-us.xml"), {
+    const ok = await platformFeedGET(new Request("http://localhost/feeds/platforms/amazon-us.xml"), {
       params: { platform: "amazon-us.xml" },
-    }));
+    });
     expect(ok.status).toBe(200);
     parseXml(await ok.text());
 
@@ -502,9 +483,9 @@ describe("route handlers", () => {
   }, 60000);
 
   it("category route: 200 with suffix, 404 without it", async () => {
-    const ok = await withDbRetry(() => categoryFeedGET(new Request("http://localhost/feeds/categories/pet-supplies.xml"), {
+    const ok = await categoryFeedGET(new Request("http://localhost/feeds/categories/pet-supplies.xml"), {
       params: { category: "pet-supplies.xml" },
-    }));
+    });
     expect(ok.status).toBe(200);
     parseXml(await ok.text());
 
@@ -515,7 +496,7 @@ describe("route handlers", () => {
   }, 60000);
 
   it("briefings.xml lists published briefings only, linking canonical briefing pages", async () => {
-    const res = await withDbRetry(() => briefingsFeedGET());
+    const res = await briefingsFeedGET();
     expect(res.status).toBe(200);
     const xml = await res.text();
     const doc = parseXml(xml);

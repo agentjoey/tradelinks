@@ -25,7 +25,7 @@ import type { ChannelSendResult } from "../src/push/send.js";
 // Fixture strategy matches test/public-feeds.test.ts: one beforeAll burst,
 // run-scoped ids, far-future reviewedAt, FK-safe teardown. The `q` filter
 // (the read model's own vocabulary — not a new query shape) isolates this
-// suite's fixtures from parallel suites sharing the branch.
+// suite's fixtures from rows earlier files left on this worker's schema.
 
 const prisma = new PrismaClient();
 
@@ -89,7 +89,7 @@ async function seedVersion(overrides: SeedOverrides = {}): Promise<CanonicalPubl
       version: 1,
       isCurrent: overrides.isCurrent ?? true,
       // Every fixture title carries the runId so the read model's own `q`
-      // filter can isolate this suite from parallel suites on the branch.
+      // filter can isolate this suite from other files' rows on the schema.
       title: overrides.title ?? `${runId} eligible change ${seedId}`,
       summary: "A concise public summary",
       signalType: "REGULATORY",
@@ -111,9 +111,8 @@ async function seedVersion(overrides: SeedOverrides = {}): Promise<CanonicalPubl
       editorialStatus: overrides.editorialStatus ?? "PUBLISHED",
       // Fixed PAST review date: this suite isolates its fixtures with the
       // q-filter, so they never need to sort to the top of the unscoped
-      // verified pool — and a past date keeps them OUT of other suites'
-      // top-N windows, minimising cross-suite ordering races on the shared
-      // branch (test/public-read-model.test.ts reads the unscoped pool).
+      // verified pool — and a past date keeps them clear of any unscoped
+      // top-N window an earlier file on this worker may have asserted on.
       reviewedAt: overrides.reviewed === false ? null : new Date("2026-07-20T00:00:00Z"),
       reviewedBy: "reviewer-telegram-1",
     },

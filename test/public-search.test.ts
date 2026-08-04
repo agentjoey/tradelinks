@@ -9,8 +9,8 @@ import { afterAll, describe, expect, it } from "vitest";
 // FK-safe order in afterAll, exactly as the existing DB suites do.
 //
 // Search scoping trick: every seeded title embeds the unique runId token, so
-// `q=<token>` scopes any search to this suite's rows even when other suites
-// share the branch concurrently.
+// `q=<token>` scopes any search to this suite's rows regardless of what
+// earlier files left on this worker's schema.
 
 import {
   getPublicChangeDetail,
@@ -103,8 +103,9 @@ async function seedChange(opts: {
       generalActionTemplate: opts.actionTemplate ?? null,
       actionTemplateReviewedAt: opts.actionTemplateReviewedAt ?? null,
       editorialStatus: (opts.editorialStatus ?? "PUBLISHED") as any,
-      // Fixed date below the 2026-07-20 used by other suites: run-scoped rows
-      // never outrank theirs in global reviewedAt-desc pools.
+      // Fixed date below the 2026-07-20 used by other DB suites: leftovers
+      // from earlier files on this worker never outrank this run's rows in
+      // reviewedAt-desc pools.
       reviewedAt: opts.reviewedAt ?? new Date("2026-07-10T00:00:00Z"),
       reviewedBy: "reviewer-1",
     },

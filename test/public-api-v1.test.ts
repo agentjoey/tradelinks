@@ -36,10 +36,8 @@ import { serializeCanonicalVersion } from "../src/public-intelligence/serialize.
 //
 // Fixture strategy mirrors test/public-feeds.test.ts: one beforeAll burst,
 // run-scoped ids, and titles containing the runId so the q filter isolates
-// this suite's rows from anything a parallel suite leaves behind. Unlike the
-// feeds suite, reviewedAt stays in the near past (see REVIEWED_ATS) so these
-// rows never enter another suite's unfiltered top-N window on the shared
-// branch. Cleaned FK-safe in afterAll.
+// this suite's rows from anything earlier files left on this worker's
+// schema. Cleaned FK-safe in afterAll.
 
 const prisma = new PrismaClient();
 
@@ -51,16 +49,12 @@ function nextSeed() {
 }
 
 /** This suite's ONLY rows: three verified versions seeded in one beforeAll
- *  burst and reused by every test. No mid-run seeding — a mid-run burst on
- *  the shared branch is what collides with other suites' timing windows. */
+ *  burst and reused by every test. No mid-run seeding. */
 const seeded: Awaited<ReturnType<typeof seedPublicVersion>>[] = [];
 
 // Staggered so verified rows sort deterministically newest-first WITHIN this
-// run's q-filtered window. Deliberately in the near past (older than the
-// 2026-07-20 and far-future dates other suites seed with): this suite's rows
-// must never displace another suite's rows from an unfiltered top-N query on
-// the shared branch. All list assertions here filter by q=runId, so global
-// rank is irrelevant to this suite.
+// run's q-filtered window. All list assertions here filter by q=runId, so
+// global rank is irrelevant to this suite.
 const REVIEWED_ATS = [
   new Date("2026-07-18T00:00:00Z"),
   new Date("2026-07-17T00:00:00Z"),
@@ -146,20 +140,6 @@ async function seedPublicVersion(overrides: SeedOverrides = {}) {
   return { change, version: fullVersion };
 }
 
-async function withDbRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
-  let lastErr: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      lastErr = e;
-      if (!String(e).includes("Inconsistent query result")) throw e;
-      await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-    }
-  }
-  throw lastErr;
-}
-
 const apiUrl = (path: string) => `http://localhost${path}`;
 
 afterAll(async () => {
@@ -182,29 +162,25 @@ afterAll(async () => {
 describe("GET /api/v1/changes — envelope, limits, headers", () => {
   // One shared list read for the whole describe: every envelope/header/byte
   // assertion below keys off this single response instead of each paying its
-  // own query on the shared branch.
+  // own query.
   let listRes: Response;
   let listBody: any;
 
   beforeAll(async () => {
     // One write burst: exactly three verified rows, seeded in PARALLEL (they
-    // are FK-independent of each other) to keep this file's wall-clock share
-    // of the shared branch small. All list/detail assertions filter by
-    // q=runId or by slug, so no other suite's rows can enter this suite's
-    // windows — and these near-past reviewedAt dates keep this suite's rows
-    // out of every other suite's unfiltered top-N window.
+    // are FK-independent of each other). All list/detail assertions filter by
+    // q=runId or by slug, so rows left by earlier files on this worker's
+    // schema can never enter this suite's windows.
     const created = await Promise.all(
       REVIEWED_ATS.map((reviewedAt) => seedPublicVersion({ reviewedAt })),
     );
     seeded.push(...created);
-    listRes = await withDbRetry(() =>
-      listChangesGET(new Request(apiUrl(`/api/v1/changes?q=${runId}`))),
-    );
+    listRes = await listChangesGET(new Request(apiUrl(`/api/v1/changes?q=${runId}`)));
     listBody = await listRes.json();
   }, 120000);
 
   it("serves a bare request with no browser headers (curl gets 200)", async () => {
-    const res = await withDbRetry(() => listChangesGET(new Request(apiUrl("/api/v1/changes"))));
+    const res = await listChangesGET(new Request(apiUrl("/api/v1/changes")));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
   }, 60000);
@@ -251,9 +227,7 @@ describe("GET /api/v1/changes — envelope, limits, headers", () => {
       const body = await res.json();
       expect(body.error.code).toBe("INVALID_LIMIT");
     }
-    const edge = await withDbRetry(() =>
-      listChangesGET(new Request(apiUrl(`/api/v1/changes?limit=100&q=${runId}`))),
-    );
+    const edge = await listChangesGET(new Request(apiUrl(`/api/v1/changes?limit=100&q=${runId}`)));
     expect(edge.status).toBe(200);
     // limit=1 is exercised end-to-end by the pagination describe below.
   }, 60000);
@@ -288,12 +262,10 @@ describe("GET /api/v1/changes — envelope, limits, headers", () => {
 
   it("returns 304 with an EMPTY body for a matching If-None-Match", async () => {
     const etag = listRes.headers.get("etag")!;
-    const second = await withDbRetry(() =>
-      listChangesGET(
-        new Request(apiUrl(`/api/v1/changes?q=${runId}`), {
-          headers: { "if-none-match": etag },
-        }),
-      ),
+    const second = await listChangesGET(
+      new Request(apiUrl(`/api/v1/changes?q=${runId}`), {
+        headers: { "if-none-match": etag },
+      }),
     );
     expect(second.status).toBe(304);
     expect(await second.text()).toBe("");
@@ -313,7 +285,7 @@ describe("GET /api/v1/changes — signed cursor pagination", () => {
     let sawTrailingEmptyPage = false;
     do {
       const url = `/api/v1/changes?q=${runId}&limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-      const res: Response = await withDbRetry(() => listChangesGET(new Request(apiUrl(url))));
+      const res: Response = await listChangesGET(new Request(apiUrl(url)));
       expect(res.status).toBe(200);
       const body: any = await res.json();
       if (body.data.length === 0) {
@@ -335,17 +307,13 @@ describe("GET /api/v1/changes — signed cursor pagination", () => {
   }, 120000);
 
   it("rejects cursor reuse under changed filters with 400 INVALID_CURSOR", async () => {
-    const first = await withDbRetry(() =>
-      listChangesGET(new Request(apiUrl(`/api/v1/changes?q=${runId}&limit=1`))),
-    );
+    const first = await listChangesGET(new Request(apiUrl(`/api/v1/changes?q=${runId}&limit=1`)));
     const cursor = (await first.json()).page.nextCursor;
     expect(typeof cursor).toBe("string");
 
     // Same filters, different limit: pagination parameter, still valid.
-    const okReplay = await withDbRetry(() =>
-      listChangesGET(
-        new Request(apiUrl(`/api/v1/changes?q=${runId}&limit=2&cursor=${encodeURIComponent(cursor)}`)),
-      ),
+    const okReplay = await listChangesGET(
+      new Request(apiUrl(`/api/v1/changes?q=${runId}&limit=2&cursor=${encodeURIComponent(cursor)}`)),
     );
     expect(okReplay.status).toBe(200);
 
@@ -442,11 +410,9 @@ describe("GET /api/v1/changes/[slug]", () => {
   it("renders one canonical record byte-identical to the serializer", async () => {
     const record = serializeCanonicalVersion(seeded[0]!.version as any);
 
-    const res = await withDbRetry(() =>
-      getChangeGET(new Request(apiUrl(`/api/v1/changes/${record.slug}`)), {
-        params: { slug: record.slug },
-      }),
-    );
+    const res = await getChangeGET(new Request(apiUrl(`/api/v1/changes/${record.slug}`)), {
+      params: { slug: record.slug },
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.apiVersion).toBe(API_VERSION);
@@ -456,13 +422,11 @@ describe("GET /api/v1/changes/[slug]", () => {
     expect(body.fingerprint).toBe(record.fingerprint);
     expect(res.headers.get("etag")).toBe(`"${record.fingerprint}"`);
 
-    const notModified = await withDbRetry(() =>
-      getChangeGET(
-        new Request(apiUrl(`/api/v1/changes/${record.slug}`), {
-          headers: { "if-none-match": `"${record.fingerprint}"` },
-        }),
-        { params: { slug: record.slug } },
-      ),
+    const notModified = await getChangeGET(
+      new Request(apiUrl(`/api/v1/changes/${record.slug}`), {
+        headers: { "if-none-match": `"${record.fingerprint}"` },
+      }),
+      { params: { slug: record.slug } },
     );
     expect(notModified.status).toBe(304);
     expect(await notModified.text()).toBe("");
@@ -479,7 +443,7 @@ describe("GET /api/v1/changes/[slug]", () => {
 
 describe("GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint", () => {
   it("coverage returns the matrix in the standard envelope", async () => {
-    const res = await withDbRetry(() => coverageGET(new Request(apiUrl("/api/v1/coverage"))));
+    const res = await coverageGET(new Request(apiUrl("/api/v1/coverage")));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.apiVersion).toBe(API_VERSION);
@@ -493,7 +457,7 @@ describe("GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint", () => {
   }, 60000);
 
   it("briefings returns published briefings only, in the standard envelope", async () => {
-    const res = await withDbRetry(() => briefingsGET(new Request(apiUrl("/api/v1/briefings"))));
+    const res = await briefingsGET(new Request(apiUrl("/api/v1/briefings")));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.apiVersion).toBe(API_VERSION);
@@ -506,7 +470,7 @@ describe("GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint", () => {
   }, 60000);
 
   it("fingerprint is a cheap content-state probe consistent with the list", async () => {
-    const res = await withDbRetry(() => fingerprintGET(new Request(apiUrl("/api/v1/fingerprint"))));
+    const res = await fingerprintGET(new Request(apiUrl("/api/v1/fingerprint")));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.apiVersion).toBe(API_VERSION);

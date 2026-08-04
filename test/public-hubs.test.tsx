@@ -92,7 +92,7 @@ async function seedCapability(opts: {
   });
   // Default to one healthy linked source so every run-scoped fixture stays
   // compliant with coverage-readiness' suite-wide category invariant
-  // (sources > 0, gaps > 0) when both files share the branch concurrently.
+  // (sources > 0, gaps > 0) when both files share this worker's schema.
   const sources = opts.sources ?? [await seedSource()];
   for (const source of sources) {
     await prisma.capabilitySource.create({
@@ -178,11 +178,11 @@ async function seedChange(opts: {
       readiness: (opts.readiness ?? "MONITORED") as any,
       generalImpact: "Hits sellers importing covered goods.",
       editorialStatus: (opts.editorialStatus ?? "PUBLISHED") as any,
-      // Fixed date BELOW the 2026-07-20 used by every other suite: run-scoped
-      // rows never outrank theirs in global reviewedAt-desc pools (their
-      // top-N pagination assertions keep their baseline composition), while
-      // this suite's own hub windows stay deterministic by using product
-      // categories no other suite publishes (HOME_KITCHEN).
+      // Fixed date below the 2026-07-20 used by other suites: a leftover
+      // row from an earlier file on this worker never outranks this run's
+      // rows in reviewedAt-desc pools, and this suite's hub windows stay
+      // deterministic by using product categories no other file publishes
+      // (HOME_KITCHEN).
       reviewedAt: new Date("2026-07-10T00:00:00Z"),
       reviewedBy: "reviewer-1",
     },
@@ -360,15 +360,14 @@ describe("getHub content", () => {
   beforeAll(async () => {
     const seedId = nextSeed();
     slug = seedId;
-    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
-    // coverage-readiness' refreshCapabilityReadiness test recomputes EVERY
-    // stored CoverageCapability row and persists STALE transitions. A
-    // fixture whose required sources are overdue at that suite's recompute
-    // clock (2026-07-26T12:00Z) gets flipped to STALE mid-run and getHub
-    // returns null. Both sources below are therefore NOT overdue at that
-    // clock: okSource's lastOkAt is after it, and overdueSource is only
-    // overdue at this file's fixture clock NOW (2026-08-02T12:00Z), which
-    // is what the overdue-display assertions below actually need.
+    // Task 10: coverage-readiness now runs in a different worker schema, so
+    // its whole-table refreshCapabilityReadiness can no longer flip this
+    // file's fixtures to STALE mid-run. The fixture clocks below keep the
+    // original (now belt-and-braces) property: okSource is not overdue at
+    // coverage-readiness' recompute clock (2026-07-26T12:00Z), and
+    // overdueSource is only overdue at this file's fixture clock NOW
+    // (2026-08-02T12:00Z), which is what the overdue-display assertions
+    // below actually need.
     const okSource = await seedSource({ lastOkAt: new Date("2026-08-02T11:00:00Z"), slaMinutes: 2880 });
     const overdueSource = await seedSource({ lastOkAt: new Date("2026-07-26T08:00:00Z"), slaMinutes: 360 });
     okSourceId = okSource.id;

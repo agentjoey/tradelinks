@@ -133,7 +133,8 @@ describe("seedPhase1Coverage", () => {
     // decision 4. A row that was never human-reviewed (lastReviewedAt is the
     // epoch sentinel) and is not carrying an automated STALE transition
     // tracks the seed's reviewed ceiling; human reviews and STALE rows never
-    // move. Snapshot/restore so other suites see the contract state.
+    // move. Snapshot/restore so later files sharing this worker's schema see
+    // the contract state.
     const before = await prisma.coverageCapability.findUniqueOrThrow({
       where: { key: "platform:amazon-us" },
     });
@@ -176,12 +177,11 @@ describe("seedPhase1Coverage", () => {
   }, 60000);
 
   it("gives every launch category linked sources and a non-empty known-gaps list", async () => {
-    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
-    // this invariant covers the Phase 1 contract keys ONLY. Querying
-    // `startsWith: "category:"` sweeps in other suites' run-scoped fixtures
-    // mid-creation/mid-deletion (a capability whose source links are not
-    // written yet reads as sources.length === 0) and fails on their state,
-    // not ours.
+    // This invariant covers the Phase 1 contract keys ONLY, addressed by
+    // explicit key. A `startsWith: "category:"` sweep would pull in other
+    // files' run-scoped fixtures (files sharing this worker's schema run
+    // sequentially, but their leftover rows are visible until their
+    // afterAll) and fail on their state, not ours.
     const categoryKeys = INITIAL_PUBLIC_CATEGORIES.map((c) => `category:${categorySlug(c)}`);
     const categories = await prisma.coverageCapability.findMany({
       where: { key: { in: categoryKeys } },
@@ -221,7 +221,8 @@ describe("seedPhase1Coverage", () => {
       );
       expect(cap.readiness).toBe(cap.key === "category:pet-supplies" ? "STALE" : before.readiness);
     }
-    // Restore the seeded ceiling so later suites see the contract state.
+    // Restore the seeded ceiling so later files sharing this worker's schema
+    // see the contract state.
     await prisma.coverageCapability.update({
       where: { key: "category:pet-supplies" },
       data: { readiness: "MONITORED" },
@@ -391,14 +392,12 @@ describe("recomputeCapabilityReadiness", () => {
 
 describe("refreshCapabilityReadiness (health integration)", () => {
   it("drives stale transitions for every stored capability at the injected clock", async () => {
-    // HAZARD (cross-suite readiness race — see the Task 5 scope extension):
-    // refreshCapabilityReadiness recomputes EVERY row of the shared
-    // CoverageCapability table, including fixtures belonging to suites
-    // running in parallel. Snapshot every readiness first and restore it in
-    // finally, so a concurrent suite never keeps observing our flips and a
-    // failing assertion never leaves one behind. Standing rule (Tasks 6-9):
-    // any test invoking a recompute/refresh of ALL rows of a shared table
-    // must snapshot and restore that table.
+    // refreshCapabilityReadiness recomputes EVERY row of the worker schema's
+    // CoverageCapability table. Test files sharing this worker's schema run
+    // sequentially, so nothing races the recompute — but files that run after
+    // us on this worker read the same table (e.g. public-hubs' matrix
+    // assertions), so snapshot every readiness first and restore it in
+    // finally to leave the schema as we found it.
     const snapshot = await prisma.coverageCapability.findMany({
       select: { id: true, readiness: true },
     });
@@ -412,29 +411,12 @@ describe("refreshCapabilityReadiness (health integration)", () => {
         sources: [{ slaMinutes: 24 * 60, lastOkAt: minutesAgo(30) }],
       });
 
-      // Cross-suite race guard (test code only, per the standing rule): a
-      // parallel suite can delete its own fixture capability between
-      // refreshCapabilityReadiness' list-all and its per-row recompute,
-      // which then throws "unknown capability" on a row that no longer
-      // exists. Retry the refresh rather than product-hardening a window
-      // that cannot occur in production (curated capabilities are never
-      // deleted).
-      let results: Awaited<ReturnType<typeof refreshCapabilityReadiness>> | null = null;
-      for (let attempt = 0; attempt < 4 && results === null; attempt++) {
-        try {
-          results = await refreshCapabilityReadiness(NOW);
-        } catch (e) {
-          if (!String(e).includes("unknown capability")) throw e;
-          await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
-        }
-      }
-      if (results === null) throw new Error("refreshCapabilityReadiness kept hitting deleted fixtures");
+      const results = await refreshCapabilityReadiness(NOW);
       const byId = new Map(results.map((r) => [r.id, r.readiness]));
       expect(byId.get(stale.id)).toBe("STALE");
       expect(byId.get(healthy.id)).toBe("MONITORED");
       // Recomputes every stored capability — one remote round trip each.
     } finally {
-      // updateMany: rows a parallel suite deleted mid-run are skipped, not errors.
       for (const row of snapshot) {
         await prisma.coverageCapability.updateMany({
           where: { id: row.id },

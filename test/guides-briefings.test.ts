@@ -311,10 +311,10 @@ describe("publishGuide against the real corpus and the database", () => {
     const slug = `${runId}-publishable`;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "guide-"));
     const sourceUrl = `https://example.com/${runId}-official`;
-    // Taxonomy deliberately scoped to nothing any parallel suite asserts on:
+    // Taxonomy deliberately scoped to nothing any other DB file asserts on:
     // no platforms, a non-launch category, no risk attributes, no topics.
-    // A PUBLISHED guide row is global state — hub and topic queries in other
-    // suites filter on exactly these dimensions.
+    // A PUBLISHED guide row is schema-global state until deleted — hub and
+    // topic queries filter on exactly these dimensions.
     fs.writeFileSync(
       path.join(dir, `${slug}.md`),
       [

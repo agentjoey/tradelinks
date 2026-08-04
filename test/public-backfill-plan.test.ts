@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { prisma } from "../src/db/client.js";
 import { listStaticLegacyRedirectRows } from "../src/public-intelligence/legacy-redirects.js";
@@ -96,57 +96,136 @@ describe("buildPublicBackfillReport — pure planning core", () => {
   });
 });
 
-describe("planPublicBackfill — reconciliation against the branch database", () => {
+describe("planPublicBackfill — reconciliation against the worker schema", () => {
   // Neon cold-start plus several full-table reads per test: well over the
   // 5s vitest default on a sleeping compute.
   const DB_TIMEOUT = 60_000;
 
-  // Parallel suites (foundation-backfill) seed and delete run-scoped legacy
-  // alerts and canonical changes on this shared branch. Any count taken at a
-  // different instant than the plan's own read can legitimately disagree, so
-  // the accounting assertion runs on a CONSISTENT pair of reads: retry until
-  // the plan's accounted set (unmapped ∪ mapped) equals the live alert id
-  // set. A real accounting bug never converges; concurrent fixture churn does.
-  async function readConsistentAlertState() {
-    let lastDiff = "";
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const report = await planPublicBackfill();
-      const changes = await prisma.canonicalChange.findMany({
-        where: { slug: { startsWith: "legacy-alert:" } },
-        select: { slug: true },
-      });
-      const mappedIds = new Set(changes.map((c) => c.slug.slice("legacy-alert:".length)));
-      const accounted = new Set([...report.unmappedAlerts.map((r) => r.id), ...mappedIds]);
-      const currentIds = new Set(
-        (await prisma.alert.findMany({ select: { id: true } })).map((a) => a.id),
-      );
-      const unaccounted = [...currentIds].filter((id) => !accounted.has(id));
-      const stale = [...accounted].filter((id) => !currentIds.has(id));
-      if (unaccounted.length === 0 && stale.length === 0) {
-        return { report, mappedIds, currentIds };
-      }
-      lastDiff = `unaccounted: ${unaccounted.slice(0, 3).join(",")} stale: ${stale.slice(0, 3).join(",")}`;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    throw new Error(`alert accounting never converged (concurrent fixture churn?): ${lastDiff}`);
+  // Task 10: this file runs against its worker's own schema (no concurrent
+  // writers), so the consistent-read retry loop that guarded against
+  // foundation-backfill's parallel fixture churn is retired. To keep the
+  // reconciliation non-vacuous — accounting over an empty table proves
+  // nothing — we seed a deterministic legacy inventory: one mapped and one
+  // unmapped alert, one mapped and one unmapped published daily note. The
+  // assertions are the same accounting equalities as before, plus presence
+  // checks on the seeded rows so both outcomes are always exercised.
+  const runId = `testpbp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const MAPPED_ALERT_ID = `${runId}-alert-mapped`;
+  const UNMAPPED_ALERT_ID = `${runId}-alert-unmapped`;
+  const MAPPED_NOTE_ID = `${runId}-note-mapped`;
+  const UNMAPPED_NOTE_ID = `${runId}-note-unmapped`;
+  const CLUSTER_ID = `${runId}-cluster`;
+  const MAPPED_NOTE_DATE = "2026-07-01";
+
+  beforeAll(async () => {
+    await prisma.alert.createMany({
+      data: [
+        {
+          id: MAPPED_ALERT_ID,
+          title: "mapped legacy alert",
+          summary: "has a canonical change",
+          urgencyScore: 3,
+          category: "regulatory",
+          status: "published",
+        },
+        {
+          id: UNMAPPED_ALERT_ID,
+          title: "unmapped legacy alert",
+          summary: "no canonical change",
+          urgencyScore: 2,
+          category: "regulatory",
+          status: "published",
+        },
+      ],
+    });
+    await prisma.evidenceCluster.create({ data: { id: CLUSTER_ID, fingerprint: CLUSTER_ID } });
+    await prisma.canonicalChange.create({
+      data: { slug: `legacy-alert:${MAPPED_ALERT_ID}`, clusterId: CLUSTER_ID },
+    });
+    await prisma.dailyNote.createMany({
+      data: [
+        {
+          id: MAPPED_NOTE_ID,
+          date: new Date(`${MAPPED_NOTE_DATE}T00:00:00Z`),
+          slug: MAPPED_NOTE_ID,
+          title: "mapped note",
+          bodyMarkdown: "body",
+          keyTakeaways: [],
+          tags: [],
+          sourceAlertIds: [],
+          status: "published",
+        },
+        {
+          id: UNMAPPED_NOTE_ID,
+          date: new Date("2026-07-02T00:00:00Z"),
+          slug: UNMAPPED_NOTE_ID,
+          title: "unmapped note",
+          bodyMarkdown: "body",
+          keyTakeaways: [],
+          tags: [],
+          sourceAlertIds: [],
+          status: "published",
+        },
+      ],
+    });
+    await prisma.briefing.create({
+      data: {
+        kind: "DAILY",
+        periodKey: MAPPED_NOTE_DATE,
+        slug: `${runId}-daily-briefing`,
+        title: "daily briefing",
+        summary: "summary",
+        bodyMarkdown: "body",
+        readiness: "EXPERIMENTAL",
+        fingerprint: `${runId}-fingerprint`,
+      },
+    });
+  }, DB_TIMEOUT);
+
+  afterAll(async () => {
+    await prisma.canonicalChange.deleteMany({ where: { clusterId: CLUSTER_ID } });
+    await prisma.evidenceCluster.deleteMany({ where: { id: CLUSTER_ID } });
+    await prisma.alert.deleteMany({ where: { id: { startsWith: runId } } });
+    await prisma.dailyNote.deleteMany({ where: { id: { startsWith: runId } } });
+    await prisma.briefing.deleteMany({ where: { slug: { startsWith: runId } } });
+    await prisma.$disconnect();
+  }, DB_TIMEOUT);
+
+  async function readAlertState() {
+    const report = await planPublicBackfill();
+    const changes = await prisma.canonicalChange.findMany({
+      where: { slug: { startsWith: "legacy-alert:" } },
+      select: { slug: true },
+    });
+    const mappedIds = new Set(changes.map((c) => c.slug.slice("legacy-alert:".length)));
+    const currentIds = new Set(
+      (await prisma.alert.findMany({ select: { id: true } })).map((a) => a.id),
+    );
+    return { report, mappedIds, currentIds };
   }
 
   it("accounts for every legacy alert row: mapped or unmapped with a reason", async () => {
-    const { report, mappedIds, currentIds } = await readConsistentAlertState();
+    const { report, mappedIds, currentIds } = await readAlertState();
     expect(report.mappedAlerts).toBe(mappedIds.size);
     expect(report.mappedAlerts + report.unmappedAlerts.length).toBe(currentIds.size);
     for (const row of report.unmappedAlerts) {
       expect(row.reason.length).toBeGreaterThan(0);
     }
+    // Non-vacuous: the seeded rows force both outcomes.
+    expect(mappedIds.has(MAPPED_ALERT_ID)).toBe(true);
+    expect(report.unmappedAlerts.some((r) => r.id === UNMAPPED_ALERT_ID)).toBe(true);
   }, DB_TIMEOUT);
 
   it("an alert is mapped exactly when its canonical change exists", async () => {
-    const { report, mappedIds, currentIds } = await readConsistentAlertState();
+    const { report, mappedIds, currentIds } = await readAlertState();
     const unmappedIds = new Set(report.unmappedAlerts.map((r) => r.id));
     // No overlap and full coverage of the alerts table.
     for (const id of mappedIds) expect(unmappedIds.has(id)).toBe(false);
     expect(mappedIds.size).toBe(report.mappedAlerts);
     expect(mappedIds.size + unmappedIds.size).toBe(currentIds.size);
+    // The seeded unmapped alert carries the explicit reason.
+    const seeded = report.unmappedAlerts.find((r) => r.id === UNMAPPED_ALERT_ID);
+    expect(seeded?.reason).toMatch(/NO_CANONICAL_CHANGE/);
   }, DB_TIMEOUT);
 
   it("accounts for every published daily note: mapped or unmapped with a reason", async () => {
@@ -176,6 +255,12 @@ describe("planPublicBackfill — reconciliation against the branch database", ()
     );
     expect(expectedMapped.length).toBe(report.mappedDailyNotes);
     for (const note of expectedMapped) expect(unmappedIds.has(note.id)).toBe(false);
+    // Non-vacuous: the seeded notes force both outcomes.
+    expect(expectedMapped.some((n) => n.id === MAPPED_NOTE_ID)).toBe(true);
+    const seededUnmapped = report.unmappedPublishedDailyNotes.find(
+      (r) => r.id === UNMAPPED_NOTE_ID,
+    );
+    expect(seededUnmapped?.reason).toMatch(/NO_DAILY_BRIEFING/);
   }, DB_TIMEOUT);
 
   it("counts one redirect row per static entry plus one per mapped daily note", async () => {
@@ -186,18 +271,12 @@ describe("planPublicBackfill — reconciliation against the branch database", ()
   }, DB_TIMEOUT);
 
   it("returns the same fingerprint across consecutive runs on unchanged input", async () => {
+    // Quiet worker schema: the inventory cannot move between the two reads,
+    // so fingerprint stability is asserted unconditionally (it used to be
+    // guarded against parallel-suite churn).
     const first = await planPublicBackfill();
     const second = await planPublicBackfill();
-    // Parallel suites seed and tear down run-scoped legacy rows on this
-    // shared branch; if the row inventory moved between the two reads the
-    // comparison is meaningless, so it is guarded — the hard proof of
-    // stability is the CLI double-run in the task gates plus the pure-core
-    // tests above.
-    const inventory = (r: typeof first) =>
-      `${r.mappedAlerts}+${r.unmappedAlerts.length}/${r.mappedDailyNotes}+${r.unmappedPublishedDailyNotes.length}`;
-    if (inventory(first) === inventory(second)) {
-      expect(second.fingerprint).toBe(first.fingerprint);
-    }
+    expect(second.fingerprint).toBe(first.fingerprint);
   }, DB_TIMEOUT);
 });
 

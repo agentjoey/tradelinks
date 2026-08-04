@@ -188,26 +188,19 @@ async function seedFixtures() {
   });
 }
 
-async function stablePair(
-  timeoutMs = 240000,
-): Promise<{ first: BackfillReport; second: BackfillReport }> {
-  const deadline = Date.now() + timeoutMs;
-  let first = await planFoundationBackfill();
-  while (Date.now() < deadline) {
-    const second = await planFoundationBackfill();
-    if (second.fingerprint === first.fingerprint) {
-      return { first, second };
-    }
-    first = second;
+/**
+ * Two consecutive plans over a quiet schema must be identical. Task 10: each
+ * vitest worker plans against its own schema with no concurrent writers, so
+ * a fingerprint disagreement is real planner nondeterminism, not cross-suite
+ * fixture churn — fail immediately instead of polling for stability.
+ */
+async function planStablePair(): Promise<{ first: BackfillReport; second: BackfillReport }> {
+  const first = await planFoundationBackfill();
+  const second = await planFoundationBackfill();
+  if (second.fingerprint !== first.fingerprint) {
+    throw new Error("consecutive backfill plans disagree on a quiet schema");
   }
-  throw new Error(`Could not obtain stable backfill plan pair within ${timeoutMs}ms`);
-}
-
-function isFingerprintMismatch(error: unknown): error is Error {
-  return (
-    error instanceof Error &&
-    /^Fingerprint mismatch: expected [0-9a-f]{64}, got [0-9a-f]{64}$/.test(error.message)
-  );
+  return { first, second };
 }
 
 function expectFirstApplyMatchesPlan(plan: BackfillReport, applied: BackfillReport) {
@@ -272,38 +265,22 @@ async function expectAppliedFixtureState() {
   ).toBe(true);
 }
 
-async function expectApplyAndReplayWithRetry(
-  timeoutMs = 540000,
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    await cleanupFixtureRows();
-    await seedFixtures();
-    const { second: plan } = await stablePair(Math.max(1, deadline - Date.now()));
+/**
+ * First apply must reproduce the plan exactly; a replay against the same
+ * fingerprint must be a no-op. Single attempt: on a quiet schema there is no
+ * concurrent writer to invalidate the fingerprint, and on this branch the
+ * endpoint allowlist refuses the apply before any write (the two known
+ * baseline failures), so there is nothing to retry.
+ */
+async function expectApplyAndReplay(): Promise<void> {
+  const { second: plan } = await planStablePair();
 
-    let applied: BackfillReport;
-    try {
-      applied = await applyFoundationBackfill(plan.fingerprint);
-    } catch (error) {
-      if (!isFingerprintMismatch(error)) throw error;
-      continue;
-    }
+  const applied = await applyFoundationBackfill(plan.fingerprint);
+  expectFirstApplyMatchesPlan(plan, applied);
+  await expectAppliedFixtureState();
 
-    expectFirstApplyMatchesPlan(plan, applied);
-    await expectAppliedFixtureState();
-
-    let replay: BackfillReport;
-    try {
-      replay = await applyFoundationBackfill(applied.fingerprint);
-    } catch (error) {
-      if (!isFingerprintMismatch(error)) throw error;
-      continue;
-    }
-
-    expectReplayIsEmpty(plan, replay);
-    return;
-  }
-  throw new Error(`Could not apply and replay backfill within ${timeoutMs}ms`);
+  const replay = await applyFoundationBackfill(applied.fingerprint);
+  expectReplayIsEmpty(plan, replay);
 }
 
 describe("foundation backfill apply target safety", () => {
@@ -346,7 +323,7 @@ describe("foundation backfill", () => {
   beforeAll(async () => {
     await cleanupFixtureRows();
     await seedFixtures();
-    const pair = await stablePair();
+    const pair = await planStablePair();
     fixturePlan = pair.second;
   }, 300000);
 
@@ -374,9 +351,9 @@ describe("foundation backfill", () => {
   });
 
   it("produces the same fingerprint on repeated dry runs", async () => {
-    const { first, second } = await stablePair();
+    const { first, second } = await planStablePair();
     expect(second.fingerprint).toBe(first.fingerprint);
-  }, 240000);
+  }, 120000);
 
   it("keeps legacy source urls and items as secondary context evidence", () => {
     const draft = fixturePlan.drafts.find((d) => d.slug === SLUG_CONVERTIBLE);
@@ -394,8 +371,8 @@ describe("foundation backfill", () => {
   });
 
   it("apply matches the dry-run counts exactly on first apply and zero on replay", async () => {
-    await expectApplyAndReplayWithRetry();
-  }, 600000);
+    await expectApplyAndReplay();
+  }, 120000);
 
   it("apply rejects a mismatched fingerprint", async () => {
     await expect(applyFoundationBackfill("not-the-fingerprint")).rejects.toThrow(
