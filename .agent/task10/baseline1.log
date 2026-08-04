@@ -1,0 +1,328 @@
+
+> tradelinks-mvp@0.12.0 test /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+> vitest run
+
+
+ RUN  v2.1.9 /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+
+ ✓ test/public-seo.test.ts (7 tests) 240ms
+ ✓ test/collect-batch.test.ts (28 tests) 21310ms
+   ✓ collectBatch — persisted replay > re-fetches sources that failed permanently on a prior slot invocation 5005ms
+   ✓ collectBatch — structured retry > retries exactly 3 times on retryable failure then FAILED 5005ms
+   ✓ collectBatch — structured retry > retryable-then-success on attempt 2 records SUCCEEDED 1003ms
+   ✓ collectBatch — thrown-error fallback > retries on thrown transport error 5004ms
+   ✓ collectBatch — scraper retry via injected fetchSource > scraper HTTP 503: retried 3 times 5003ms
+stderr | test/public-api-v1.test.ts > GET /api/v1/changes — signed cursor pagination > answers unexpected failures in the documented envelope (500 INTERNAL_ERROR)
+api-v1 unhandled error: Error: simulated driver failure
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:424:13
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/src/public-intelligence/api.ts:355:20
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:426:23
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+{"level":30,"time":1785766367702,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5oiz000orat5vnp25y5h","msg":"public-telegram sent"}
+{"level":30,"time":1785766368071,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5jpx000frat5u6x2tqi2","msg":"public-telegram sent"}
+ ✓ test/public-api-v1.test.ts (23 tests) 77357ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > serves a bare request with no browser headers (curl gets 200) 7268ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > rejects out-of-range limits with a deterministic 400, never a silent clamp 2363ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > returns 304 with an EMPTY body for a matching If-None-Match 2892ms
+   ✓ GET /api/v1/changes — signed cursor pagination > paginates deterministically through the run-scoped rows 9231ms
+   ✓ GET /api/v1/changes — signed cursor pagination > rejects cursor reuse under changed filters with 400 INVALID_CURSOR 5172ms
+   ✓ GET /api/v1/changes — signed cursor pagination > fails closed with a deterministic error when the secret is absent 2951ms
+   ✓ GET /api/v1/changes/[slug] > renders one canonical record byte-identical to the serializer 4742ms
+   ✓ GET /api/v1/changes/[slug] > 404s an unknown slug with a stable code 373ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > coverage returns the matrix in the standard envelope 2799ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > briefings returns published briefings only, in the standard envelope 1372ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > fingerprint is a cheap content-state probe consistent with the list 3569ms
+ ✓ test/job-lock.test.ts (23 tests) 4ms
+{"level":30,"time":1785766369025,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5c9x0006rat58reob2cj","msg":"public-telegram sent"}
+{"level":30,"time":1785766369026,"pid":86585,"hostname":"Y-MMN.local","posted":3,"failed":0,"eligible":3,"msg":"public-telegram run complete"}
+{"level":30,"time":1785766373134,"pid":86585,"hostname":"Y-MMN.local","posted":0,"failed":0,"eligible":0,"msg":"public-telegram run complete"}
+{"level":30,"time":1785766378427,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5oiz000orat5vnp25y5h","msg":"public-telegram sent"}
+{"level":30,"time":1785766378807,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5jpx000frat5u6x2tqi2","msg":"public-telegram sent"}
+{"level":30,"time":1785766379210,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5c9x0006rat58reob2cj","msg":"public-telegram sent"}
+{"level":30,"time":1785766379210,"pid":86585,"hostname":"Y-MMN.local","posted":3,"failed":0,"eligible":3,"msg":"public-telegram run complete"}
+{"level":30,"time":1785766380781,"pid":86572,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+{"level":40,"time":1785766381831,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5oiz000orat5vnp25y5h","status":"failed","msg":"public-telegram send failed"}
+{"level":30,"time":1785766381831,"pid":86585,"hostname":"Y-MMN.local","posted":0,"failed":1,"eligible":1,"msg":"public-telegram run complete"}
+{"level":30,"time":1785766386615,"pid":86585,"hostname":"Y-MMN.local","itemId":"canonical:cmsdb5oiz000orat5vnp25y5h","msg":"public-telegram sent"}
+{"level":30,"time":1785766386615,"pid":86585,"hostname":"Y-MMN.local","posted":1,"failed":0,"eligible":1,"msg":"public-telegram run complete"}
+{"level":30,"time":1785766393914,"pid":86572,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/public-telegram.test.ts (6 tests) 103559ms
+   ✓ selectPublicTelegramChanges > selects only VERIFIED current reviewed versions at or above the urgency floor 9681ms
+   ✓ selectPublicTelegramChanges > respects the per-run limit and the already-pushed set 6423ms
+   ✓ runPublicTelegramPush > sends each eligible version once per channel and is idempotent on re-run 16732ms
+   ✓ runPublicTelegramPush > a failed send is not tracked, so the next run retries it 7405ms
+ ✓ test/source-registry.test.ts (15 tests) 18ms
+ ✓ test/canonicalize-batch.test.ts (11 tests) 3ms
+{"level":30,"time":1785766408046,"pid":86572,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+{"level":30,"time":1785766419178,"pid":86572,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/public-feeds.test.ts (19 tests) 132577ms
+   ✓ rendered XML is byte-identical to the serializer output > guid, link and fingerprint in the XML string equal the serializer's, exactly 8275ms
+   ✓ rendered XML is byte-identical to the serializer output > renders every item field the contract requires 8237ms
+   ✓ XML escaping > round-trips a title containing &, <, a straight quote and an apostrophe 7820ms
+   ✓ feed contract > serves RSS content type and cache headers derived from PUBLIC_CACHE only 4191ms
+   ✓ feed contract > change feeds never include monitored-pool records 5011ms
+   ✓ feed contract > quotes evidence links and normalized data, never third-party full text or private fields 5481ms
+   ✓ scoped feeds > platform scope includes only that platform's records 6382ms
+   ✓ scoped feeds > category scope includes only that category's records 7575ms
+   ✓ route handlers > changes.xml returns 200 RSS 8837ms
+   ✓ route handlers > platform route: 200 with suffix, 404 without it or for unknown scopes 4475ms
+   ✓ route handlers > category route: 200 with suffix, 404 without it 5320ms
+   ✓ route handlers > briefings.xml lists published briefings only, linking canonical briefing pages 1955ms
+ ✓ test/canonical-publish.test.ts (22 tests) 133124ms
+   ✓ canonical change schema contract > rejects a second current version for one change 11680ms
+   ✓ canonical change schema contract > allows multiple non-current versions for one change 3868ms
+   ✓ publishCanonicalDraft > blocks Verified publication without reviewed primary official evidence 14151ms
+   ✓ publishCanonicalDraft > blocks Verified publication when the action template is unreviewed 5195ms
+   ✓ publishCanonicalDraft > blocks publication below Monitored readiness 4377ms
+   ✓ publishCanonicalDraft > publishes exactly one current version and clears the previous current 9666ms
+   ✓ publishCanonicalDraft > preserves structured evidence fields on the published version 7406ms
+   ✓ publishCanonicalDraft > rejects a legacy Alert id as CANONICAL_DRAFT_NOT_FOUND and leaves the Alert unchanged 1958ms
+   ✓ rejectCanonicalDraft > requires a non-blank rejection reason 6536ms
+   ✓ rejectCanonicalDraft > persists the trimmed reason and never makes the version current 5791ms
+   ✓ reviewCanonicalActionTemplate > requires a non-blank template on the draft 6022ms
+   ✓ reviewCanonicalActionTemplate > records the review without publishing the draft 6911ms
+   ✓ correctCanonicalChange > requires a non-empty correction reason 3572ms
+   ✓ correctCanonicalChange > creates version 2, preserves version 1, and carries evidence forward 14682ms
+   ✓ correctCanonicalChange > a correction that changes the action template records the correcting reviewer as its reviewer 9170ms
+   ✓ correctCanonicalChange > a correction that clears the action template drops the review metadata 8125ms
+   ✓ correctCanonicalChange > a correction that keeps the action template carries its review forward 6719ms
+ ✓ test/daily-note.test.ts (16 tests) 4ms
+ ✓ test/legacy-redirects.test.ts (37 tests) 3ms
+ ✓ test/public-backfill-plan.test.ts (13 tests) 29071ms
+   ✓ planPublicBackfill — reconciliation against the branch database > accounts for every legacy alert row: mapped or unmapped with a reason 10956ms
+   ✓ planPublicBackfill — reconciliation against the branch database > an alert is mapped exactly when its canonical change exists 5751ms
+   ✓ planPublicBackfill — reconciliation against the branch database > accounts for every published daily note: mapped or unmapped with a reason 3214ms
+   ✓ planPublicBackfill — reconciliation against the branch database > counts one redirect row per static entry plus one per mapped daily note 4359ms
+   ✓ planPublicBackfill — reconciliation against the branch database > returns the same fingerprint across consecutive runs on unchanged input 4536ms
+ ✓ test/ai-stage1.test.ts (13 tests) 4ms
+ ✓ test/channel-select.test.ts (18 tests) 2ms
+ ✓ test/canonical-classify.test.ts (17 tests) 4ms
+ ✓ test/canonical-cluster.test.ts (23 tests) 4ms
+ ✓ test/product-signal.test.ts (27 tests) 3ms
+ ✓ test/channel-render.test.ts (25 tests) 2ms
+ ✓ test/middleware-auth.test.ts (4 tests) 4ms
+ ✓ test/x.test.ts (5 tests) 4ms
+ ✓ test/daily-note-review.test.ts (6 tests) 3ms
+ ✓ test/x-accounts.test.ts (5 tests) 4ms
+ ✓ test/adapters.test.ts (7 tests) 11ms
+ ✓ test/intelligence-taxonomy.test.ts (12 tests) 2ms
+ ✓ test/x-extract.test.ts (6 tests) 3ms
+ ✓ test/home-select.test.ts (11 tests) 2ms
+ ✓ test/job-retry.test.ts (13 tests) 14ms
+ ✓ test/dedup.test.ts (8 tests) 2ms
+ ✓ test/writing-columns.test.ts (6 tests) 1ms
+ ✓ test/trends.test.ts (9 tests) 2ms
+ ✓ test/ai-stage2.test.ts (6 tests) 2ms
+ ✓ test/health.test.ts (9 tests) 16ms
+ ✓ test/digest.test.ts (7 tests) 2ms
+ ✓ test/public-agent-skill.test.ts (8 tests) 2ms
+ ✓ test/translate-note-prompt.test.ts (5 tests) 2ms
+ ✓ test/readiness-policy.test.ts (4 tests) 1ms
+ ✓ test/locale.test.ts (9 tests) 1ms
+ ✓ test/push.test.ts (5 tests) 1ms
+ ✓ test/writing-core.test.ts (6 tests) 2ms
+ ✓ test/json-adapter.test.ts (4 tests) 2ms
+ ✓ test/movers-rank.test.ts (3 tests) 1ms
+ ✓ test/extract-json.test.ts (9 tests) 2ms
+ ✓ test/translate-content-prompt.test.ts (5 tests) 2ms
+ ✓ test/scrape-bridge.test.ts (3 tests) 4ms
+ ✓ test/ogimage.test.ts (5 tests) 4ms
+ ✓ test/blocked.test.ts (6 tests) 1ms
+ ✓ test/i18n-content.test.ts (4 tests) 1ms
+ ✓ test/mover-evidence.test.ts (2 tests) 1ms
+ ✓ test/gnews.test.ts (3 tests) 1ms
+ ✓ test/mover-insight-prompt.test.ts (2 tests) 1ms
+ ✓ test/scheduler.test.ts (5 tests) 13ms
+ ✓ test/compose-issue.test.ts (3 tests) 1ms
+ ✓ test/parse-bsr.test.ts (6 tests) 1ms
+ ✓ test/writing-topic-gate.test.ts (4 tests) 1ms
+ ✓ test/source-hash.test.ts (5 tests) 1ms
+ ✓ test/alert-route.test.ts (3 tests) 1ms
+ ✓ test/labels.test.ts (3 tests) 1ms
+ ✓ test/writing-self-check.test.ts (3 tests) 1ms
+ ✓ test/glossary.test.ts (3 tests) 1ms
+ ✓ test/subscriber-util.test.ts (3 tests) 1ms
+ ✓ test/theme.test.ts (4 tests) 1ms
+ ✓ test/collection-run.test.ts (9 tests) 81107ms
+   ✓ beginRun > reuses a run for the same job and scheduled slot 10319ms
+   ✓ beginRun > keeps distinct scheduled slots distinct 5126ms
+   ✓ recordSourceOutcome > records an empty success without moving source freshness backward 14298ms
+   ✓ recordSourceOutcome > inserts items once and keeps ids and counts stable across replay 11115ms
+   ✓ recordSourceOutcome > adds only newly inserted items to an existing check 13319ms
+   ✓ recordSourceOutcome > never advances source freshness for blocked or failed outcomes 6496ms
+   ✓ finishRun > derives the run status from its checks and aggregates counts 11221ms
+   ✓ finishRun > marks a fully empty-success run SUCCEEDED_EMPTY 5696ms
+ ❯ test/public-shell.test.tsx (20 tests | 1 failed) 21037ms
+   ✓ public home page > renders exactly one h1 15142ms
+   × public home page > does not carry the BL-045 liveness choreography 5820ms
+     → 
+Invalid `prisma.canonicalChangeVersion.findMany()` invocation:
+
+
+Inconsistent query result: Field canonicalChange is required to return data, got `null` instead.
+ ✓ test/public-channel-consistency.test.ts (5 tests) 50804ms
+   ✓ listPublicChanges produces channel-consistent records > every item in a listing has the same fingerprint computed by the serializer 25236ms
+   ✓ listPublicChanges produces channel-consistent records > fingerprint matches hash of version identity fields 5361ms
+ ✓ test/guides-briefings.test.ts (29 tests) 225100ms
+   ✓ publishGuide against the real corpus and the database > publishes a genuinely publishable guide and lists it 17384ms
+   ✓ publishGuide against the real corpus and the database > never exposes drafts through the public read path 737ms
+   ✓ generateBriefing > pins the exact ordered version IDs and fingerprint of the finished qualification run 25491ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT when no finished qualification run exists — never computes its own ordering 1693ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT for unfinished or failed runs 2070ms
+   ✓ generateBriefing > breaks loudly when the run metadata does not carry ordered version IDs 8316ms
+   ✓ generateBriefing > rejects a qualification run whose scope does not match the requested period 1083ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing below three qualified changes 14126ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing without at least one Verified change 16377ms
+   ✓ generateBriefing daily threshold > generates a daily draft at three qualified changes including one Verified 22133ms
+   ✓ publishBriefing > publishes a draft with a review event and refuses to republish 15289ms
+   ✓ publishBriefing > never rewrites a published briefing — a correction needs a new fingerprint and review 12620ms
+   ✓ published briefing read path > returns entries in pinned order with serialized records; drafts stay invisible 38598ms
+   ✓ published briefing read path > sitemap includes published briefing periods and published guides — no drafts, no empty periods 38072ms
+ ✓ test/public-search.test.ts (17 tests) 275505ms
+   ✓ searchPublicChanges > never leaks drafts, rejected, stale, non-current or below-Monitored records 43582ms
+   ✓ searchPublicChanges > defaults to verified and widens to monitored only by explicit selection 15205ms
+   ✓ searchPublicChanges > applies structured filters without widening on invalid combinations 31485ms
+   ✓ searchPublicChanges > filters on the effective-date range and excludes undated records when a range is set 19894ms
+   ✓ searchPublicChanges > matches q against title and summary case-insensitively 20527ms
+   ✓ searchPublicChanges > pages through with the Task 1 opaque cursor and nulls nextCursor on the final page 46586ms
+   ✓ searchPublicChanges > rejects an undecodable cursor and a non-integer limit 371ms
+   ✓ getPublicChangeDetail > returns null for an unknown or unpublished slug 11235ms
+   ✓ getPublicChangeDetail > carries evidence access labels and the reviewed action template 10615ms
+   ✓ getPublicChangeDetail > withholds the action template without review or without reviewed primary-official evidence 19927ms
+   ✓ sitemap canonical-change entries > includes published changes and /changes; drafts and unknown slugs stay out 35806ms
+   ✓ listExperimentalDemand > returns rank observations only — no bestseller, launch or market-size claims 10506ms
+ ✓ test/canonical-change-page.test.tsx (14 tests) 157133ms
+   ✓ /changes index > defaults to verified and shows monitored entries only on explicit selection 34854ms
+   ✓ /changes index > teaches the surface on an empty filter instead of padding it 5737ms
+   ✓ /changes index > links the next page with the opaque cursor and keeps the active filters 19295ms
+   ✓ /changes/[slug] detail > renders primary evidence before supporting before secondary context 10101ms
+   ✓ /changes/[slug] detail > shows readiness, version, dates, authority, what changed, who it hits and the boundary block 10476ms
+   ✓ /changes/[slug] detail > labels inaccessible and disallowed evidence instead of omitting it 9434ms
+   ✓ /changes/[slug] detail > shows the reviewed action template only with reviewed primary-official evidence and a reviewed template 20628ms
+   ✓ /changes/[slug] detail > keeps correction history visible with every prior version addressable 11568ms
+   ✓ /changes/[slug] detail > states the Monitored limit in prose on the permalink page, never a bare badge 8900ms
+   ✓ /changes/[slug] detail > returns a real 404 for an unknown slug and for an unpublished record 11806ms
+   ✓ /changes/[slug] detail > metadata canonical excludes filters and tracking parameters 7564ms
+ ✓ test/coverage-readiness.test.ts (17 tests) 295455ms
+   ✓ seedPhase1Coverage > seeds exactly the ten Phase 1 capability keys 2748ms
+   ✓ seedPhase1Coverage > seeds Amazon policy at MONITORED (hard-ceilinged below VERIFIED) and BSR at EXPERIMENTAL 1151ms
+   ✓ seedPhase1Coverage > re-seeding lifts a never-reviewed, non-STALE stored grade to the seed ceiling 11725ms
+   ✓ seedPhase1Coverage > never seeds the US market, Shopify, or any launch category above MONITORED 2564ms
+   ✓ seedPhase1Coverage > gives every launch category linked sources and a non-empty known-gaps list 3165ms
+   ✓ seedPhase1Coverage > is idempotent and never rewrites a stored readiness 18573ms
+   ✓ recomputeCapabilityReadiness > makes a capability STALE when a required source misses its SLA, and persists it 9518ms
+   ✓ recomputeCapabilityReadiness > keeps the reviewed ceiling when every required source is inside its SLA 2703ms
+   ✓ recomputeCapabilityReadiness > treats a required source that never succeeded as overdue 3950ms
+   ✓ recomputeCapabilityReadiness > does not mark a source stale exactly at its SLA boundary 3319ms
+   ✓ recomputeCapabilityReadiness > ignores disabled sources and sources without an SLA 5821ms
+   ✓ recomputeCapabilityReadiness > never promotes above the reviewed ceiling, even when sources are healthy 5250ms
+   ✓ recomputeCapabilityReadiness > never auto-restores a STALE capability when sources recover 6818ms
+   ✓ recomputeCapabilityReadiness > holds the platform:amazon-us hard ceiling below VERIFIED even with every source healthy 21100ms
+   ✓ recomputeCapabilityReadiness > accepts the capability id as well as the key 2344ms
+   ✓ recomputeCapabilityReadiness > throws for an unknown capability 825ms
+   ✓ refreshCapabilityReadiness (health integration) > drives stale transitions for every stored capability at the injected clock 101907ms
+ ✓ test/public-read-model.test.ts (49 tests) 301112ms
+   ✓ verified listing excludes non-public versions > returns only current reviewed VERIFIED versions 7459ms
+   ✓ verified listing excludes non-public versions > does not include a draft version 3161ms
+   ✓ verified listing excludes non-public versions > does not include a not-current version 3667ms
+   ✓ verified listing excludes non-public versions > does not include an unreviewed version 4532ms
+   ✓ verified listing excludes non-public versions > does not include monitored versions in the verified pool 8049ms
+   ✓ monitored listing includes monitored and verified only > allows VERIFIED in monitored pool 8024ms
+   ✓ monitored listing includes monitored and verified only > excludes STALE from monitored pool 3342ms
+   ✓ slug lookup returns null for non-public states > returns null for a draft change 1200ms
+   ✓ slug lookup returns null for non-public states > returns null for a not-current change 342ms
+   ✓ slug lookup returns null for non-public states > returns null for an unreviewed change 362ms
+   ✓ slug lookup returns null for non-public states > returns null for a STALE change 353ms
+   ✓ pagination, limits, and cursor round-trip > rejects an undecodable cursor 375ms
+   ✓ pagination, limits, and cursor round-trip > repeat query without cursor returns same order 20863ms
+   ✓ pagination, limits, and cursor round-trip > cursor page-through collects all rows with no duplicates or gaps 32974ms
+   ✓ pagination, limits, and cursor round-trip > nextCursor is null when total items <= limit 11724ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Guide with two GuideEvidence rows and reads them back 5041ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, url]) rejects duplicate evidence URL per guide 4079ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, position]) rejects duplicate position 2741ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Briefing + BriefingEntry, rejects duplicate period key 11372ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([briefingId, position]) rejects duplicate entry position 7350ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: Source.guideEvidence returns seeded rows 4084ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: CanonicalChangeVersion.briefingEntries returns seeded rows 9696ms
+   ✓ schema constraints and reverse relations exercised on branch > LegacyRedirect: write+read and default status 308 2097ms
+   ✓ legacy Alert exclusion > listPublicChanges never includes legacy Alerts 14935ms
+   ✓ correctionHistory filters DRAFT versions > excludes correction reasons authored on DRAFT-only versions 11943ms
+ ❯ test/foundation-backfill.test.ts (8 tests | 7 skipped) 299784ms
+ ✓ test/public-hubs.test.tsx (29 tests) 234474ms
+   ✓ getHub readiness gating > returns null for a category with no capability row 3377ms
+   ✓ getHub readiness gating > returns null for an unknown platform-shaped slug 357ms
+   ✓ getHub readiness gating > does not publish a category below monitored (EXPERIMENTAL) 9974ms
+   ✓ getHub readiness gating > does not publish a STALE category 2291ms
+   ✓ getHub readiness gating > does not publish an UNAVAILABLE category 2251ms
+   ✓ getHub readiness gating > publishes a MONITORED category 15555ms
+   ✓ getHub readiness gating > publishes a VERIFIED category 7305ms
+   ✓ getHub readiness gating > refuses a renderable-readiness capability with an empty known-gaps list 5235ms
+   ✓ getHub content > maps capability fields, gaps, freshness and overdue sources 9589ms
+   ✓ getHub content > never reports a seeded-never-reviewed capability as reviewed 9073ms
+   ✓ getHub content > aggregates only public in-scope changes with no record rendered twice 12225ms
+   ✓ getHub content > lists recurring topics with counts and published guides only 5281ms
+   ✓ getTopicHub support rules > hides an unsupported recurring topic page 2514ms
+   ✓ getTopicHub support rules > one change alone does not support a topic 10282ms
+   ✓ getTopicHub support rules > one reviewed guide plus one current published change supports a topic 2635ms
+   ✓ getTopicHub support rules > three published monitored/verified changes support a topic without a guide 18321ms
+   ✓ getCoverageMatrix > sorts worst coverage first and keeps a non-empty gap on every row 5941ms
+   ✓ category hub page > shows known gaps and freshness for a monitored hub 14055ms
+   ✓ category hub page > returns 404 for a category below monitored 2846ms
+   ✓ category hub page > returns 404 for an unknown category 377ms
+   ✓ home page hub gating > links only renderable hubs and marks the rest hidden 10432ms
+   ✓ home page hub gating > keeps exactly one h1 and a live coverage strip 8508ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/foundation-backfill.test.ts > foundation backfill
+Error: Could not obtain stable backfill plan pair within 240000ms
+ ❯ stablePair test/foundation-backfill.test.ts:203:9
+    201|     first = second;
+    202|   }
+    203|   throw new Error(`Could not obtain stable backfill plan pair within $…
+       |         ^
+    204| }
+    205| 
+ ❯ test/foundation-backfill.test.ts:349:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/public-shell.test.tsx > public home page > does not carry the BL-045 liveness choreography
+PrismaClientUnknownRequestError: 
+Invalid `prisma.canonicalChangeVersion.findMany()` invocation:
+
+
+Inconsistent query result: Field canonicalChange is required to return data, got `null` instead.
+ ❯ ei.handleRequestError node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:237:13
+ ❯ ei.handleAndLogRequestError node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12
+ ❯ ei.request node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12
+ ❯ Array.$allOperations src/db/client.ts:32:18
+     30|       for (let attempt = 0; attempt < 4; attempt++) {
+     31|         try {
+     32|           return await query(args);
+       |                  ^
+     33|         } catch (e) {
+     34|           lastErr = e;
+ ❯ a node_modules/.pnpm/@prisma+client@6.19.3_prisma@6.19.3_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24
+ ❯ Module.listPublicChanges src/public-intelligence/query.ts:108:20
+ ❯ Module.Home [as default] app/(public)/page.tsx:92:43
+ ❯ test/public-shell.test.tsx:189:34
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  2 failed | 69 passed (71)
+      Tests  1 failed | 771 passed | 7 skipped (779)
+   Start at  22:11:30
+   Duration  372.56s (transform 930ms, setup 4.63s, collect 2.68s, tests 2438.93s, environment 483ms, prepare 1.61s)
+
+ ELIFECYCLE  Test failed. See above for more details.
+exit=1

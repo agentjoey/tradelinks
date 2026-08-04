@@ -1,0 +1,1051 @@
+
+> tradelinks-mvp@0.12.0 test /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+> vitest run
+
+
+ RUN  v2.1.9 /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+
+ ✓ test/collect-batch.test.ts (28 tests) 21320ms
+   ✓ collectBatch — persisted replay > re-fetches sources that failed permanently on a prior slot invocation 5006ms
+   ✓ collectBatch — structured retry > retries exactly 3 times on retryable failure then FAILED 5007ms
+   ✓ collectBatch — structured retry > retryable-then-success on attempt 2 records SUCCEEDED 1003ms
+   ✓ collectBatch — thrown-error fallback > retries on thrown transport error 5007ms
+   ✓ collectBatch — scraper retry via injected fetchSource > scraper HTTP 503: retried 3 times 5005ms
+ ❯ test/public-seo.test.ts (0 test)
+ ❯ test/public-telegram.test.ts (0 test)
+ ❯ test/foundation-backfill.test.ts (0 test)
+ ❯ test/public-backfill-plan.test.ts (0 test)
+ ❯ test/job-lock.test.ts (0 test)
+ ❯ test/collection-run.test.ts (0 test)
+ ❯ test/source-registry.test.ts (0 test)
+ ❯ test/canonicalize-batch.test.ts (0 test)
+ ❯ test/public-channel-consistency.test.ts (0 test)
+ ❯ test/daily-note.test.ts (0 test)
+ ❯ test/legacy-redirects.test.ts (0 test)
+ ❯ test/ai-stage1.test.ts (0 test)
+ ❯ test/channel-select.test.ts (0 test)
+ ❯ test/canonical-classify.test.ts (0 test)
+ ❯ test/canonical-cluster.test.ts (0 test)
+ ❯ test/product-signal.test.ts (0 test)
+ ❯ test/channel-render.test.ts (0 test)
+ ❯ test/middleware-auth.test.ts (0 test)
+ ❯ test/x.test.ts (0 test)
+ ❯ test/daily-note-review.test.ts (0 test)
+ ❯ test/adapters.test.ts (0 test)
+ ❯ test/x-accounts.test.ts (0 test)
+ ❯ test/intelligence-taxonomy.test.ts (0 test)
+ ❯ test/x-extract.test.ts (0 test)
+ ❯ test/home-select.test.ts (0 test)
+ ❯ test/job-retry.test.ts (0 test)
+ ❯ test/dedup.test.ts (0 test)
+ ❯ test/writing-columns.test.ts (0 test)
+ ❯ test/trends.test.ts (0 test)
+ ❯ test/ai-stage2.test.ts (0 test)
+ ❯ test/health.test.ts (0 test)
+ ❯ test/digest.test.ts (0 test)
+ ❯ test/public-agent-skill.test.ts (0 test)
+ ❯ test/translate-note-prompt.test.ts (0 test)
+ ❯ test/orphan-guard.test.ts (0 test)
+ ❯ test/readiness-policy.test.ts (0 test)
+ ❯ test/locale.test.ts (0 test)
+ ❯ test/push.test.ts (0 test)
+ ❯ test/writing-core.test.ts (0 test)
+ ❯ test/movers-rank.test.ts (0 test)
+ ❯ test/json-adapter.test.ts (0 test)
+ ❯ test/extract-json.test.ts (0 test)
+ ❯ test/translate-content-prompt.test.ts (0 test)
+ ❯ test/scrape-bridge.test.ts (0 test)
+ ❯ test/ogimage.test.ts (0 test)
+ ❯ test/blocked.test.ts (0 test)
+ ❯ test/i18n-content.test.ts (0 test)
+ ❯ test/mover-evidence.test.ts (0 test)
+ ❯ test/gnews.test.ts (0 test)
+ ❯ test/mover-insight-prompt.test.ts (0 test)
+ ❯ test/scheduler.test.ts (0 test)
+ ❯ test/compose-issue.test.ts (0 test)
+ ❯ test/parse-bsr.test.ts (0 test)
+ ❯ test/writing-topic-gate.test.ts (0 test)
+ ❯ test/source-hash.test.ts (0 test)
+ ❯ test/alert-route.test.ts (0 test)
+ ❯ test/labels.test.ts (0 test)
+stderr | test/public-api-v1.test.ts > GET /api/v1/changes — signed cursor pagination > answers unexpected failures in the documented envelope (500 INTERNAL_ERROR)
+api-v1 unhandled error: Error: simulated driver failure
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:392:13
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/src/public-intelligence/api.ts:355:20
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:394:23
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+ ✓ test/public-api-v1.test.ts (23 tests) 69750ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > serves a bare request with no browser headers (curl gets 200) 3605ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > rejects out-of-range limits with a deterministic 400, never a silent clamp 1934ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > returns 304 with an EMPTY body for a matching If-None-Match 2836ms
+   ✓ GET /api/v1/changes — signed cursor pagination > paginates deterministically through the run-scoped rows 10263ms
+   ✓ GET /api/v1/changes — signed cursor pagination > rejects cursor reuse under changed filters with 400 INVALID_CURSOR 6447ms
+   ✓ GET /api/v1/changes — signed cursor pagination > fails closed with a deterministic error when the secret is absent 3142ms
+   ✓ GET /api/v1/changes/[slug] > renders one canonical record byte-identical to the serializer 5068ms
+   ✓ GET /api/v1/changes/[slug] > 404s an unknown slug with a stable code 383ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > coverage returns the matrix in the standard envelope 1352ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > briefings returns published briefings only, in the standard envelope 739ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > fingerprint is a cheap content-state probe consistent with the list 3176ms
+ ❯ test/writing-self-check.test.ts (0 test)
+ ✓ test/public-feeds.test.ts (19 tests) 95610ms
+   ✓ rendered XML is byte-identical to the serializer output > guid, link and fingerprint in the XML string equal the serializer's, exactly 7477ms
+   ✓ rendered XML is byte-identical to the serializer output > renders every item field the contract requires 2362ms
+   ✓ XML escaping > round-trips a title containing &, <, a straight quote and an apostrophe 4563ms
+   ✓ feed contract > serves RSS content type and cache headers derived from PUBLIC_CACHE only 3317ms
+   ✓ feed contract > change feeds never include monitored-pool records 3211ms
+   ✓ feed contract > quotes evidence links and normalized data, never third-party full text or private fields 2341ms
+   ✓ scoped feeds > platform scope includes only that platform's records 6300ms
+   ✓ scoped feeds > category scope includes only that category's records 5893ms
+   ✓ route handlers > changes.xml returns 200 RSS 3697ms
+   ✓ route handlers > platform route: 200 with suffix, 404 without it or for unknown scopes 2829ms
+   ✓ route handlers > category route: 200 with suffix, 404 without it 2366ms
+   ✓ route handlers > briefings.xml lists published briefings only, linking canonical briefing pages 794ms
+ ❯ test/glossary.test.ts (0 test)
+{"level":30,"time":1785772373606,"pid":93165,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":66,"msg":"phase 1 coverage seeded"}
+{"level":30,"time":1785772386681,"pid":93165,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+{"level":30,"time":1785772398561,"pid":93165,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/canonical-publish.test.ts (22 tests) 135639ms
+   ✓ canonical change schema contract > rejects a second current version for one change 11499ms
+   ✓ canonical change schema contract > allows multiple non-current versions for one change 4440ms
+   ✓ publishCanonicalDraft > blocks Verified publication without reviewed primary official evidence 11901ms
+   ✓ publishCanonicalDraft > blocks Verified publication when the action template is unreviewed 4509ms
+   ✓ publishCanonicalDraft > blocks publication below Monitored readiness 4566ms
+   ✓ publishCanonicalDraft > publishes exactly one current version and clears the previous current 9701ms
+   ✓ publishCanonicalDraft > preserves structured evidence fields on the published version 8278ms
+   ✓ publishCanonicalDraft > rejects a legacy Alert id as CANONICAL_DRAFT_NOT_FOUND and leaves the Alert unchanged 3879ms
+   ✓ rejectCanonicalDraft > requires a non-blank rejection reason 4227ms
+   ✓ rejectCanonicalDraft > persists the trimmed reason and never makes the version current 6940ms
+   ✓ reviewCanonicalActionTemplate > requires a non-blank template on the draft 5037ms
+   ✓ reviewCanonicalActionTemplate > records the review without publishing the draft 5434ms
+   ✓ correctCanonicalChange > requires a non-empty correction reason 4935ms
+   ✓ correctCanonicalChange > creates version 2, preserves version 1, and carries evidence forward 18365ms
+   ✓ correctCanonicalChange > a correction that changes the action template records the correcting reviewer as its reviewer 9376ms
+   ✓ correctCanonicalChange > a correction that clears the action template drops the review metadata 8588ms
+   ✓ correctCanonicalChange > a correction that keeps the action template carries its review forward 6490ms
+ ❯ test/subscriber-util.test.ts (0 test)
+{"level":30,"time":1785772404409,"pid":93165,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/guides-briefings.test.ts (29 tests) 201598ms
+   ✓ publishGuide against the real corpus and the database > publishes a genuinely publishable guide and lists it 18058ms
+   ✓ publishGuide against the real corpus and the database > never exposes drafts through the public read path 1163ms
+   ✓ generateBriefing > pins the exact ordered version IDs and fingerprint of the finished qualification run 21493ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT when no finished qualification run exists — never computes its own ordering 1096ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT for unfinished or failed runs 1527ms
+   ✓ generateBriefing > breaks loudly when the run metadata does not carry ordered version IDs 5623ms
+   ✓ generateBriefing > rejects a qualification run whose scope does not match the requested period 1567ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing below three qualified changes 10631ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing without at least one Verified change 16630ms
+   ✓ generateBriefing daily threshold > generates a daily draft at three qualified changes including one Verified 18596ms
+   ✓ publishBriefing > publishes a draft with a review event and refuses to republish 12051ms
+   ✓ publishBriefing > never rewrites a published briefing — a correction needs a new fingerprint and review 11968ms
+   ✓ published briefing read path > returns entries in pinned order with serialized records; drafts stay invisible 34163ms
+   ✓ published briefing read path > sitemap includes published briefing periods and published guides — no drafts, no empty periods 37667ms
+ ❯ test/theme.test.ts (0 test)
+ ✓ test/public-search.test.ts (17 tests) 252894ms
+   ✓ searchPublicChanges > never leaks drafts, rejected, stale, non-current or below-Monitored records 46166ms
+   ✓ searchPublicChanges > defaults to verified and widens to monitored only by explicit selection 15360ms
+   ✓ searchPublicChanges > applies structured filters without widening on invalid combinations 23051ms
+   ✓ searchPublicChanges > filters on the effective-date range and excludes undated records when a range is set 22952ms
+   ✓ searchPublicChanges > matches q against title and summary case-insensitively 19857ms
+   ✓ searchPublicChanges > pages through with the Task 1 opaque cursor and nulls nextCursor on the final page 47648ms
+   ✓ searchPublicChanges > rejects an undecodable cursor and a non-integer limit 418ms
+   ✓ getPublicChangeDetail > returns null for an unknown or unpublished slug 13362ms
+   ✓ getPublicChangeDetail > carries evidence access labels and the reviewed action template 10882ms
+   ✓ getPublicChangeDetail > withholds the action template without review or without reviewed primary-official evidence 16673ms
+   ✓ sitemap canonical-change entries > includes published changes and /changes; drafts and unknown slugs stay out 27316ms
+   ✓ listExperimentalDemand > returns rank observations only — no bestseller, launch or market-size claims 2603ms
+ ❯ test/public-hubs.test.tsx (0 test)
+ ✓ test/coverage-readiness.test.ts (17 tests) 261265ms
+   ✓ seedPhase1Coverage > seeds exactly the ten Phase 1 capability keys 1209ms
+   ✓ seedPhase1Coverage > seeds Amazon policy at MONITORED (hard-ceilinged below VERIFIED) and BSR at EXPERIMENTAL 1199ms
+   ✓ seedPhase1Coverage > re-seeding lifts a never-reviewed, non-STALE stored grade to the seed ceiling 12585ms
+   ✓ seedPhase1Coverage > never seeds the US market, Shopify, or any launch category above MONITORED 3205ms
+   ✓ seedPhase1Coverage > gives every launch category linked sources and a non-empty known-gaps list 2257ms
+   ✓ seedPhase1Coverage > is idempotent and never rewrites a stored readiness 11925ms
+   ✓ recomputeCapabilityReadiness > makes a capability STALE when a required source misses its SLA, and persists it 6962ms
+   ✓ recomputeCapabilityReadiness > keeps the reviewed ceiling when every required source is inside its SLA 2654ms
+   ✓ recomputeCapabilityReadiness > treats a required source that never succeeded as overdue 2715ms
+   ✓ recomputeCapabilityReadiness > does not mark a source stale exactly at its SLA boundary 2258ms
+   ✓ recomputeCapabilityReadiness > ignores disabled sources and sources without an SLA 4568ms
+   ✓ recomputeCapabilityReadiness > never promotes above the reviewed ceiling, even when sources are healthy 4914ms
+   ✓ recomputeCapabilityReadiness > never auto-restores a STALE capability when sources recover 6281ms
+   ✓ recomputeCapabilityReadiness > holds the platform:amazon-us hard ceiling below VERIFIED even with every source healthy 20632ms
+   ✓ recomputeCapabilityReadiness > accepts the capability id as well as the key 2307ms
+   ✓ recomputeCapabilityReadiness > throws for an unknown capability 458ms
+   ✓ refreshCapabilityReadiness (health integration) > drives stale transitions for every stored capability at the injected clock 63781ms
+ ❯ test/canonical-change-page.test.tsx (0 test)
+ ✓ test/public-read-model.test.ts (49 tests) 265655ms
+   ✓ verified listing excludes non-public versions > returns only current reviewed VERIFIED versions 11207ms
+   ✓ verified listing excludes non-public versions > does not include a draft version 2386ms
+   ✓ verified listing excludes non-public versions > does not include a not-current version 2330ms
+   ✓ verified listing excludes non-public versions > does not include an unreviewed version 2776ms
+   ✓ verified listing excludes non-public versions > does not include monitored versions in the verified pool 2380ms
+   ✓ monitored listing includes monitored and verified only > allows VERIFIED in monitored pool 6616ms
+   ✓ monitored listing includes monitored and verified only > excludes STALE from monitored pool 2844ms
+   ✓ slug lookup returns null for non-public states > returns null for a draft change 1743ms
+   ✓ slug lookup returns null for non-public states > returns null for a not-current change 393ms
+   ✓ slug lookup returns null for non-public states > returns null for an unreviewed change 381ms
+   ✓ slug lookup returns null for non-public states > returns null for a STALE change 381ms
+   ✓ pagination, limits, and cursor round-trip > rejects an undecodable cursor 450ms
+   ✓ pagination, limits, and cursor round-trip > repeat query without cursor returns same order 20833ms
+   ✓ pagination, limits, and cursor round-trip > cursor page-through collects all rows with no duplicates or gaps 32649ms
+   ✓ pagination, limits, and cursor round-trip > nextCursor is null when total items <= limit 9694ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Guide with two GuideEvidence rows and reads them back 4483ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, url]) rejects duplicate evidence URL per guide 3379ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, position]) rejects duplicate position 2729ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Briefing + BriefingEntry, rejects duplicate period key 11207ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([briefingId, position]) rejects duplicate entry position 7342ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: Source.guideEvidence returns seeded rows 3722ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: CanonicalChangeVersion.briefingEntries returns seeded rows 7769ms
+   ✓ schema constraints and reverse relations exercised on branch > LegacyRedirect: write+read and default status 308 2097ms
+   ✓ legacy Alert exclusion > listPublicChanges never includes legacy Alerts 6291ms
+   ✓ correctionHistory filters DRAFT versions > excludes correction reasons authored on DRAFT-only versions 9963ms
+ ❯ test/public-shell.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 64 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/adapters.test.ts [ test/adapters.test.ts ]
+Error: VITEST_WORKER_ID "29" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/64]⎯
+
+ FAIL  test/ai-stage1.test.ts [ test/ai-stage1.test.ts ]
+Error: VITEST_WORKER_ID "20" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/64]⎯
+
+ FAIL  test/ai-stage2.test.ts [ test/ai-stage2.test.ts ]
+Error: VITEST_WORKER_ID "38" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/64]⎯
+
+ FAIL  test/alert-route.test.ts [ test/alert-route.test.ts ]
+Error: VITEST_WORKER_ID "64" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/64]⎯
+
+ FAIL  test/blocked.test.ts [ test/blocked.test.ts ]
+Error: VITEST_WORKER_ID "54" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/64]⎯
+
+ FAIL  test/canonical-change-page.test.tsx [ test/canonical-change-page.test.tsx ]
+Error: VITEST_WORKER_ID "71" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/64]⎯
+
+ FAIL  test/canonical-classify.test.ts [ test/canonical-classify.test.ts ]
+Error: VITEST_WORKER_ID "22" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/64]⎯
+
+ FAIL  test/canonical-cluster.test.ts [ test/canonical-cluster.test.ts ]
+Error: VITEST_WORKER_ID "23" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/64]⎯
+
+ FAIL  test/canonicalize-batch.test.ts [ test/canonicalize-batch.test.ts ]
+Error: VITEST_WORKER_ID "16" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/64]⎯
+
+ FAIL  test/channel-render.test.ts [ test/channel-render.test.ts ]
+Error: VITEST_WORKER_ID "25" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/64]⎯
+
+ FAIL  test/channel-select.test.ts [ test/channel-select.test.ts ]
+Error: VITEST_WORKER_ID "21" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/64]⎯
+
+ FAIL  test/collection-run.test.ts [ test/collection-run.test.ts ]
+Error: VITEST_WORKER_ID "14" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/64]⎯
+
+ FAIL  test/compose-issue.test.ts [ test/compose-issue.test.ts ]
+Error: VITEST_WORKER_ID "60" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/64]⎯
+
+ FAIL  test/daily-note-review.test.ts [ test/daily-note-review.test.ts ]
+Error: VITEST_WORKER_ID "28" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/64]⎯
+
+ FAIL  test/daily-note.test.ts [ test/daily-note.test.ts ]
+Error: VITEST_WORKER_ID "18" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/64]⎯
+
+ FAIL  test/dedup.test.ts [ test/dedup.test.ts ]
+Error: VITEST_WORKER_ID "35" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/64]⎯
+
+ FAIL  test/digest.test.ts [ test/digest.test.ts ]
+Error: VITEST_WORKER_ID "40" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/64]⎯
+
+ FAIL  test/extract-json.test.ts [ test/extract-json.test.ts ]
+Error: VITEST_WORKER_ID "50" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/64]⎯
+
+ FAIL  test/foundation-backfill.test.ts [ test/foundation-backfill.test.ts ]
+Error: VITEST_WORKER_ID "11" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/64]⎯
+
+ FAIL  test/glossary.test.ts [ test/glossary.test.ts ]
+Error: VITEST_WORKER_ID "67" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/64]⎯
+
+ FAIL  test/gnews.test.ts [ test/gnews.test.ts ]
+Error: VITEST_WORKER_ID "57" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/64]⎯
+
+ FAIL  test/health.test.ts [ test/health.test.ts ]
+Error: VITEST_WORKER_ID "39" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/64]⎯
+
+ FAIL  test/home-select.test.ts [ test/home-select.test.ts ]
+Error: VITEST_WORKER_ID "33" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/64]⎯
+
+ FAIL  test/i18n-content.test.ts [ test/i18n-content.test.ts ]
+Error: VITEST_WORKER_ID "55" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/64]⎯
+
+ FAIL  test/intelligence-taxonomy.test.ts [ test/intelligence-taxonomy.test.ts ]
+Error: VITEST_WORKER_ID "31" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/64]⎯
+
+ FAIL  test/job-lock.test.ts [ test/job-lock.test.ts ]
+Error: VITEST_WORKER_ID "13" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/64]⎯
+
+ FAIL  test/job-retry.test.ts [ test/job-retry.test.ts ]
+Error: VITEST_WORKER_ID "34" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/64]⎯
+
+ FAIL  test/json-adapter.test.ts [ test/json-adapter.test.ts ]
+Error: VITEST_WORKER_ID "49" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/64]⎯
+
+ FAIL  test/labels.test.ts [ test/labels.test.ts ]
+Error: VITEST_WORKER_ID "65" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/64]⎯
+
+ FAIL  test/legacy-redirects.test.ts [ test/legacy-redirects.test.ts ]
+Error: VITEST_WORKER_ID "19" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/64]⎯
+
+ FAIL  test/locale.test.ts [ test/locale.test.ts ]
+Error: VITEST_WORKER_ID "45" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/64]⎯
+
+ FAIL  test/middleware-auth.test.ts [ test/middleware-auth.test.ts ]
+Error: VITEST_WORKER_ID "26" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/64]⎯
+
+ FAIL  test/mover-evidence.test.ts [ test/mover-evidence.test.ts ]
+Error: VITEST_WORKER_ID "56" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/64]⎯
+
+ FAIL  test/mover-insight-prompt.test.ts [ test/mover-insight-prompt.test.ts ]
+Error: VITEST_WORKER_ID "58" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/64]⎯
+
+ FAIL  test/movers-rank.test.ts [ test/movers-rank.test.ts ]
+Error: VITEST_WORKER_ID "48" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/64]⎯
+
+ FAIL  test/ogimage.test.ts [ test/ogimage.test.ts ]
+Error: VITEST_WORKER_ID "53" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/64]⎯
+
+ FAIL  test/orphan-guard.test.ts [ test/orphan-guard.test.ts ]
+Error: VITEST_WORKER_ID "43" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/64]⎯
+
+ FAIL  test/parse-bsr.test.ts [ test/parse-bsr.test.ts ]
+Error: VITEST_WORKER_ID "61" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/64]⎯
+
+ FAIL  test/product-signal.test.ts [ test/product-signal.test.ts ]
+Error: VITEST_WORKER_ID "24" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/64]⎯
+
+ FAIL  test/public-agent-skill.test.ts [ test/public-agent-skill.test.ts ]
+Error: VITEST_WORKER_ID "41" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/64]⎯
+
+ FAIL  test/public-backfill-plan.test.ts [ test/public-backfill-plan.test.ts ]
+Error: VITEST_WORKER_ID "12" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/64]⎯
+
+ FAIL  test/public-channel-consistency.test.ts [ test/public-channel-consistency.test.ts ]
+Error: VITEST_WORKER_ID "17" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/64]⎯
+
+ FAIL  test/public-hubs.test.tsx [ test/public-hubs.test.tsx ]
+Error: VITEST_WORKER_ID "70" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/64]⎯
+
+ FAIL  test/public-seo.test.ts [ test/public-seo.test.ts ]
+Error: VITEST_WORKER_ID "9" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/64]⎯
+
+ FAIL  test/public-shell.test.tsx [ test/public-shell.test.tsx ]
+Error: VITEST_WORKER_ID "72" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/64]⎯
+
+ FAIL  test/public-telegram.test.ts [ test/public-telegram.test.ts ]
+Error: VITEST_WORKER_ID "10" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/64]⎯
+
+ FAIL  test/push.test.ts [ test/push.test.ts ]
+Error: VITEST_WORKER_ID "46" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/64]⎯
+
+ FAIL  test/readiness-policy.test.ts [ test/readiness-policy.test.ts ]
+Error: VITEST_WORKER_ID "44" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/64]⎯
+
+ FAIL  test/scheduler.test.ts [ test/scheduler.test.ts ]
+Error: VITEST_WORKER_ID "59" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/64]⎯
+
+ FAIL  test/scrape-bridge.test.ts [ test/scrape-bridge.test.ts ]
+Error: VITEST_WORKER_ID "52" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/64]⎯
+
+ FAIL  test/source-hash.test.ts [ test/source-hash.test.ts ]
+Error: VITEST_WORKER_ID "63" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/64]⎯
+
+ FAIL  test/source-registry.test.ts [ test/source-registry.test.ts ]
+Error: VITEST_WORKER_ID "15" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/64]⎯
+
+ FAIL  test/subscriber-util.test.ts [ test/subscriber-util.test.ts ]
+Error: VITEST_WORKER_ID "68" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/64]⎯
+
+ FAIL  test/theme.test.ts [ test/theme.test.ts ]
+Error: VITEST_WORKER_ID "69" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[54/64]⎯
+
+ FAIL  test/translate-content-prompt.test.ts [ test/translate-content-prompt.test.ts ]
+Error: VITEST_WORKER_ID "51" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[55/64]⎯
+
+ FAIL  test/translate-note-prompt.test.ts [ test/translate-note-prompt.test.ts ]
+Error: VITEST_WORKER_ID "42" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[56/64]⎯
+
+ FAIL  test/trends.test.ts [ test/trends.test.ts ]
+Error: VITEST_WORKER_ID "37" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[57/64]⎯
+
+ FAIL  test/writing-columns.test.ts [ test/writing-columns.test.ts ]
+Error: VITEST_WORKER_ID "36" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[58/64]⎯
+
+ FAIL  test/writing-core.test.ts [ test/writing-core.test.ts ]
+Error: VITEST_WORKER_ID "47" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[59/64]⎯
+
+ FAIL  test/writing-self-check.test.ts [ test/writing-self-check.test.ts ]
+Error: VITEST_WORKER_ID "66" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[60/64]⎯
+
+ FAIL  test/writing-topic-gate.test.ts [ test/writing-topic-gate.test.ts ]
+Error: VITEST_WORKER_ID "62" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[61/64]⎯
+
+ FAIL  test/x-accounts.test.ts [ test/x-accounts.test.ts ]
+Error: VITEST_WORKER_ID "30" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[62/64]⎯
+
+ FAIL  test/x-extract.test.ts [ test/x-extract.test.ts ]
+Error: VITEST_WORKER_ID "32" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[63/64]⎯
+
+ FAIL  test/x.test.ts [ test/x.test.ts ]
+Error: VITEST_WORKER_ID "27" is outside the provisioned schema pool (1..8)
+ ❯ Module.currentWorkerSchema test/db-isolation.ts:51:11
+     49|   const id = Number.parseInt(raw, 10);
+     50|   if (!Number.isInteger(id) || id < 1 || id > TEST_WORKER_COUNT) {
+     51|     throw new Error(
+       |           ^
+     52|       `VITEST_WORKER_ID "${raw}" is outside the provisioned schema poo…
+     53|     );
+ ❯ test/setup-db-schema.ts:13:18
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[64/64]⎯
+
+ Test Files  64 failed | 8 passed (72)
+      Tests  204 passed (204)
+   Start at  23:50:40
+   Duration  289.80s (transform 528ms, setup 1.10s, collect 1.40s, tests 1303.73s, environment 343ms, prepare 1.44s)
+
+ ELIFECYCLE  Test failed. See above for more details.
+exit=1

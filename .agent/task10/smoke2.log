@@ -1,0 +1,37 @@
+
+ RUN  v2.1.9 /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+
+[test-isolation] migrated schema vitest_w1 in 63834ms
+[test-isolation] migrated schema vitest_w2 in 61698ms
+[test-isolation] migrated schema vitest_w3 in 62993ms
+[test-isolation] migrated schema vitest_w4 in 68033ms
+[test-isolation] migrated schema vitest_w5 in 66722ms
+[test-isolation] migrated schema vitest_w6 in 60511ms
+[test-isolation] migrated schema vitest_w7 in 56957ms
+[test-isolation] migrated schema vitest_w8 in 59616ms
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+RangeError: options.minThreads and options.maxThreads must not conflict
+ ❯ new Tinypool node_modules/.pnpm/tinypool@1.1.1/node_modules/tinypool/dist/index.js:745:120
+ ❯ createForksPool node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/resolveConfig.rBxzbVsl.js:6756:16
+ ❯ forks node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/resolveConfig.rBxzbVsl.js:7664:20
+ ❯ node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/resolveConfig.rBxzbVsl.js:7690:27
+ ❯ executeTests node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/resolveConfig.rBxzbVsl.js:7681:5
+ ❯ node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10818:9
+ ❯ Vitest.runFiles node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10840:12
+ ❯ Vitest.start node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10682:7
+ ❯ startVitest node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:11848:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+ Test Files  no tests
+      Tests  no tests
+     Errors  1 error
+   Start at  23:08:50
+   Duration  544.27s (transform 15ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)
+

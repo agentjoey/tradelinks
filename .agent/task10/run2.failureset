@@ -1,0 +1,4 @@
+ FAIL  test/foundation-backfill.test.ts > foundation backfill > apply matches the dry-run counts exactly on first apply and zero on replay
+ FAIL  test/foundation-backfill.test.ts > foundation backfill > apply rejects a mismatched fingerprint
+ Test Files  1 failed | 71 passed (72)
+      Tests  2 failed | 778 passed (780)

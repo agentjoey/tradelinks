@@ -1,0 +1,55 @@
+
+ RUN  v2.1.9 /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+
+
+ Test Files  no tests
+      Tests  no tests
+   Start at  22:42:11
+   Duration  174.43s (transform 13ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 0ms)
+
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: prisma migrate deploy failed for schema vitest_w3:
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "vitest_w3" at "ep-dark-resonance-aol8malu.c-2.ap-southeast-1.aws.neon.tech"
+
+13 migrations found in prisma/migrations
+
+Applying migration `0001_init`
+Applying migration `0002_trgm`
+
+Environment variables loaded from .env
+Error: P3018
+
+A migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve
+
+Migration name: 0002_trgm
+
+Database error code: 42704
+
+Database error:
+ERROR: operator class "gin_trgm_ops" does not exist for access method "gin"
+
+DbError { severity: "ERROR", parsed_severity: Some(Error), code: SqlState(E42704), message: "operator class \"gin_trgm_ops\" does not exist for access method \"gin\"", detail: None, hint: None, position: None, where_: None, schema: None, table: None, column: None, datatype: None, constraint: None, file: Some("indexcmds.c"), line: Some(2308), routine: Some("ResolveOpClass") }
+
+
+
+ ❯ migrateDeploy test/global-setup.ts:30:11
+     28|     .filter((e) => e.isDirectory() && /^\d+_/.test(e.name))
+     29|     .map((e) => e.name)
+     30|     .sort();
+       |           ^
+     31| }
+     32| 
+ ❯ test/global-setup.ts:60:17
+ ❯ Object.globalSetup [as setup] test/global-setup.ts:55:5
+ ❯ WorkspaceProject.initializeGlobalSetup node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:9926:24
+ ❯ Vitest.initializeGlobalSetup node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10794:7
+ ❯ node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10816:7
+ ❯ Vitest.runFiles node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10840:12
+ ❯ Vitest.start node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:10682:7
+ ❯ startVitest node_modules/.pnpm/vitest@2.1.9_@types+node@22.19.19_jsdom@26.1.0/node_modules/vitest/dist/chunks/cli-api.DqsSTaIi.js:11848:7
+
+
+
+

@@ -1,0 +1,317 @@
+
+> tradelinks-mvp@0.12.0 test /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+> vitest run
+
+
+ RUN  v2.1.9 /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence
+
+ ✓ test/public-seo.test.ts (7 tests) 244ms
+ ✓ test/collect-batch.test.ts (28 tests) 21317ms
+   ✓ collectBatch — persisted replay > re-fetches sources that failed permanently on a prior slot invocation 5005ms
+   ✓ collectBatch — structured retry > retries exactly 3 times on retryable failure then FAILED 5005ms
+   ✓ collectBatch — structured retry > retryable-then-success on attempt 2 records SUCCEEDED 1003ms
+   ✓ collectBatch — thrown-error fallback > retries on thrown transport error 5005ms
+   ✓ collectBatch — scraper retry via injected fetchSource > scraper HTTP 503: retried 3 times 5002ms
+stderr | test/public-api-v1.test.ts > GET /api/v1/changes — signed cursor pagination > answers unexpected failures in the documented envelope (500 INTERNAL_ERROR)
+api-v1 unhandled error: Error: simulated driver failure
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:392:13
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/src/public-intelligence/api.ts:355:20
+    at /Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/test/public-api-v1.test.ts:394:23
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///Users/xtation/AgentWorks/worktrees/tradelinks-phase1-public-intelligence/node_modules/.pnpm/@vitest+runner@2.1.9/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+ ❯ test/foundation-backfill.test.ts (8 tests | 2 failed) 37955ms
+   ✓ foundation backfill > produces the same fingerprint on repeated dry runs 4342ms
+   × foundation backfill > apply matches the dry-run counts exactly on first apply and zero on replay 1196ms
+     → Refusing to apply backfill: DATABASE_URL is required and every configured database URL must point to the approved isolated endpoint.
+   × foundation backfill > apply rejects a mismatched fingerprint 4ms
+     → expected [Function] to throw error matching /fingerprint/i but got 'Refusing to apply backfill: DATABASE_…'
+{"level":30,"time":1785774087506,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfraup000ora3w545arvim","msg":"public-telegram sent"}
+{"level":30,"time":1785774087870,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfr69q000fra3wyemu97e7","msg":"public-telegram sent"}
+{"level":30,"time":1785774088861,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfqz590006ra3wrk9rjg8p","msg":"public-telegram sent"}
+{"level":30,"time":1785774088862,"pid":94748,"hostname":"Y-MMN.local","posted":3,"failed":0,"eligible":3,"msg":"public-telegram run complete"}
+ ✓ test/public-api-v1.test.ts (23 tests) 72198ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > serves a bare request with no browser headers (curl gets 200) 3158ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > rejects out-of-range limits with a deterministic 400, never a silent clamp 2988ms
+   ✓ GET /api/v1/changes — envelope, limits, headers > returns 304 with an EMPTY body for a matching If-None-Match 1922ms
+   ✓ GET /api/v1/changes — signed cursor pagination > paginates deterministically through the run-scoped rows 10427ms
+   ✓ GET /api/v1/changes — signed cursor pagination > rejects cursor reuse under changed filters with 400 INVALID_CURSOR 5831ms
+   ✓ GET /api/v1/changes — signed cursor pagination > fails closed with a deterministic error when the secret is absent 1932ms
+   ✓ GET /api/v1/changes/[slug] > renders one canonical record byte-identical to the serializer 3798ms
+   ✓ GET /api/v1/changes/[slug] > 404s an unknown slug with a stable code 363ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > coverage returns the matrix in the standard envelope 4384ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > briefings returns published briefings only, in the standard envelope 820ms
+   ✓ GET /api/v1/coverage, /api/v1/briefings, /api/v1/fingerprint > fingerprint is a cheap content-state probe consistent with the list 3189ms
+ ✓ test/job-lock.test.ts (23 tests) 4ms
+{"level":30,"time":1785774093832,"pid":94748,"hostname":"Y-MMN.local","posted":0,"failed":0,"eligible":0,"msg":"public-telegram run complete"}
+{"level":30,"time":1785774096795,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfraup000ora3w545arvim","msg":"public-telegram sent"}
+{"level":30,"time":1785774097251,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfr69q000fra3wyemu97e7","msg":"public-telegram sent"}
+{"level":30,"time":1785774097612,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfqz590006ra3wrk9rjg8p","msg":"public-telegram sent"}
+{"level":30,"time":1785774097612,"pid":94748,"hostname":"Y-MMN.local","posted":3,"failed":0,"eligible":3,"msg":"public-telegram run complete"}
+{"level":40,"time":1785774100232,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfraup000ora3w545arvim","status":"failed","msg":"public-telegram send failed"}
+{"level":30,"time":1785774100232,"pid":94748,"hostname":"Y-MMN.local","posted":0,"failed":1,"eligible":1,"msg":"public-telegram run complete"}
+{"level":30,"time":1785774104636,"pid":94748,"hostname":"Y-MMN.local","itemId":"canonical:cmsdfraup000ora3w545arvim","msg":"public-telegram sent"}
+{"level":30,"time":1785774104637,"pid":94748,"hostname":"Y-MMN.local","posted":1,"failed":0,"eligible":1,"msg":"public-telegram run complete"}
+ ✓ test/public-backfill-plan.test.ts (13 tests) 26827ms
+   ✓ planPublicBackfill — reconciliation against the worker schema > accounts for every legacy alert row: mapped or unmapped with a reason 6446ms
+   ✓ planPublicBackfill — reconciliation against the worker schema > an alert is mapped exactly when its canonical change exists 2327ms
+   ✓ planPublicBackfill — reconciliation against the worker schema > accounts for every published daily note: mapped or unmapped with a reason 2307ms
+   ✓ planPublicBackfill — reconciliation against the worker schema > counts one redirect row per static entry plus one per mapped daily note 1164ms
+   ✓ planPublicBackfill — reconciliation against the worker schema > returns the same fingerprint across consecutive runs on unchanged input 1388ms
+ ✓ test/source-registry.test.ts (15 tests) 21ms
+ ✓ test/canonicalize-batch.test.ts (11 tests) 3ms
+ ✓ test/public-feeds.test.ts (19 tests) 90237ms
+   ✓ rendered XML is byte-identical to the serializer output > guid, link and fingerprint in the XML string equal the serializer's, exactly 7744ms
+   ✓ rendered XML is byte-identical to the serializer output > renders every item field the contract requires 2253ms
+   ✓ XML escaping > round-trips a title containing &, <, a straight quote and an apostrophe 2178ms
+   ✓ feed contract > serves RSS content type and cache headers derived from PUBLIC_CACHE only 3678ms
+   ✓ feed contract > change feeds never include monitored-pool records 2611ms
+   ✓ feed contract > quotes evidence links and normalized data, never third-party full text or private fields 2565ms
+   ✓ scoped feeds > platform scope includes only that platform's records 5611ms
+   ✓ scoped feeds > category scope includes only that category's records 5136ms
+   ✓ route handlers > changes.xml returns 200 RSS 2220ms
+   ✓ route handlers > platform route: 200 with suffix, 404 without it or for unknown scopes 2635ms
+   ✓ route handlers > category route: 200 with suffix, 404 without it 2262ms
+   ✓ route handlers > briefings.xml lists published briefings only, linking canonical briefing pages 740ms
+ ✓ test/daily-note.test.ts (16 tests) 4ms
+ ✓ test/legacy-redirects.test.ts (37 tests) 3ms
+ ✓ test/ai-stage1.test.ts (13 tests) 4ms
+ ✓ test/channel-select.test.ts (18 tests) 2ms
+ ✓ test/canonical-classify.test.ts (17 tests) 4ms
+ ✓ test/canonical-cluster.test.ts (23 tests) 4ms
+ ✓ test/product-signal.test.ts (27 tests) 3ms
+ ✓ test/channel-render.test.ts (25 tests) 2ms
+ ✓ test/middleware-auth.test.ts (4 tests) 4ms
+ ✓ test/x.test.ts (5 tests) 4ms
+ ✓ test/daily-note-review.test.ts (6 tests) 3ms
+ ✓ test/adapters.test.ts (7 tests) 10ms
+ ✓ test/x-accounts.test.ts (5 tests) 4ms
+ ✓ test/intelligence-taxonomy.test.ts (12 tests) 2ms
+ ✓ test/x-extract.test.ts (6 tests) 3ms
+ ✓ test/home-select.test.ts (11 tests) 2ms
+ ✓ test/job-retry.test.ts (13 tests) 15ms
+ ✓ test/dedup.test.ts (8 tests) 2ms
+ ✓ test/public-telegram.test.ts (6 tests) 92696ms
+   ✓ selectPublicTelegramChanges > selects only VERIFIED current reviewed versions at or above the urgency floor 6999ms
+   ✓ selectPublicTelegramChanges > respects the per-run limit and the already-pushed set 4555ms
+   ✓ runPublicTelegramPush > sends each eligible version once per channel and is idempotent on re-run 13773ms
+   ✓ runPublicTelegramPush > a failed send is not tracked, so the next run retries it 7024ms
+ ✓ test/writing-columns.test.ts (6 tests) 1ms
+ ✓ test/trends.test.ts (9 tests) 2ms
+ ✓ test/ai-stage2.test.ts (6 tests) 2ms
+ ✓ test/health.test.ts (9 tests) 15ms
+ ✓ test/digest.test.ts (7 tests) 2ms
+ ✓ test/public-agent-skill.test.ts (8 tests) 2ms
+ ✓ test/translate-note-prompt.test.ts (5 tests) 2ms
+ ✓ test/readiness-policy.test.ts (4 tests) 1ms
+ ✓ test/locale.test.ts (9 tests) 1ms
+ ✓ test/push.test.ts (5 tests) 1ms
+ ✓ test/writing-core.test.ts (6 tests) 2ms
+ ✓ test/movers-rank.test.ts (3 tests) 1ms
+ ✓ test/json-adapter.test.ts (4 tests) 2ms
+ ✓ test/extract-json.test.ts (9 tests) 2ms
+ ✓ test/translate-content-prompt.test.ts (5 tests) 2ms
+ ✓ test/scrape-bridge.test.ts (3 tests) 3ms
+ ✓ test/ogimage.test.ts (5 tests) 3ms
+ ✓ test/blocked.test.ts (6 tests) 1ms
+ ✓ test/i18n-content.test.ts (4 tests) 1ms
+ ✓ test/mover-evidence.test.ts (2 tests) 1ms
+ ✓ test/gnews.test.ts (3 tests) 1ms
+ ✓ test/mover-insight-prompt.test.ts (2 tests) 1ms
+ ✓ test/scheduler.test.ts (5 tests) 11ms
+ ✓ test/compose-issue.test.ts (3 tests) 1ms
+ ✓ test/parse-bsr.test.ts (6 tests) 1ms
+ ✓ test/writing-topic-gate.test.ts (4 tests) 1ms
+ ✓ test/source-hash.test.ts (5 tests) 1ms
+ ✓ test/alert-route.test.ts (3 tests) 1ms
+ ✓ test/orphan-guard.test.ts (1 test) 11196ms
+   ✓ test orphan guard > orphaned test fixtures stay below 100 rows across all schemas 11195ms
+ ✓ test/labels.test.ts (3 tests) 1ms
+{"level":30,"time":1785774124353,"pid":94732,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":66,"msg":"phase 1 coverage seeded"}
+{"level":30,"time":1785774133530,"pid":94732,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/canonical-publish.test.ts (22 tests) 121556ms
+   ✓ canonical change schema contract > rejects a second current version for one change 10762ms
+   ✓ canonical change schema contract > allows multiple non-current versions for one change 3808ms
+   ✓ publishCanonicalDraft > blocks Verified publication without reviewed primary official evidence 11405ms
+   ✓ publishCanonicalDraft > blocks Verified publication when the action template is unreviewed 4541ms
+   ✓ publishCanonicalDraft > blocks publication below Monitored readiness 5194ms
+   ✓ publishCanonicalDraft > publishes exactly one current version and clears the previous current 10116ms
+   ✓ publishCanonicalDraft > preserves structured evidence fields on the published version 8568ms
+   ✓ publishCanonicalDraft > rejects a legacy Alert id as CANONICAL_DRAFT_NOT_FOUND and leaves the Alert unchanged 3200ms
+   ✓ rejectCanonicalDraft > requires a non-blank rejection reason 4663ms
+   ✓ rejectCanonicalDraft > persists the trimmed reason and never makes the version current 5460ms
+   ✓ reviewCanonicalActionTemplate > requires a non-blank template on the draft 5798ms
+   ✓ reviewCanonicalActionTemplate > records the review without publishing the draft 5397ms
+   ✓ correctCanonicalChange > requires a non-empty correction reason 5032ms
+   ✓ correctCanonicalChange > creates version 2, preserves version 1, and carries evidence forward 10812ms
+   ✓ correctCanonicalChange > a correction that changes the action template records the correcting reviewer as its reviewer 7597ms
+   ✓ correctCanonicalChange > a correction that clears the action template drops the review metadata 7104ms
+   ✓ correctCanonicalChange > a correction that keeps the action template carries its review forward 5921ms
+ ✓ test/writing-self-check.test.ts (3 tests) 1ms
+{"level":30,"time":1785774140618,"pid":94732,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+{"level":30,"time":1785774146015,"pid":94732,"hostname":"Y-MMN.local","capabilities":10,"sourceWrites":0,"msg":"phase 1 coverage seeded"}
+ ✓ test/public-channel-consistency.test.ts (5 tests) 43257ms
+   ✓ listPublicChanges produces channel-consistent records > every item in a listing has the same fingerprint computed by the serializer 17912ms
+   ✓ listPublicChanges produces channel-consistent records > fingerprint matches hash of version identity fields 6993ms
+ ✓ test/glossary.test.ts (3 tests) 1ms
+ ✓ test/collection-run.test.ts (9 tests) 74835ms
+   ✓ beginRun > reuses a run for the same job and scheduled slot 8217ms
+   ✓ beginRun > keeps distinct scheduled slots distinct 4343ms
+   ✓ recordSourceOutcome > records an empty success without moving source freshness backward 12029ms
+   ✓ recordSourceOutcome > inserts items once and keeps ids and counts stable across replay 11951ms
+   ✓ recordSourceOutcome > adds only newly inserted items to an existing check 11621ms
+   ✓ recordSourceOutcome > never advances source freshness for blocked or failed outcomes 7492ms
+   ✓ finishRun > derives the run status from its checks and aggregates counts 10236ms
+   ✓ finishRun > marks a fully empty-success run SUCCEEDED_EMPTY 5607ms
+ ✓ test/subscriber-util.test.ts (3 tests) 1ms
+ ✓ test/guides-briefings.test.ts (29 tests) 198952ms
+   ✓ publishGuide against the real corpus and the database > publishes a genuinely publishable guide and lists it 19660ms
+   ✓ publishGuide against the real corpus and the database > never exposes drafts through the public read path 1202ms
+   ✓ generateBriefing > pins the exact ordered version IDs and fingerprint of the finished qualification run 22193ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT when no finished qualification run exists — never computes its own ordering 1111ms
+   ✓ generateBriefing > returns NO_QUALIFIED_CONTENT for unfinished or failed runs 1509ms
+   ✓ generateBriefing > breaks loudly when the run metadata does not carry ordered version IDs 6635ms
+   ✓ generateBriefing > rejects a qualification run whose scope does not match the requested period 2293ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing below three qualified changes 9914ms
+   ✓ generateBriefing daily threshold > does not manufacture a daily briefing without at least one Verified change 14696ms
+   ✓ generateBriefing daily threshold > generates a daily draft at three qualified changes including one Verified 16824ms
+   ✓ publishBriefing > publishes a draft with a review event and refuses to republish 13797ms
+   ✓ publishBriefing > never rewrites a published briefing — a correction needs a new fingerprint and review 11725ms
+   ✓ published briefing read path > returns entries in pinned order with serialized records; drafts stay invisible 31273ms
+   ✓ published briefing read path > sitemap includes published briefing periods and published guides — no drafts, no empty periods 36205ms
+ ✓ test/theme.test.ts (4 tests) 1ms
+ ✓ test/public-search.test.ts (17 tests) 239100ms
+   ✓ searchPublicChanges > never leaks drafts, rejected, stale, non-current or below-Monitored records 45111ms
+   ✓ searchPublicChanges > defaults to verified and widens to monitored only by explicit selection 16684ms
+   ✓ searchPublicChanges > applies structured filters without widening on invalid combinations 25983ms
+   ✓ searchPublicChanges > filters on the effective-date range and excludes undated records when a range is set 18209ms
+   ✓ searchPublicChanges > matches q against title and summary case-insensitively 18384ms
+   ✓ searchPublicChanges > pages through with the Task 1 opaque cursor and nulls nextCursor on the final page 44536ms
+   ✓ searchPublicChanges > rejects an undecodable cursor and a non-integer limit 1351ms
+   ✓ getPublicChangeDetail > returns null for an unknown or unpublished slug 10116ms
+   ✓ getPublicChangeDetail > carries evidence access labels and the reviewed action template 9796ms
+   ✓ getPublicChangeDetail > withholds the action template without review or without reviewed primary-official evidence 18886ms
+   ✓ sitemap canonical-change entries > includes published changes and /changes; drafts and unknown slugs stay out 20971ms
+   ✓ listExperimentalDemand > returns rank observations only — no bestseller, launch or market-size claims 2250ms
+ ✓ test/coverage-readiness.test.ts (17 tests) 249063ms
+   ✓ seedPhase1Coverage > seeds exactly the ten Phase 1 capability keys 1057ms
+   ✓ seedPhase1Coverage > seeds Amazon policy at MONITORED (hard-ceilinged below VERIFIED) and BSR at EXPERIMENTAL 1073ms
+   ✓ seedPhase1Coverage > re-seeding lifts a never-reviewed, non-STALE stored grade to the seed ceiling 8923ms
+   ✓ seedPhase1Coverage > never seeds the US market, Shopify, or any launch category above MONITORED 1428ms
+   ✓ seedPhase1Coverage > gives every launch category linked sources and a non-empty known-gaps list 1837ms
+   ✓ seedPhase1Coverage > is idempotent and never rewrites a stored readiness 9438ms
+   ✓ recomputeCapabilityReadiness > makes a capability STALE when a required source misses its SLA, and persists it 7535ms
+   ✓ recomputeCapabilityReadiness > keeps the reviewed ceiling when every required source is inside its SLA 3518ms
+   ✓ recomputeCapabilityReadiness > treats a required source that never succeeded as overdue 4207ms
+   ✓ recomputeCapabilityReadiness > does not mark a source stale exactly at its SLA boundary 2785ms
+   ✓ recomputeCapabilityReadiness > ignores disabled sources and sources without an SLA 4093ms
+   ✓ recomputeCapabilityReadiness > never promotes above the reviewed ceiling, even when sources are healthy 6009ms
+   ✓ recomputeCapabilityReadiness > never auto-restores a STALE capability when sources recover 5970ms
+   ✓ recomputeCapabilityReadiness > holds the platform:amazon-us hard ceiling below VERIFIED even with every source healthy 17001ms
+   ✓ recomputeCapabilityReadiness > accepts the capability id as well as the key 2724ms
+   ✓ recomputeCapabilityReadiness > throws for an unknown capability 384ms
+   ✓ refreshCapabilityReadiness (health integration) > drives stale transitions for every stored capability at the injected clock 63111ms
+ ✓ test/public-read-model.test.ts (49 tests) 250515ms
+   ✓ verified listing excludes non-public versions > returns only current reviewed VERIFIED versions 9199ms
+   ✓ verified listing excludes non-public versions > does not include a draft version 3495ms
+   ✓ verified listing excludes non-public versions > does not include a not-current version 2849ms
+   ✓ verified listing excludes non-public versions > does not include an unreviewed version 3192ms
+   ✓ verified listing excludes non-public versions > does not include monitored versions in the verified pool 3233ms
+   ✓ monitored listing includes monitored and verified only > allows VERIFIED in monitored pool 8200ms
+   ✓ monitored listing includes monitored and verified only > excludes STALE from monitored pool 2151ms
+   ✓ slug lookup returns null for non-public states > returns null for a draft change 1722ms
+   ✓ slug lookup returns null for non-public states > returns null for a not-current change 361ms
+   ✓ slug lookup returns null for non-public states > returns null for an unreviewed change 373ms
+   ✓ slug lookup returns null for non-public states > returns null for a STALE change 370ms
+   ✓ pagination, limits, and cursor round-trip > rejects an undecodable cursor 435ms
+   ✓ pagination, limits, and cursor round-trip > repeat query without cursor returns same order 20843ms
+   ✓ pagination, limits, and cursor round-trip > cursor page-through collects all rows with no duplicates or gaps 29619ms
+   ✓ pagination, limits, and cursor round-trip > nextCursor is null when total items <= limit 3735ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Guide with two GuideEvidence rows and reads them back 4603ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, url]) rejects duplicate evidence URL per guide 3461ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([guideId, position]) rejects duplicate position 3275ms
+   ✓ schema constraints and reverse relations exercised on branch > creates a Briefing + BriefingEntry, rejects duplicate period key 9524ms
+   ✓ schema constraints and reverse relations exercised on branch > @@unique([briefingId, position]) rejects duplicate entry position 7250ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: Source.guideEvidence returns seeded rows 4408ms
+   ✓ schema constraints and reverse relations exercised on branch > reverse relation: CanonicalChangeVersion.briefingEntries returns seeded rows 8028ms
+   ✓ schema constraints and reverse relations exercised on branch > LegacyRedirect: write+read and default status 308 2086ms
+   ✓ legacy Alert exclusion > listPublicChanges never includes legacy Alerts 6840ms
+   ✓ correctionHistory filters DRAFT versions > excludes correction reasons authored on DRAFT-only versions 9415ms
+ ✓ test/canonical-change-page.test.tsx (14 tests) 136486ms
+   ✓ /changes index > defaults to verified and shows monitored entries only on explicit selection 29572ms
+   ✓ /changes index > teaches the surface on an empty filter instead of padding it 757ms
+   ✓ /changes index > links the next page with the opaque cursor and keeps the active filters 15383ms
+   ✓ /changes/[slug] detail > renders primary evidence before supporting before secondary context 12812ms
+   ✓ /changes/[slug] detail > shows readiness, version, dates, authority, what changed, who it hits and the boundary block 8402ms
+   ✓ /changes/[slug] detail > labels inaccessible and disallowed evidence instead of omitting it 8742ms
+   ✓ /changes/[slug] detail > shows the reviewed action template only with reviewed primary-official evidence and a reviewed template 17683ms
+   ✓ /changes/[slug] detail > keeps correction history visible with every prior version addressable 9589ms
+   ✓ /changes/[slug] detail > states the Monitored limit in prose on the permalink page, never a bare badge 7704ms
+   ✓ /changes/[slug] detail > returns a real 404 for an unknown slug and for an unpublished record 9961ms
+   ✓ /changes/[slug] detail > metadata canonical excludes filters and tracking parameters 9725ms
+ ✓ test/public-hubs.test.tsx (29 tests) 201140ms
+   ✓ getHub readiness gating > returns null for a category with no capability row 3288ms
+   ✓ getHub readiness gating > returns null for an unknown platform-shaped slug 360ms
+   ✓ getHub readiness gating > does not publish a category below monitored (EXPERIMENTAL) 9088ms
+   ✓ getHub readiness gating > does not publish a STALE category 2925ms
+   ✓ getHub readiness gating > does not publish an UNAVAILABLE category 2298ms
+   ✓ getHub readiness gating > publishes a MONITORED category 9026ms
+   ✓ getHub readiness gating > publishes a VERIFIED category 5619ms
+   ✓ getHub readiness gating > refuses a renderable-readiness capability with an empty known-gaps list 4587ms
+   ✓ getHub content > maps capability fields, gaps, freshness and overdue sources 6688ms
+   ✓ getHub content > never reports a seeded-never-reviewed capability as reviewed 5967ms
+   ✓ getHub content > aggregates only public in-scope changes with no record rendered twice 3965ms
+   ✓ getHub content > lists recurring topics with counts and published guides only 5833ms
+   ✓ getTopicHub support rules > hides an unsupported recurring topic page 2197ms
+   ✓ getTopicHub support rules > one change alone does not support a topic 9276ms
+   ✓ getTopicHub support rules > one reviewed guide plus one current published change supports a topic 4988ms
+   ✓ getTopicHub support rules > three published monitored/verified changes support a topic without a guide 17577ms
+   ✓ getCoverageMatrix > sorts worst coverage first and keeps a non-empty gap on every row 4686ms
+   ✓ category hub page > shows known gaps and freshness for a monitored hub 13355ms
+   ✓ category hub page > returns 404 for a category below monitored 2588ms
+   ✓ category hub page > returns 404 for an unknown category 357ms
+   ✓ home page hub gating > links only renderable hubs and marks the rest hidden 7104ms
+   ✓ home page hub gating > keeps exactly one h1 and a live coverage strip 5719ms
+ ✓ test/public-shell.test.tsx (20 tests) 7716ms
+   ✓ public home page > renders exactly one h1 6188ms
+   ✓ public home page > does not carry the BL-045 liveness choreography 1451ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/foundation-backfill.test.ts > foundation backfill > apply matches the dry-run counts exactly on first apply and zero on replay
+Error: Refusing to apply backfill: DATABASE_URL is required and every configured database URL must point to the approved isolated endpoint.
+ ❯ Module.applyFoundationBackfill src/canonicalize/backfill.ts:594:11
+    592| export async function applyFoundationBackfill(reportFingerprint: strin…
+    593|   if (!isApprovedApplyTarget()) {
+    594|     throw new Error(
+       |           ^
+    595|       "Refusing to apply backfill: DATABASE_URL is required and every …
+    596|     );
+ ❯ expectApplyAndReplay test/foundation-backfill.test.ts:278:25
+ ❯ test/foundation-backfill.test.ts:374:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/foundation-backfill.test.ts > foundation backfill > apply rejects a mismatched fingerprint
+AssertionError: expected [Function] to throw error matching /fingerprint/i but got 'Refusing to apply backfill: DATABASE_…'
+
+- Expected: 
+/fingerprint/i
+
++ Received: 
+"Refusing to apply backfill: DATABASE_URL is required and every configured database URL must point to the approved isolated endpoint."
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed | 71 passed (72)
+      Tests  2 failed | 778 passed (780)
+   Start at  00:19:49
+   Duration  477.69s (transform 904ms, setup 4.37s, collect 2.43s, tests 1875.46s, environment 372ms, prepare 1.44s)
+
+ ELIFECYCLE  Test failed. See above for more details.
+exit=1
