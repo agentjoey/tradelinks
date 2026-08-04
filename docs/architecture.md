@@ -273,6 +273,16 @@ both the legacy tables and the `0011`/`0012` canonical chain.
 > **Numbering trap.** The plan calls the *retirement* migration
 > `0013_retire_wire_radar_daily`. `0013` is taken by this one. The retirement
 > migration is **`0014`** and has not been written.
+>
+> **Retirement-set trap (found 2026-08-04).** The plan lists the retirement set as
+> `alerts`, `daily_notes`, `items`, legacy `clusters`. **`items` must not be
+> dropped.** `EvidenceClusterMember` holds a foreign key to it, `collect-batch`
+> writes it through `insertItemsDeduped()`, and `canonicalize-batch` reads it to
+> build the evidence chain — both jobs run in production. `items` is shared
+> infrastructure the legacy product merely used first. `alerts` is also still
+> read by the live BL-039 channel push (`src/push/channel-db.ts`,
+> `src/workers/channel-push.ts`), which must be retired or repointed in the same
+> release. See the cutover runbook §0.
 
 ```
 CanonicalChangeVersion ──→ BriefingEntry ──→ Briefing

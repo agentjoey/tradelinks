@@ -250,3 +250,23 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 | v0.3.0 | 2026-06-03 | Sprint 002：评分(MiniMax)+Alert生成+状态路由+审核队列，全链真实验证 |
 | v0.2.0 | 2026-06-03 | Sprint 001 完成：数据摄取管道（pg-boss/Neon + deepseek-v4-flash + Scrapling）全链真实验证 |
 | v0.1.0 | 2026-06-03 | 项目立项，规范初始化，数据源清单确认 |
+
+## Task 9b 进行中（2026-08-04）：流量已切换，退役未执行
+
+**生产流量已切到新公开面，且完全可逆。**
+
+- `main` = `production` = `ab1b0f0`。生产 Vercel 部署 Ready，`PUBLIC_CUTOVER_ENABLED=true`（Production 作用域）。
+- 实测 8 条 legacy 路由全部 308 到契约目标：`/wire`→`/changes`、`/trends`→`/amazon-us?view=demand-signals`、`/daily` 与 `/daily/[slug]`→`/briefings`、`/zh/wire`→`/changes`、`/zh`→`/`、`/api/public/{alerts,daily}`→`/openapi.json`。Location 均为同源相对路径。
+- **回滚**：删除 `PUBLIC_CUTOVER_ENABLED` 后重建，或 `vercel promote https://tradelinks-h4pmua7b1-agentjoeys-projects.vercel.app`（开关 OFF 的那次生产部署）。legacy 代码与全部数据未动。
+- 退役前 Neon 检查点 `phase1-public-pre-retirement`（`br-damp-boat-aov1verm`，**无过期**）。生产库 13/13。
+- 已知后果：`/changes` 为空（生产 0 条可发布记录）；`/feed.xml` 已 308 到 `/feeds/changes.xml`，现有 RSS 订阅者从此收到 canonical changes 而非 Wire 告警。
+
+### 三个推翻既有认知的发现（2026-08-04）
+
+1. **`items` 不能退役。** plan 与 runbook 初版把它列入退役集是错的：`EvidenceClusterMember` 对它有外键，`collect-batch` 写它、`canonicalize-batch` 读它构建证据链，两个作业正在生产运行。真正可退役的只有 `alerts`、`daily_notes`、legacy `clusters`。`0014` 尚未编写，错误未被执行。详见 cutover-runbook §0。
+2. **Track A 的 Railway 切换其实已经做了**，且服务从 `feat-phase1-operations` 分支部署（`publish`/`public-briefing`/`health`/`cost-report` 四个作业只存在于该分支，它领先 main 105 提交）。pact 账本上 `railway-cutover` 仍是 `awaiting_review`。`.agent/HANDOFF.md` 在这一点上过期。
+3. **`tradelinks-legacy-worker` 已崩溃 2 天**，`tradelinks-collect-fast` 上次运行失败。旧 worker 负责抓取与 `seedSources`——**这解释了生产 source `lastOkAt` 停在一个月前、全部 capability 计算为 `STALE`、因而 `/us` `/amazon-us` `/shopify-us` 返回 404**。那不是渲染缺陷，是产品拒绝宣称自己没有的覆盖。
+
+### 未执行，且不应在当前状态下执行
+
+Step 8（写 `0014`、删 legacy 代码、生产删表）**未开始**。阻断项：管道有两个服务处于故障态；退役集需按修正后的清单重新推导；代码删除必须与 Railway 实际部署的分支协调，而非与 `main` 协调。

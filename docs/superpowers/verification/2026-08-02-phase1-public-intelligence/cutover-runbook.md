@@ -7,8 +7,8 @@ copy-pasteable command with its expected output. If a check fails, **stop** — 
 
 **What this cutover is:** the legacy site (`/wire`, `/trends`, `/daily`, API v0) is replaced
 by the public-intelligence site (`/changes`, `/briefings`, hubs, API v1). Legacy URLs 308 to
-their replacements. The legacy tables (`alerts`, `daily_notes`, `items`, legacy `clusters`)
-are dropped by migration **0014**.
+their replacements. Migration **0014** drops the retirable legacy tables — **which do not
+include `items`**. See §0 before you write a line of `0014`.
 
 **What was already done (Task 9a, accepted):** the redirect map
 (`src/public-intelligence/legacy-redirects.ts`, pure, wired into nothing), the
@@ -20,6 +20,54 @@ are dropped by migration **0014**.
 > If you find yourself writing `prisma/migrations/0013_*`, stop and re-read this line.
 
 ---
+
+## 0. ⛔ Correction, 2026-08-04 — `items` is NOT a legacy table
+
+The plan, and the first version of this runbook, listed the retirement set as
+`alerts`, `daily_notes`, `items`, legacy `clusters`. **`items` does not belong on that list**,
+and dropping it would break the live pipeline.
+
+Evidence, in order of how hard it is to argue with:
+
+1. **The new model holds a foreign key to it.** `prisma/schema.prisma`:
+   ```prisma
+   model EvidenceClusterMember {
+     itemId String
+     item   Item @relation(fields: [itemId], references: [id])
+     @@id([clusterId, itemId])
+   }
+   ```
+   A `DROP TABLE items` either fails on the constraint or takes
+   `EvidenceClusterMember` with it — and that table is the evidence chain.
+
+2. **The current pipeline writes and reads it.** `collect-batch` →
+   `insertItemsDeduped()` → `items`; `canonicalize-batch` → `selectOrphans()` →
+   `MatchedItem { itemId, facts }` → `EvidenceCluster` / `CanonicalChange`. Both jobs were
+   observed **running in production on Railway** on 2026-08-04.
+
+3. Nine production modules reference it, including `src/collection/run.ts` and
+   `src/canonicalize/backfill.ts` — Foundation and Operations code, not legacy UI.
+
+`items` is shared infrastructure that predates the split. The legacy product happened to use
+it first; the canonical pipeline uses it now.
+
+**Retirement set, corrected:**
+
+| Table | Retire? | Why |
+|---|---|---|
+| `alerts` | Yes — **but see below** | Legacy Wire. Still read by `src/push/channel-db.ts` and `src/workers/channel-push.ts` (BL-039 channel push, live on Railway) and by `src/canonicalize/backfill.ts`. Those consumers must be retired or repointed **first**. |
+| `daily_notes` | Yes | Only `src/daily/db.ts` reads it, and that module retires with the legacy UI. |
+| legacy `clusters` | Yes | `src/dedup/db.ts` and `src/canonicalize/backfill.ts` only. Distinct from `EvidenceCluster`. |
+| `items` | **NO** | Foreign key from `EvidenceClusterMember`; written by `collect-batch`, read by `canonicalize-batch`. |
+
+Before writing `0014`, re-derive this table yourself against the then-current code — do not
+trust this list either. The command:
+
+```bash
+grep -rl "prisma\.alert\b\|prisma\.dailyNote\|prisma\.cluster\b\|prisma\.item\b" src app
+```
+
+Every hit is a consumer that must be gone or repointed before its table can be dropped.
 
 ## 1. Preconditions — check every one, in order
 
@@ -167,14 +215,46 @@ plan): public cache hit ratio, route errors, 404 rate, API status/latency, sitem
 generation. Crawl the sitemap. Confirm the link-integrity suite stays green.
 Reversible: flag back to `false`.
 
+**Step 7b — Railway reality check (added 2026-08-04).** The retirement deletes code that
+Railway services execute. Those services do **not** deploy from `production`: the
+`tradelinks-publish`, `tradelinks-public-briefing`, `tradelinks-health` and
+`tradelinks-cost-report` jobs exist only on `feat-phase1-operations`, which was 105 commits
+ahead of `main` on 2026-08-04. Deleting a module `main` no longer imports can still break a
+service running that branch.
+
+Before Step 8, confirm on the Railway dashboard:
+
+- every service is **Running** or intentionally **Sleeping** — on 2026-08-04
+  `tradelinks-legacy-worker` had been **Crashed for 2 days** and `tradelinks-collect-fast`'s
+  last run had **failed**; a pipeline in that state is not a pipeline you retire around;
+- which branch each service deploys from, recorded in the ticket;
+- that no service still imports a module the retirement deletes — check against the
+  *deployed branch*, not against `main`.
+
+`tradelinks-legacy-worker` runs the old worker (crawl, alerts, daily notes, `seedSources`).
+Its two-day outage is why production sources show `lastOkAt` a month stale, why every
+`CoverageCapability` computes to `STALE`, and therefore why the hubs 404. Fix or
+deliberately retire it — do not read those 404s as a rendering bug.
+
 **Step 8 — ⛔ POINT OF NO RETURN: migration 0014.** Apply
-`prisma/migrations/0014_*/migration.sql`, which drops the legacy models from
+`prisma/migrations/0014_*/migration.sql`, which drops the **retirable** legacy models from
 `prisma/schema.prisma` and their tables from the database, **in the same release** that
-deletes the ~50 legacy files the schema change forces (every module importing
+deletes the legacy files the schema change forces (every module importing
 `prisma.alert` / `prisma.dailyNote` / `prisma.cluster` stops compiling the moment the
 models leave the schema — schema change, migration and file deletion are one indivisible
-act). After this step there is no flag to flip and no prior release to redeploy against
-this database. Rollback is §5 Stage D only.
+act).
+
+**The retirement set is `alerts`, `daily_notes` and legacy `clusters`. It is NOT `items`** —
+§0 explains why, and the reason is a live foreign key, not a preference. Re-derive the set
+against the then-current code before writing the migration.
+
+`alerts` additionally has consumers that are **not** legacy UI: `src/push/channel-db.ts` and
+`src/workers/channel-push.ts` power the BL-039 Telegram channel push, which runs on Railway.
+Retire or repoint them in the same release, or the channel push starts erroring the moment
+the table goes.
+
+After this step there is no flag to flip and no prior release to redeploy against this
+database. Rollback is §5 Stage D only.
 
 **Step 9 — Post-cutover verification.** §6, every command green, plus the plan's
 full-verification gate and the independent T3 review (`$impeccable critique/audit`).
