@@ -107,6 +107,11 @@ export interface CanonicalizeDeps {
   classifyRelevance?(
     items: Array<{ id: string; title: string; snippet?: string; sourceId: string }>,
   ): Promise<Map<string, { keep: boolean; reason: string; confidence: number }>>;
+  /**
+   * Record that a cluster was judged irrelevant, so it is never judged again.
+   * Called only for an actual verdict — never for an absent one.
+   */
+  rejectCluster?(clusterId: string, reason: string): Promise<void>;
 }
 
 // ---- production deps ----
@@ -165,6 +170,12 @@ const REAL_DEPS: CanonicalizeDeps = {
     const clusters = await db.evidenceCluster.findMany({
       where: {
         canonicalChange: { is: null },
+        // A cluster the relevance gate already rejected is settled. Without
+        // this it would be re-judged every slot for the whole ninety-day
+        // window (~540 attempts), and against a non-deterministic model
+        // repeated sampling turns any small keep-probability into an eventual
+        // keep — quietly undoing the gate.
+        status: "DRAFT",
         // Cheap pre-filter: readiness lives in the contract, not the database,
         // so SQL narrows by source id and buildPromotionDraft applies the real
         // gate. The recency bound is repeated here for the same reason — the
@@ -210,9 +221,9 @@ const REAL_DEPS: CanonicalizeDeps = {
     // No key means no judgment. Returning an empty map (rather than throwing,
     // or waving everything through) leaves every verdict absent, and an absent
     // verdict is a drop — so an unconfigured deployment promotes nothing.
-    if (!env.DEEPSEEK_API_KEY) return new Map();
+    if (!env.MINIMAX_API_KEY) return new Map();
 
-    const { deepseekFlash } = await import("../ai/client.js");
+    const { minimaxJudge } = await import("../ai/client.js");
     const { buildSellerRelevancePrompt, parseSellerRelevance, foldRelevance } = await import(
       "../ai/prompts/seller-relevance.js"
     );
@@ -221,7 +232,7 @@ const REAL_DEPS: CanonicalizeDeps = {
     for (let i = 0; i < items.length; i += RELEVANCE_BATCH_SIZE) {
       const chunk = items.slice(i, i + RELEVANCE_BATCH_SIZE);
       try {
-        const res = await deepseekFlash.complete(buildSellerRelevancePrompt(chunk));
+        const res = await minimaxJudge.complete(buildSellerRelevancePrompt(chunk));
         for (const [id, verdict] of foldRelevance(chunk, parseSellerRelevance(res.text))) {
           verdicts.set(id, verdict);
         }
@@ -231,6 +242,14 @@ const REAL_DEPS: CanonicalizeDeps = {
       }
     }
     return verdicts;
+  },
+  async rejectCluster(clusterId: string, reason: string) {
+    const { prisma: db } = await import("../db/client.js");
+    const { logger } = await import("../lib/logger.js");
+    await db.evidenceCluster.update({ where: { id: clusterId }, data: { status: "REJECTED" } });
+    // The cluster row carries the decision; the log carries the why. Reversing
+    // one is a single UPDATE back to DRAFT.
+    logger.info({ clusterId, reason }, "cluster rejected by relevance gate");
   },
   async promoteCluster(draft: PromotionDraft): Promise<PromotionOutcome> {
     const { prisma: db } = await import("../db/client.js");
@@ -472,8 +491,20 @@ export function createCanonicalizeBatch(
       }
 
       for (const { draft } of built) {
-        if (!verdicts.get(draft.fingerprint)?.keep) {
+        const verdict = verdicts.get(draft.fingerprint);
+        if (!verdict?.keep) {
           relevanceDropped++;
+          // Persist only a real verdict. An absent one means the classifier
+          // was unavailable, not that the change is irrelevant — burying a
+          // cluster over a missing key or a bad minute would be unrecoverable
+          // without a manual reset.
+          if (verdict && deps.rejectCluster) {
+            try {
+              await deps.rejectCluster(draft.clusterId, verdict.reason);
+            } catch {
+              // A failed write costs one re-judgment, not the slot.
+            }
+          }
           continue;
         }
         attempted++;

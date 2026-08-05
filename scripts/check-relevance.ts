@@ -17,7 +17,7 @@
 
 import { env } from "../src/config/env.js";
 import { prisma } from "../src/db/client.js";
-import { deepseekFlash } from "../src/ai/client.js";
+import { minimaxJudge } from "../src/ai/client.js";
 import {
   RELEVANCE_CONFIDENCE_THRESHOLD,
   buildSellerRelevancePrompt,
@@ -69,9 +69,9 @@ async function loadItems(limit: number): Promise<RelevanceItem[]> {
 }
 
 async function main(): Promise<void> {
-  if (!env.DEEPSEEK_API_KEY) {
+  if (!env.MINIMAX_API_KEY) {
     console.error(
-      "DEEPSEEK_API_KEY is not set. The gate fails closed without it: promotion\n" +
+      "MINIMAX_API_KEY is not set. The gate fails closed without it: promotion\n" +
         "is skipped entirely rather than falling back to promoting everything.",
     );
     process.exit(2);
@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   for (let i = 0; i < items.length; i += BATCH) {
     const chunk = items.slice(i, i + BATCH);
     process.stderr.write(`judging ${i + 1}-${i + chunk.length} of ${items.length}\r`);
-    const res = await deepseekFlash.complete(buildSellerRelevancePrompt(chunk));
+    const res = await minimaxJudge.complete(buildSellerRelevancePrompt(chunk));
     for (const [id, v] of foldRelevance(chunk, parseSellerRelevance(res.text))) {
       verdicts.set(id, v);
     }

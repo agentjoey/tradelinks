@@ -646,3 +646,103 @@ describe("canonicalize relevance gate", () => {
     expect(seen).toEqual(["fp-fresh"]);
   });
 });
+
+// ---- verdict persistence ---------------------------------------------------
+
+/**
+ * A drop must stick.
+ *
+ * Measured against production, the same 140 candidates judged twice returned
+ * different keep sets (6, then 3) despite temperature 0 — MiniMax does not
+ * guarantee determinism. A rejected cluster stays selectable, so it would be
+ * re-judged every four hours for the whole ninety-day window: roughly 540
+ * attempts. Under repeated sampling anything with even a small keep
+ * probability eventually passes, which quietly converts a fail-closed gate
+ * into "keeps everything borderline, given time".
+ *
+ * Recording the verdict on the cluster makes the judgment happen once. It also
+ * stops the slot re-paying for ~134 verdicts it has already bought.
+ */
+
+describe("relevance verdicts persist", () => {
+  function freshCluster(id: string): PromotableCluster {
+    const m = member({ itemId: `${id}-item` });
+    m.item.publishedAt = new Date("2026-08-01T00:00:00Z");
+    return cluster([m], `fp-${id}`);
+  }
+
+  it("records a rejection so the cluster is never judged twice", async () => {
+    const rejected: Array<{ clusterId: string; reason: string }> = [];
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a"), freshCluster("b")]; },
+      async classifyRelevance(items) {
+        return new Map(items.map((i) => [i.id, {
+          keep: i.id === "fp-a", reason: "optional feature", confidence: 0.9,
+        }]));
+      },
+      async promoteCluster() { return "PROMOTED"; },
+      async rejectCluster(clusterId, reason) { rejected.push({ clusterId, reason }); },
+    });
+    await batch(batchArgs());
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]!.reason).toBe("optional feature");
+  });
+
+  it("does not reject when the classifier itself was unavailable", async () => {
+    // Absent judgment is not a verdict. Rejecting here would permanently bury
+    // clusters because a key was missing or the API had a bad minute.
+    const rejected: string[] = [];
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      classifyRelevance: undefined,
+      async promoteCluster() { return "PROMOTED"; },
+      async rejectCluster(clusterId) { rejected.push(clusterId); },
+    });
+    await batch(batchArgs());
+    expect(rejected).toEqual([]);
+  });
+
+  it("does not reject when the classifier threw", async () => {
+    const rejected: string[] = [];
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance() { throw new Error("api down"); },
+      async promoteCluster() { return "PROMOTED"; },
+      async rejectCluster(clusterId) { rejected.push(clusterId); },
+    });
+    await batch(batchArgs());
+    expect(rejected).toEqual([]);
+  });
+
+  it("does not reject an item the model simply failed to return a verdict for", async () => {
+    const rejected: string[] = [];
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a"), freshCluster("b")]; },
+      async classifyRelevance(items) {
+        // Only one of the two comes back — the other is unjudged, not rejected.
+        return new Map([[items[0]!.id, { keep: true, reason: "r", confidence: 1 }]]);
+      },
+      async promoteCluster() { return "PROMOTED"; },
+      async rejectCluster(clusterId) { rejected.push(clusterId); },
+    });
+    await batch(batchArgs());
+    expect(rejected).toEqual([]);
+  });
+
+  it("survives a failing rejection write without losing the rest of the slot", async () => {
+    const promoted: string[] = [];
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a"), freshCluster("b")]; },
+      async classifyRelevance(items) {
+        return new Map(items.map((i) => [i.id, {
+          keep: i.id === "fp-a", reason: "r", confidence: 0.9,
+        }]));
+      },
+      async promoteCluster(draft) { promoted.push(draft.fingerprint); return "PROMOTED"; },
+      async rejectCluster() { throw new Error("write failed"); },
+    });
+    const result = await batch(batchArgs());
+    expect(promoted).toEqual(["fp-a"]);
+    expect(result.exitCode).toBe(0);
+  });
+});

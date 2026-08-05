@@ -178,6 +178,22 @@ export const minimax = new AnthropicCompatClient({
   model: env.MINIMAX_MODEL, // MiniMax-M2
 });
 
+/**
+ * Judging client for the seller-relevance gate (owner decision 2026-08-05).
+ *
+ * Same endpoint and key as `minimax`, but pinned to M3 with reasoning turned
+ * off. The gate asks a short classification question over a batch of headlines
+ * — there is nothing to reason about, and a thinking block would spend the
+ * response budget before the verdicts are emitted.
+ */
+export const minimaxJudge = new AnthropicCompatClient({
+  name: `minimax:${env.MINIMAX_JUDGE_MODEL}`,
+  baseUrl: env.MINIMAX_BASE_URL,
+  apiKey: env.MINIMAX_API_KEY,
+  model: env.MINIMAX_JUDGE_MODEL,
+  extraBody: { thinking: { type: "disabled" } },
+});
+
 export const deepseekChat = new OpenAiCompatClient({
   name: "deepseek-v3.2",
   baseUrl: "https://api.deepseek.com/v1",

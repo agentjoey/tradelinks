@@ -8,6 +8,9 @@ export const EnvSchema = z.object({
   MINIMAX_API_KEY: z.string().optional(), // sk-cp- token-plan key → Anthropic endpoint
   MINIMAX_BASE_URL: z.string().default("https://api.minimax.io/anthropic"),
   MINIMAX_MODEL: z.string().default("MiniMax-M2.7-highspeed"),
+  // Seller-relevance judging (owner decision 2026-08-05). Separate from
+  // MINIMAX_MODEL so the legacy pipeline's model can move independently.
+  MINIMAX_JUDGE_MODEL: z.string().default("MiniMax-M3"),
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_STAGE1_MODEL: z.string().default("deepseek-v4-flash"), // Stage-1 primary (ADR-005)
   QWEN_API_KEY: z.string().optional(),
