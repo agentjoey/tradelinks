@@ -265,8 +265,27 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 
 1. **`items` 不能退役。** plan 与 runbook 初版把它列入退役集是错的：`EvidenceClusterMember` 对它有外键，`collect-batch` 写它、`canonicalize-batch` 读它构建证据链，两个作业正在生产运行。真正可退役的只有 `alerts`、`daily_notes`、legacy `clusters`。`0014` 尚未编写，错误未被执行。详见 cutover-runbook §0。
 2. **Track A 的 Railway 切换其实已经做了**，且服务从 `feat-phase1-operations` 分支部署（`publish`/`public-briefing`/`health`/`cost-report` 四个作业只存在于该分支，它领先 main 105 提交）。pact 账本上 `railway-cutover` 仍是 `awaiting_review`。`.agent/HANDOFF.md` 在这一点上过期。
-3. **`tradelinks-legacy-worker` 已崩溃 2 天**，`tradelinks-collect-fast` 上次运行失败。旧 worker 负责抓取与 `seedSources`——**这解释了生产 source `lastOkAt` 停在一个月前、全部 capability 计算为 `STALE`、因而 `/us` `/amazon-us` `/shopify-us` 返回 404**。那不是渲染缺陷，是产品拒绝宣称自己没有的覆盖。
+3. ~~**`tradelinks-legacy-worker` 已崩溃 2 天**，`collect-fast` 上次运行失败，导致源陈旧、capability 全 STALE、hub 404。~~ **撤回，见下。**
+
+### ⛔ 撤回与更正（2026-08-05）：上条第 3 点连错了数据库
+
+`.env.production` 在本工作副本**不存在**。`dotenv-cli -e .env.production` 对缺失文件静默无操作，Prisma 随即回落到 `.env`（Neon **dev**）。第 3 点及 2026-08-04 版 runbook 里所有标注"生产"的数字，读的都是 dev。查生产请用 Neon MCP 指向 `br-autumn-smoke-aof5n7pe`。CLAUDE.md 记载的 `pnpm db:migrate:prod` / `:staging` 同样依赖这两个不存在的文件。
+
+**生产实测（`br-autumn-smoke-aof5n7pe`，2026-08-05）：**
+
+- 有限作业管线自 **2026-08-01 16:48 UTC 起持续运行**：148 条 `PipelineRun`，近 24h 46 条，八个 cron 服务全部在报。`collect-fast` 18 次（1728 items）、`canonicalize` 18 次全成功、`health` 每小时共 64 次、`publish` 18 次、`cost-report` 7 次。
+- 源**新鲜**：66 个源，24h 内 24 个成功，最新 08-04 12:26。**无一 capability 为 STALE**。
+- `tradelinks-legacy-worker` 的启动命令是 `next start`（Web 应用，非 worker）。它的不稳定是一个待删服务的配置错误，不承载任何在跑的管线。
+- 只有 `/amazon-us` 一个路由 404，原因见下方第 4 点。
+
+第 1、2 点经复核成立，且第 2 点比当时判断更强：Railway 确实跑 `feat-phase1-operations`（`health` 作业在 main 上只有 dryRun stub、必然 exit 2，而生产 exit 0）。
+
+### 两个真实阻断项（2026-08-05）
+
+4. **管线断在 cluster → CanonicalChange，全仓库无人实现这一步。** 生产 3667 个 `EvidenceCluster` **全部停在 DRAFT**，`CanonicalChange` = 0。`canonicalize-batch.ts:94` 只写 `{ fingerprint, status: "DRAFT" }`；`classifyChange()` 除 `test/` 外**无任何调用方**；唯一创建 `CanonicalChange` 的代码是禁止对生产运行的 `backfill.ts`。因此 `publish` 每次报 `SUCCEEDED_EMPTY` 是正确行为。**人工审核解决不了**——审核作用于 `CanonicalChange` 行，而没有东西创建它们。Foundation / Operations / Public Intelligence 三份计划均未认领此步。
+
+5. **Track A 与 Track B 对同一数据库分裂。** `src/canonicalize/coverage.ts` 在 `main` 上实现了 owner 决策 4（amazon-us 由 UNAVAILABLE 改 MONITORED + `CAPABILITY_HARD_CEILINGS`），在 `feat-phase1-operations` 上是改造前旧版（仍 seed UNAVAILABLE，clamp 机制整段不存在，相对 main 少 70 行）。**Railway 写 readiness，Vercel 读 readiness**，所以生产存的是 UNAVAILABLE，`canRenderHub` 拒绝，`/amazon-us` 真 404——而它的 4 个源全部健康（最新 08-04 12:25）。**决策 4 在生产从未生效。** 连带缺陷：`/trends` 308 → `/amazon-us?view=demand-signals` → 404，切换前该页可用。
 
 ### 未执行，且不应在当前状态下执行
 
-Step 8（写 `0014`、删 legacy 代码、生产删表）**未开始**。阻断项：管道有两个服务处于故障态；退役集需按修正后的清单重新推导；代码删除必须与 Railway 实际部署的分支协调，而非与 `main` 协调。
+Step 8（写 `0014`、删 legacy 代码、生产删表）**未开始**。阻断项：P4 在第 4 点建成并运行前**无法以任何 runbook 内的手段满足**（旧表仍是系统唯一有过的内容）；退役集须按修正后清单重新推导；代码删除必须对照 Railway 实际部署的分支，而非 `main`。

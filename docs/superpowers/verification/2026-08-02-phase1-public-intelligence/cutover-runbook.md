@@ -69,10 +69,47 @@ grep -rl "prisma\.alert\b\|prisma\.dailyNote\|prisma\.cluster\b\|prisma\.item\b"
 
 Every hit is a consumer that must be gone or repointed before its table can be dropped.
 
+## 0b. Two branches, one database — read before trusting any readiness value
+
+Vercel serves `main`. Railway runs `feat-phase1-operations`. They share the production
+database, and they do **not** agree about what belongs in it.
+
+`src/canonicalize/coverage.ts` is the proof. On `main` it carries owner decision 4 of
+2026-08-02 — `platform:amazon-us` seeded `MONITORED`, plus `CAPABILITY_HARD_CEILINGS` so no
+automated path can raise it to `VERIFIED` while Seller Central is login-walled. On
+`feat-phase1-operations` that work does not exist: the seed is still `UNAVAILABLE` and the
+entire clamp mechanism is absent (70 lines deleted relative to `main`).
+
+Railway writes readiness. Vercel reads it. So production holds
+`platform:amazon-us = UNAVAILABLE`, `canRenderHub` accepts only `MONITORED|VERIFIED`, and
+`/amazon-us` returns a real 404 — **while all four of its sources are healthy and fresh**
+(`AMZ-ANNOUNCEMENTS`, `AMZ-PRICING-PAGE`, `F01`, `F11`, newest success 2026-08-04 12:25 UTC).
+The owner's decision is correct in the code that reads and absent from the code that writes,
+so it has never taken effect in production.
+
+Consequences to hold in mind:
+
+- `/trends` now 308s to `/amazon-us?view=demand-signals`, which 404s. The legacy page worked;
+  the cutover target does not. That is a live defect of the redirect map, caused by this split.
+- Any readiness value you read from production tells you what the **Operations branch**
+  believes, not what `main` implements. Verify against the deployed branch before acting.
+- A one-row `UPDATE` to `MONITORED` would stick — the Operations version of
+  `seedPhase1Coverage` never writes `readiness` on the `update` path, only on `create`. It is
+  a public coverage claim, so it belongs to the owner, not to a runbook step.
+
+The durable fix is to stop running two branches against one database.
+
 ## 1. Preconditions — check every one, in order
 
 Run these from the repo root of the release branch you intend to cut over from.
 `set -a && . ./.env && set +a` first where a command needs the database.
+
+> **Warning.** `.env` points at Neon **dev**. `.env.production` and `.env.staging` do **not**
+> exist in this working copy, and `dotenv-cli -e <missing file>` fails silently — Prisma then
+> falls back to `.env`, so a command you believe is reading production reads dev and answers
+> confidently. Every "production" figure in the 2026-08-04 revision of this runbook was
+> produced that way and was wrong. For production, use the Neon MCP against branch
+> `br-autumn-smoke-aof5n7pe`, or pass an explicit URL and assert `current_database()` first.
 
 ### P1 — Public Tasks 1–8 are accepted. **MET as of 2026-08-03.**
 ```bash
@@ -120,6 +157,29 @@ main();"
 ```
 Expected before cutover: a number well above zero — enough that `/changes` and the hubs
 look like a site, not a placeholder. If it is 0, stop and read §2.
+
+**Why it is 0 — established 2026-08-05, and it is not a content backlog.** The live pipeline
+produces clusters and stops:
+
+| production, branch `br-autumn-smoke-aof5n7pe` | rows |
+|---|---|
+| `items` | 3,791 |
+| `EvidenceCluster` — **every one `DRAFT`** | 3,667 |
+| `CanonicalChange` | **0** |
+| `CanonicalChangeVersion` | **0** |
+
+`canonicalize-batch.ts:94` writes `{ fingerprint, status: "DRAFT" }` and goes no further.
+`classifyChange()` — the Foundation classifier that would grade a cluster into a change — has
+**no caller outside `test/`**. The only code in the repository that creates a
+`CanonicalChange` is `src/canonicalize/backfill.ts`, the endpoint-allowlisted legacy backfill
+that must never run against production.
+
+So `publish` reporting `SUCCEEDED_EMPTY` on all 18 runs is correct behaviour, not a fault:
+there is nothing to publish. **No amount of editorial review fixes this** — review acts on
+`CanonicalChange` rows, and none can exist until something creates them. The cluster →
+`CanonicalChange` promotion is unowned by the Foundation, Operations and Public Intelligence
+plans alike. Until it is built and running, P4 cannot be met by any means described in this
+runbook.
 
 ### P5 — The backfill reconciliation reports empty unmapped arrays **with rows present**. **⛔ UNMET.**
 ```bash
@@ -224,17 +284,28 @@ service running that branch.
 
 Before Step 8, confirm on the Railway dashboard:
 
-- every service is **Running** or intentionally **Sleeping** — on 2026-08-04
-  `tradelinks-legacy-worker` had been **Crashed for 2 days** and `tradelinks-collect-fast`'s
-  last run had **failed**; a pipeline in that state is not a pipeline you retire around;
+- every service is **Running** or intentionally **Sleeping**;
 - which branch each service deploys from, recorded in the ticket;
 - that no service still imports a module the retirement deletes — check against the
   *deployed branch*, not against `main`.
 
-`tradelinks-legacy-worker` runs the old worker (crawl, alerts, daily notes, `seedSources`).
-Its two-day outage is why production sources show `lastOkAt` a month stale, why every
-`CoverageCapability` computes to `STALE`, and therefore why the hubs 404. Fix or
-deliberately retire it — do not read those 404s as a rendering bug.
+> **Corrected 2026-08-05.** The paragraph that stood here blamed a
+> `tradelinks-legacy-worker` outage for stale sources, all-`STALE` capabilities and the hub
+> 404s. **Every part of that was wrong**, and it was wrong because the queries behind it ran
+> against the **dev** database: `.env.production` does not exist in this working copy, so
+> `dotenv-cli -e .env.production` loaded nothing and Prisma fell back to `.env` (Neon `dev`).
+> Read production through the Neon MCP against branch `br-autumn-smoke-aof5n7pe`, or not at
+> all. Measured there on 2026-08-05:
+>
+> - the finite-job pipeline has run continuously since **2026-08-01 16:48 UTC** — 148
+>   `PipelineRun` rows, 46 in the last 24h, all eight cron services reporting;
+> - sources are **fresh** (24 of 66 succeeded within 24h, newest 08-04 12:26); **no**
+>   capability is `STALE`;
+> - `tradelinks-legacy-worker`'s start command is `next start` — it runs the web app, not the
+>   worker. Its instability is a misconfiguration of a service already slated for deletion,
+>   and it holds no part of the live pipeline.
+>
+> Only `/amazon-us` 404s, for the unrelated reason in §0b.
 
 **Step 8 — ⛔ POINT OF NO RETURN: migration 0014.** Apply
 `prisma/migrations/0014_*/migration.sql`, which drops the **retirable** legacy models from
