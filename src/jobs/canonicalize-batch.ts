@@ -40,6 +40,12 @@ const MAX_PROMOTIONS_PER_RUN = 150;
 export type PromotionOutcome = "PROMOTED" | "ALREADY_PROMOTED";
 
 /**
+ * Candidates judged per model call. Twenty verdicts fit the response budget
+ * with room to spare, and a chunk that fails costs only its own items.
+ */
+const RELEVANCE_BATCH_SIZE = 20;
+
+/**
  * Sources whose items may anchor a claimed change. Computed once from the
  * contracts so the SQL pre-filter can never drift from the real gate in
  * `isPromotableAnchor`.
@@ -72,7 +78,7 @@ export interface CanonicalizeDeps {
   }): Promise<string>;
   finishRun(
     runId: string,
-    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number },
+    summary: { status: string; itemCount: number; attempted: number; succeeded: number; failed: number; relevanceDropped?: number },
   ): Promise<void>;
   /** Read the existing PipelineRun itemCount — used on replay to avoid
    *  overwriting a prior run's count with 0. Returns 0 if the run does
@@ -93,6 +99,14 @@ export interface CanonicalizeDeps {
   selectPromotableClusters?(limit: number): Promise<PromotableCluster[]>;
   /** Persist one built draft. Must be idempotent on the cluster. */
   promoteCluster?(draft: PromotionDraft): Promise<PromotionOutcome>;
+  /**
+   * Judge whether each candidate is a change a cross-border seller must act
+   * on. Absent (no API key configured) means promotion is skipped entirely —
+   * see the call site for why that direction is the safe one.
+   */
+  classifyRelevance?(
+    items: Array<{ id: string; title: string; snippet?: string; sourceId: string }>,
+  ): Promise<Map<string, { keep: boolean; reason: string; confidence: number }>>;
 }
 
 // ---- production deps ----
@@ -190,6 +204,33 @@ const REAL_DEPS: CanonicalizeDeps = {
         },
       })),
     }));
+  },
+  async classifyRelevance(items) {
+    const { env } = await import("../config/env.js");
+    // No key means no judgment. Returning an empty map (rather than throwing,
+    // or waving everything through) leaves every verdict absent, and an absent
+    // verdict is a drop — so an unconfigured deployment promotes nothing.
+    if (!env.DEEPSEEK_API_KEY) return new Map();
+
+    const { deepseekFlash } = await import("../ai/client.js");
+    const { buildSellerRelevancePrompt, parseSellerRelevance, foldRelevance } = await import(
+      "../ai/prompts/seller-relevance.js"
+    );
+
+    const verdicts = new Map<string, { keep: boolean; reason: string; confidence: number }>();
+    for (let i = 0; i < items.length; i += RELEVANCE_BATCH_SIZE) {
+      const chunk = items.slice(i, i + RELEVANCE_BATCH_SIZE);
+      try {
+        const res = await deepseekFlash.complete(buildSellerRelevancePrompt(chunk));
+        for (const [id, verdict] of foldRelevance(chunk, parseSellerRelevance(res.text))) {
+          verdicts.set(id, verdict);
+        }
+      } catch {
+        // One failed chunk drops only its own items — the rest of the slot's
+        // judgments still stand. Absent verdicts are drops, so nothing leaks.
+      }
+    }
+    return verdicts;
   },
   async promoteCluster(draft: PromotionDraft): Promise<PromotionOutcome> {
     const { prisma: db } = await import("../db/client.js");
@@ -394,14 +435,47 @@ export function createCanonicalizeBatch(
     // service: it shares the clustering slot, and its counts fold into the
     // run's so a slot that promoted changes never reports itself empty.
     // Nothing it writes is publicly visible — every draft needs a human.
+    let relevanceDropped = 0;
     if (deps.selectPromotableClusters && deps.promoteCluster) {
       const candidates = await deps.selectPromotableClusters(MAX_PROMOTIONS_PER_RUN);
+
+      // Build first: selection filters by source id in SQL, while anchor
+      // readiness and the recency window live in code. Anything the builder
+      // rejects is excluded already, so it never costs a classifier call.
+      const built: Array<{ draft: PromotionDraft; anchor: PromotableCluster["members"][number] }> = [];
       for (const candidate of candidates) {
-        // Selection filters by source id in SQL; anchor readiness lives in the
-        // contract. A source regraded down leaves a selected cluster with no
-        // valid anchor — that is a skip, not a failure.
         const draft = buildPromotionDraft(candidate, args.scheduledFor);
         if (!draft) continue;
+        const anchor = candidate.members.find((m) => m.itemId === draft.anchorItemId);
+        if (anchor) built.push({ draft, anchor });
+      }
+
+      // Relevance is a separate question from authority, and the gate fails
+      // closed on every path: no classifier configured, a thrown call, or a
+      // missing verdict all promote nothing. Promoting everything is exactly
+      // the behaviour this gate exists to stop, so it can never be the
+      // fallback — an unconfigured key halts promotion instead.
+      let verdicts = new Map<string, { keep: boolean; reason: string; confidence: number }>();
+      if (deps.classifyRelevance && built.length > 0) {
+        try {
+          verdicts = await deps.classifyRelevance(
+            built.map(({ draft, anchor }) => ({
+              id: draft.fingerprint,
+              title: draft.version.title,
+              snippet: anchor.item.summaryEn ?? undefined,
+              sourceId: anchor.sourceId,
+            })),
+          );
+        } catch {
+          verdicts = new Map();
+        }
+      }
+
+      for (const { draft } of built) {
+        if (!verdicts.get(draft.fingerprint)?.keep) {
+          relevanceDropped++;
+          continue;
+        }
         attempted++;
         try {
           const outcome = await deps.promoteCluster(draft);
@@ -467,6 +541,9 @@ export function createCanonicalizeBatch(
       attempted: persistedAttempted,
       succeeded: persistedSucceeded,
       failed: persistedFailed,
+      // A gate that drops silently is indistinguishable from a broken
+      // pipeline, so the count travels with the run.
+      relevanceDropped,
     });
 
     return {

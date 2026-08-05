@@ -329,6 +329,12 @@ function promotableCluster(id: string): PromotableCluster {
   return cluster([member({ itemId: `${id}-item` })], `fp-${id}`);
 }
 
+/**
+ * `classifyRelevance` defaults to allow-all here so the mechanics tests below
+ * (counts, failure isolation, idempotency, bounds) keep testing mechanics.
+ * The gate's own behaviour — including that its ABSENCE promotes nothing — is
+ * pinned separately in "canonicalize relevance gate".
+ */
 function makeBatch(over: Partial<CanonicalizeDeps> = {}) {
   const runs: Record<string, unknown>[] = [];
   const base: CanonicalizeDeps = {
@@ -337,6 +343,9 @@ function makeBatch(over: Partial<CanonicalizeDeps> = {}) {
     async upsertMember() { return false; },
     async beginRun() { return "run-1"; },
     async finishRun(_runId, summary) { runs.push(summary); },
+    async classifyRelevance(items) {
+      return new Map(items.map((i) => [i.id, { keep: true, reason: "allow-all", confidence: 1 }]));
+    },
     ...over,
   };
   return { batch: createCanonicalizeBatch(base), runs };
@@ -509,5 +518,131 @@ describe("promotion recency", () => {
     const veryOld = member({ itemId: "very-old" });
     veryOld.item.publishedAt = new Date("2018-08-03T00:00:00Z");
     expect(buildPromotionDraft(cluster([veryOld]))).toBeNull();
+  });
+});
+
+// ---- relevance gate --------------------------------------------------------
+
+/**
+ * The relevance gate inside the batch.
+ *
+ * The anchor gate asks whether a source is authoritative and current; it
+ * cannot ask whether the change matters. Both Shopify's changelog and the
+ * Federal Register pass the anchor gate while mostly carrying items no
+ * cross-border consumer-goods seller must act on.
+ *
+ * What is pinned here is the failure behaviour, because that is what runs
+ * unattended every four hours: no classifier, a thrown classifier, an empty
+ * verdict — each must promote nothing rather than fall back to promoting
+ * everything.
+ */
+
+describe("canonicalize relevance gate", () => {
+  function relevantCluster(id: string): PromotableCluster {
+    const m = member({ itemId: `${id}-item` });
+    m.item.publishedAt = new Date("2026-08-01T00:00:00Z");
+    return cluster([m], `fp-${id}`);
+  }
+
+  function batchWithClusters(
+    ids: string[],
+    over: Partial<CanonicalizeDeps> = {},
+  ) {
+    const promoted: string[] = [];
+    const { batch, runs } = makeBatch({
+      async selectPromotableClusters() { return ids.map(relevantCluster); },
+      async promoteCluster(draft: PromotionDraft) {
+        promoted.push(draft.fingerprint);
+        return "PROMOTED";
+      },
+      ...over,
+    });
+    return { batch, promoted, runs };
+  }
+
+  it("promotes only what the classifier keeps", async () => {
+    const { batch, promoted } = batchWithClusters(["a", "b", "c"], {
+      async classifyRelevance(items) {
+        return new Map(items.map((i) => [i.id, {
+          keep: i.id.startsWith("fp-b"),
+          reason: "test",
+          confidence: 1,
+        }]));
+      },
+    });
+    const result = await batch(batchArgs());
+    expect(promoted).toEqual(["fp-b"]);
+    expect(result.itemCount).toBe(1);
+  });
+
+  it("promotes nothing when no classifier is configured", async () => {
+    // Fail closed. Without a relevance judgment we cannot claim a change
+    // matters, and promoting everything is the behaviour this gate exists to
+    // stop — so an unconfigured key halts promotion rather than reverting to it.
+    const { batch, promoted } = batchWithClusters(["a", "b"], { classifyRelevance: undefined });
+    const result = await batch(batchArgs());
+    expect(promoted).toEqual([]);
+    expect(result.attempted).toBe(0);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("promotes nothing when the classifier throws", async () => {
+    const { batch, promoted } = batchWithClusters(["a", "b"], {
+      async classifyRelevance() { throw new Error("deepseek 500"); },
+    });
+    const result = await batch(batchArgs());
+    expect(promoted).toEqual([]);
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("promotes nothing when the classifier returns an empty verdict set", async () => {
+    const { batch, promoted } = batchWithClusters(["a", "b"], {
+      async classifyRelevance() { return new Map(); },
+    });
+    await batch(batchArgs());
+    expect(promoted).toEqual([]);
+  });
+
+  it("records how many were dropped, so a silent gate cannot hide", async () => {
+    const { batch, runs } = batchWithClusters(["a", "b", "c"], {
+      async classifyRelevance(items) {
+        return new Map(items.map((i) => [i.id, {
+          keep: i.id.startsWith("fp-a"), reason: "r", confidence: 1,
+        }]));
+      },
+    });
+    await batch(batchArgs());
+    const summary = runs[0] as unknown as { relevanceDropped?: number };
+    expect(summary.relevanceDropped).toBe(2);
+  });
+
+  it("asks the classifier once per batch, not once per cluster", async () => {
+    let calls = 0;
+    const { batch } = batchWithClusters(["a", "b", "c", "d"], {
+      async classifyRelevance(items) {
+        calls++;
+        return new Map(items.map((i) => [i.id, { keep: true, reason: "r", confidence: 1 }]));
+      },
+    });
+    await batch(batchArgs());
+    expect(calls).toBe(1);
+  });
+
+  it("does not consult the classifier about clusters it would reject anyway", async () => {
+    // An out-of-window or unanchored cluster is already excluded; paying a
+    // model call to re-confirm that would be waste.
+    let seen: string[] = [];
+    const stale = cluster([member({ itemId: "old" })], "fp-stale");
+    stale.members[0]!.item.publishedAt = new Date("2020-01-01T00:00:00Z");
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [relevantCluster("fresh"), stale]; },
+      async classifyRelevance(items) {
+        seen = items.map((i) => i.id);
+        return new Map(items.map((i) => [i.id, { keep: true, reason: "r", confidence: 1 }]));
+      },
+      async promoteCluster() { return "PROMOTED"; },
+    });
+    await batch(batchArgs());
+    expect(seen).toEqual(["fp-fresh"]);
   });
 });
