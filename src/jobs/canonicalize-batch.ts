@@ -17,6 +17,7 @@ import { decideCluster } from "../canonicalize/cluster.js";
 import {
   buildPromotionDraft,
   isPromotableAnchor,
+  PROMOTION_MAX_AGE_DAYS,
   type PromotableCluster,
   type PromotionDraft,
 } from "../canonicalize/promote.js";
@@ -152,8 +153,17 @@ const REAL_DEPS: CanonicalizeDeps = {
         canonicalChange: { is: null },
         // Cheap pre-filter: readiness lives in the contract, not the database,
         // so SQL narrows by source id and buildPromotionDraft applies the real
-        // gate. Without this the limit would be spent on ineligible clusters.
-        members: { some: { item: { sourceId: { in: PROMOTABLE_ANCHOR_SOURCE_IDS } } } },
+        // gate. The recency bound is repeated here for the same reason — the
+        // Shopify changelog alone carries 1,561 clustered items back to 2018,
+        // and without it every slot's limit would be spent on history.
+        members: {
+          some: {
+            item: {
+              sourceId: { in: PROMOTABLE_ANCHOR_SOURCE_IDS },
+              publishedAt: { gte: new Date(Date.now() - PROMOTION_MAX_AGE_DAYS * 86_400_000) },
+            },
+          },
+        },
       },
       take: limit,
       // Newest cluster first: the most recent changes reach review soonest.
@@ -390,7 +400,7 @@ export function createCanonicalizeBatch(
         // Selection filters by source id in SQL; anchor readiness lives in the
         // contract. A source regraded down leaves a selected cluster with no
         // valid anchor — that is a skip, not a failure.
-        const draft = buildPromotionDraft(candidate);
+        const draft = buildPromotionDraft(candidate, args.scheduledFor);
         if (!draft) continue;
         attempted++;
         try {

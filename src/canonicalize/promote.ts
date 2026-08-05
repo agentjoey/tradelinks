@@ -48,6 +48,23 @@ import type { ReviewReason } from "./classify.js";
 /** Urgency when the item carries no score. Mid-scale: asserts nothing. */
 export const DEFAULT_URGENCY = 3;
 
+/**
+ * How far back a change may be and still be a change.
+ *
+ * Part of the product's definition, not a performance bound. The Shopify
+ * changelog feed carries its entire archive — 1,561 clustered items reaching
+ * back to 2018-08-03 — and the first promotion run duly treated eight years of
+ * announcements as current US-market intelligence. Publishing any of it would
+ * have been a false claim about what changed, and the volume alone put human
+ * review out of reach.
+ *
+ * Ninety days matches the horizon the surfaces already use (`changeCount90d`
+ * on every hub) and comfortably spans a Federal Register proceeding, which
+ * runs for months. Anything older is history: real, still readable at its
+ * source, but not news, and never promoted at any depth of backlog.
+ */
+export const PROMOTION_MAX_AGE_DAYS = 90;
+
 /** Longest slug we emit; the disambiguating suffix is always preserved. */
 const SLUG_MAX = 80;
 const SLUG_HASH_LEN = 8;
@@ -214,9 +231,17 @@ export function promotionSlug(title: string, fingerprint: string): string {
  * Pure: no database, no clock, no network. Everything it emits is a function
  * of the cluster it was given.
  */
-export function buildPromotionDraft(cluster: PromotableCluster): PromotionDraft | null {
+export function buildPromotionDraft(
+  cluster: PromotableCluster,
+  now: Date = new Date(),
+): PromotionDraft | null {
   const anchor = selectPromotionAnchor(cluster);
   if (!anchor) return null;
+  // The anchor dates the change. Stale corroborating evidence still travels
+  // with a fresh announcement — it is context, not the claim — but a cluster
+  // whose own official source is older than the window is not news.
+  const ageDays = (now.getTime() - anchor.item.publishedAt.getTime()) / 86_400_000;
+  if (ageDays > PROMOTION_MAX_AGE_DAYS) return null;
   const contract = anchor.contract!;
 
   const title = (anchor.item.titleEn ?? anchor.item.title).trim();

@@ -22,6 +22,7 @@ import {
   selectPromotionAnchor,
   isPromotableAnchor,
   promotionSlug,
+  PROMOTION_MAX_AGE_DAYS,
   type PromotableCluster,
   type PromotableMember,
   type PromotionDraft,
@@ -440,5 +441,73 @@ describe("canonicalize promotion phase", () => {
     await batch(batchArgs());
     expect(askedFor).toBeGreaterThan(0);
     expect(askedFor).toBeLessThanOrEqual(500);
+  });
+});
+
+// ---- recency ---------------------------------------------------------------
+
+/**
+ * A change from 2018 is not a change; it is history.
+ *
+ * The Shopify changelog feed carries its full archive — 1,561 clustered items
+ * reaching back to 2018-08-03 — so the first promotion run treated eight years
+ * of feature announcements as current US-market intelligence. The volume alone
+ * made human review impossible, and publishing any of it would have been a
+ * false claim about what changed.
+ *
+ * The window is part of the product's definition of a change, not a
+ * performance tweak: what falls outside it is never promoted, at any depth of
+ * backlog.
+ */
+
+describe("promotion recency", () => {
+  const NOW = new Date("2026-08-05T00:00:00Z");
+
+  function aged(itemId: string, daysAgo: number): PromotableMember {
+    const m = member({ itemId });
+    m.item.publishedAt = new Date(NOW.getTime() - daysAgo * 86400_000);
+    return m;
+  }
+
+  it("promotes a change published inside the window", () => {
+    expect(buildPromotionDraft(cluster([aged("fresh", 10)]), NOW)).not.toBeNull();
+  });
+
+  it("refuses a change older than the window", () => {
+    expect(buildPromotionDraft(cluster([aged("ancient", 400)]), NOW)).toBeNull();
+  });
+
+  it("uses the window boundary inclusively, so a run cannot drop an edge case", () => {
+    expect(buildPromotionDraft(cluster([aged("edge", PROMOTION_MAX_AGE_DAYS)]), NOW)).not.toBeNull();
+    expect(buildPromotionDraft(cluster([aged("past", PROMOTION_MAX_AGE_DAYS + 1)]), NOW)).toBeNull();
+  });
+
+  it("judges recency on the anchor, not on stale corroborating evidence", () => {
+    // A fresh official announcement discussed again by an old article is still
+    // a fresh change; the anchor is what dates it.
+    const fresh = aged("fresh", 5);
+    const oldNews = aged("old-news", 900);
+    oldNews.contract = NEWS;
+    oldNews.role = "SECONDARY_CONTEXT";
+    const draft = buildPromotionDraft(cluster([fresh, oldNews]), NOW)!;
+    expect(draft.anchorItemId).toBe("fresh");
+    // The old article still travels as evidence — it is context, not the claim.
+    expect(draft.evidence.map((e) => e.sourceItemId).sort()).toEqual(["fresh", "old-news"]);
+  });
+
+  it("refuses when only the non-qualifying evidence is recent", () => {
+    const oldAnchor = aged("old-anchor", 500);
+    const freshNews = aged("fresh-news", 1);
+    freshNews.contract = NEWS;
+    freshNews.role = "SECONDARY_CONTEXT";
+    expect(buildPromotionDraft(cluster([oldAnchor, freshNews]), NOW)).toBeNull();
+  });
+
+  it("defaults to the current clock when no time is supplied", () => {
+    // Production passes the job's scheduledFor; the default keeps the pure
+    // builder usable without threading a clock through every caller.
+    const veryOld = member({ itemId: "very-old" });
+    veryOld.item.publishedAt = new Date("2018-08-03T00:00:00Z");
+    expect(buildPromotionDraft(cluster([veryOld]))).toBeNull();
   });
 });
