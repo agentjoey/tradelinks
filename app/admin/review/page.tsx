@@ -296,7 +296,8 @@ function DraftCard({ draft }: { draft: CanonicalReviewDraft }) {
 }
 
 export default async function ReviewPage() {
-  const queue = await listCanonicalReviewQueue();
+  const { drafts: queue, total } = await listCanonicalReviewQueue();
+  const remaining = total - queue.length;
 
   return (
     <div>
@@ -310,6 +311,12 @@ export default async function ReviewPage() {
           check the constraints, the diff, and the evidence — the version you publish
           becomes the permanent record, correctable only forward.
         </p>
+        {remaining > 0 && (
+          // Never let a bounded page read as an empty desk.
+          <p className="mt-3 ticker text-[11px] uppercase tracking-[0.15em] text-faint">
+            showing {queue.length} of {total} — {remaining} more awaiting review
+          </p>
+        )}
       </div>
 
       {queue.length === 0 ? (

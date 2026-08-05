@@ -89,15 +89,42 @@ export type CanonicalReviewDraft = Prisma.CanonicalChangeVersionGetPayload<
 >;
 
 /**
- * Canonical drafts awaiting review (newest first), each with its structured
- * evidence and the change's current published version (the diff base and the
- * correction target). Read-only; publication goes through
- * src/canonicalize/publish.ts.
+ * How many drafts one page of the review desk loads.
+ *
+ * The query eagerly includes every draft's evidence *and* every sibling
+ * version with its own evidence. That was affordable while the queue held
+ * tens of rows; cluster promotion turns it into thousands, and an unbounded
+ * page would time out before an editor could act on any of them.
  */
-export async function listCanonicalReviewQueue(): Promise<CanonicalReviewDraft[]> {
-  return prisma.canonicalChangeVersion.findMany({
-    where: { editorialStatus: { in: ["DRAFT", "IN_REVIEW"] } },
-    orderBy: [{ urgency: "desc" }, { createdAt: "desc" }],
-    ...canonicalReviewArgs,
-  });
+export const CANONICAL_REVIEW_PAGE_SIZE = 50;
+
+export interface CanonicalReviewQueue {
+  drafts: CanonicalReviewDraft[];
+  /** Every draft awaiting a decision, including those beyond this page. */
+  total: number;
+}
+
+/**
+ * Canonical drafts awaiting review (most urgent first, then newest), each with
+ * its structured evidence and the change's current published version (the diff
+ * base and the correction target). Read-only; publication goes through
+ * src/canonicalize/publish.ts.
+ *
+ * Returns the total alongside the page: a truncated queue that looks complete
+ * would tell an editor the desk is clear when it is not.
+ */
+export async function listCanonicalReviewQueue(
+  limit: number = CANONICAL_REVIEW_PAGE_SIZE,
+): Promise<CanonicalReviewQueue> {
+  const where = { editorialStatus: { in: ["DRAFT" as const, "IN_REVIEW" as const] } };
+  const [drafts, total] = await Promise.all([
+    prisma.canonicalChangeVersion.findMany({
+      where,
+      orderBy: [{ urgency: "desc" }, { createdAt: "desc" }],
+      take: limit,
+      ...canonicalReviewArgs,
+    }),
+    prisma.canonicalChangeVersion.count({ where }),
+  ]);
+  return { drafts, total };
 }

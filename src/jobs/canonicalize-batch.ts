@@ -14,13 +14,38 @@ import { randomUUID } from "node:crypto";
 
 import { candidateFingerprint, type SourceItemFacts } from "../canonicalize/fingerprint.js";
 import { decideCluster } from "../canonicalize/cluster.js";
+import {
+  buildPromotionDraft,
+  isPromotableAnchor,
+  type PromotableCluster,
+  type PromotionDraft,
+} from "../canonicalize/promote.js";
 import { beginRun } from "../collection/run.js";
 import type { SourceContract } from "../domain/intelligence/source-contract.js";
-import { PHASE1_SOURCES_BY_ID } from "../config/phase1-sources.js";
+import { PHASE1_SOURCES, PHASE1_SOURCES_BY_ID } from "../config/phase1-sources.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
 
 const MAX_ITEMS_PER_RUN = 200;
+
+/**
+ * Clusters promoted per slot. The backlog at cutover was ~1,650 eligible
+ * clusters; at six slots a day this drains it in under two days while leaving
+ * the 15-minute job budget mostly to clustering.
+ */
+const MAX_PROMOTIONS_PER_RUN = 150;
+
+/** Outcome of persisting one promotion; a replay is not new work. */
+export type PromotionOutcome = "PROMOTED" | "ALREADY_PROMOTED";
+
+/**
+ * Sources whose items may anchor a claimed change. Computed once from the
+ * contracts so the SQL pre-filter can never drift from the real gate in
+ * `isPromotableAnchor`.
+ */
+const PROMOTABLE_ANCHOR_SOURCE_IDS: string[] = PHASE1_SOURCES.filter((s) =>
+  isPromotableAnchor(s),
+).map((s) => s.id);
 
 export interface MatchedItem {
   itemId: string;
@@ -59,6 +84,14 @@ export interface CanonicalizeDeps {
     status: string; itemCount: number; attempted: number;
     succeeded: number; failed: number;
   } | null>;
+  /**
+   * Clusters with no CanonicalChange yet, pre-filtered to those holding at
+   * least one member from an anchor-eligible source. Optional so existing
+   * callers and tests keep working without a promotion phase.
+   */
+  selectPromotableClusters?(limit: number): Promise<PromotableCluster[]>;
+  /** Persist one built draft. Must be idempotent on the cluster. */
+  promoteCluster?(draft: PromotionDraft): Promise<PromotionOutcome>;
 }
 
 // ---- production deps ----
@@ -109,6 +142,71 @@ const REAL_DEPS: CanonicalizeDeps = {
     } catch (err: unknown) {
       const e = err as { code?: string };
       if (e.code === "P2002") return false;
+      throw err;
+    }
+  },
+  async selectPromotableClusters(limit: number) {
+    const { prisma: db } = await import("../db/client.js");
+    const clusters = await db.evidenceCluster.findMany({
+      where: {
+        canonicalChange: { is: null },
+        // Cheap pre-filter: readiness lives in the contract, not the database,
+        // so SQL narrows by source id and buildPromotionDraft applies the real
+        // gate. Without this the limit would be spent on ineligible clusters.
+        members: { some: { item: { sourceId: { in: PROMOTABLE_ANCHOR_SOURCE_IDS } } } },
+      },
+      take: limit,
+      // Newest cluster first: the most recent changes reach review soonest.
+      orderBy: { createdAt: "desc" },
+      include: { members: { include: { item: true } } },
+    });
+    return clusters.map((c) => ({
+      clusterId: c.id,
+      fingerprint: c.fingerprint,
+      members: c.members.map((m) => ({
+        itemId: m.itemId,
+        sourceId: m.item.sourceId,
+        role: m.role,
+        contract: PHASE1_SOURCES_BY_ID.get(m.item.sourceId),
+        item: {
+          title: m.item.title,
+          titleEn: m.item.titleEn,
+          summaryEn: m.item.summaryEn,
+          url: m.item.url,
+          publishedAt: m.item.publishedAt,
+          crawledAt: m.item.crawledAt,
+          regions: m.item.regions,
+          urgencyScore: m.item.urgencyScore,
+        },
+      })),
+    }));
+  },
+  async promoteCluster(draft: PromotionDraft): Promise<PromotionOutcome> {
+    const { prisma: db } = await import("../db/client.js");
+    try {
+      await db.$transaction(async (tx) => {
+        const change = await tx.canonicalChange.create({
+          data: { slug: draft.slug, clusterId: draft.clusterId },
+          select: { id: true },
+        });
+        const version = await tx.canonicalChangeVersion.create({
+          data: { canonicalChangeId: change.id, ...draft.version },
+          select: { id: true },
+        });
+        await tx.evidenceRecord.createMany({
+          data: draft.evidence.map((e) => ({ changeVersionId: version.id, ...e })),
+          skipDuplicates: true,
+        });
+      }, { maxWait: 30000, timeout: 60000 });
+      return "PROMOTED";
+    } catch (err: unknown) {
+      const e = err as { code?: string; meta?: { target?: unknown } };
+      // A cluster already promoted is a replay, not a fault. Any other unique
+      // violation is a real problem and must surface as a failed unit.
+      if (e.code === "P2002") {
+        const target = Array.isArray(e.meta?.target) ? (e.meta!.target as string[]) : [];
+        if (target.includes("clusterId")) return "ALREADY_PROMOTED";
+      }
       throw err;
     }
   },
@@ -276,6 +374,32 @@ export function createCanonicalizeBatch(
         succeeded++;
       } catch {
         // Individual cluster failures don't poison the batch.
+      }
+    }
+
+    // ---- promotion phase ----
+    //
+    // Clustering alone left production with thousands of clusters and no
+    // canonical changes. Promotion runs here rather than as a ninth Railway
+    // service: it shares the clustering slot, and its counts fold into the
+    // run's so a slot that promoted changes never reports itself empty.
+    // Nothing it writes is publicly visible — every draft needs a human.
+    if (deps.selectPromotableClusters && deps.promoteCluster) {
+      const candidates = await deps.selectPromotableClusters(MAX_PROMOTIONS_PER_RUN);
+      for (const candidate of candidates) {
+        // Selection filters by source id in SQL; anchor readiness lives in the
+        // contract. A source regraded down leaves a selected cluster with no
+        // valid anchor — that is a skip, not a failure.
+        const draft = buildPromotionDraft(candidate);
+        if (!draft) continue;
+        attempted++;
+        try {
+          const outcome = await deps.promoteCluster(draft);
+          succeeded++;
+          if (outcome === "PROMOTED") totalItems++;
+        } catch {
+          // One bad cluster must not cost the slot its other promotions.
+        }
       }
     }
 
