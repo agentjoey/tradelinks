@@ -14,7 +14,7 @@ import { toFetchOutcome } from "../src/adapters/index.js";
 import { parseFeed } from "../src/adapters/rss.js";
 import { parseHtml } from "../src/adapters/fetch.js";
 import { parseFederalRegister } from "../src/adapters/json.js";
-import { SOURCES } from "../src/config/sources.js";
+import { SOURCES, SOURCES_BY_ID } from "../src/config/sources.js";
 import type { FetchOutcome } from "../src/adapters/types.js";
 import type { RawItem } from "../src/queue/schemas.js";
 
@@ -164,6 +164,18 @@ describe("Phase 1 source contracts", () => {
         }
       }
     }
+  });
+
+  it("routes US-APHIS through the Scrapling service with production-confirmed selectors", () => {
+    const legacy = SOURCES_BY_ID.get("US-APHIS");
+    expect(legacy, "US-APHIS must exist in the legacy registry").toBeDefined();
+    expect(legacy!.adapter, "US-APHIS adapter must be scrapling").toBe("scrapling");
+    expect(legacy!.scrapeMode, "US-APHIS scrapeMode must be stealth").toBe("stealth");
+    expect(legacy!.scrapeSelectors, "US-APHIS must have scrapeSelectors matching Phase1 contract").toEqual({
+      item: ".views-row",
+      title: "h2, h3, .field-content",
+      link: "a",
+    });
   });
 
   it("links the legacy registry to the contracts (single source of truth)", () => {

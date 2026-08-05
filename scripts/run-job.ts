@@ -5,6 +5,10 @@ import type { JobName } from "../src/jobs/types.js";
 // Side-effect imports register batch job handlers
 import "../src/jobs/collect-batch.js";
 import "../src/jobs/canonicalize-batch.js";
+import "../src/jobs/publish-batch.js";
+import "../src/jobs/briefing-batch.js";
+import "../src/jobs/health-check.js";
+import "../src/jobs/cost-report.js";
 
 setLockAdapter(prismaLockAdapter);
 

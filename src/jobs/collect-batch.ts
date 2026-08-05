@@ -128,6 +128,42 @@ export interface CollectBatchDeps {
   getSources: (group: CollectionGroup) => SourceContract[];
   fetchSource: (source: SourceContract) => Promise<FetchOutcome>;
   ledger: BatchLedger;
+  /** Read the latest cost decision (once per invocation). Returns null when
+   *  unavailable. The handler filters every source through this single read
+   *  via isExperimentalSuppressed — no per-source fallback. */
+  readCostDecision?: () => Promise<{ level: string; suppress: string[] } | null>;
+  /** Scraper readiness gate: called once per batch before any SCRAPER source
+   *  is fetched. Resolves when the scraper service is ready; rejects with
+   *  SCRAPER_READINESS_TIMEOUT if readiness never arrives. When absent
+   *  (fail-open), SCRAPER sources are fetched without a readiness check. */
+  scraperReadinessGate?: () => Promise<void>;
+}
+
+// ---- cost suppression reader (production, consumed by collect-batch) ----
+
+/**
+ * Pure predicate: returns true when the cost decision is HARD_CAP with
+ * experimental-demand suppressed AND the source readiness is EXPERIMENTAL.
+ * Official sources (MONITORED, VERIFIED) are never suppressed.
+ */
+export function isExperimentalSuppressed(
+  decision: { level: string; suppress: string[] } | null,
+  source: SourceContract,
+): boolean {
+  return decision?.level === "HARD_CAP"
+    && decision.suppress.includes("experimental-demand")
+    && source.readiness === "EXPERIMENTAL";
+}
+
+/** Production: read the latest completed cost-report PipelineRun decision. */
+async function readCostDecision(): Promise<{ level: string; suppress: string[] } | null> {
+  try {
+    const { readLatestCostDecision } = await import("./cost-report.js");
+    return await readLatestCostDecision();
+  } catch (err) {
+    console.error("[cost-guardrail] failed to read cost decision:", err);
+    return null;
+  }
 }
 
 // ---- cron-to-group mapping ----
@@ -237,6 +273,17 @@ export function classifyCallScraperError(err: unknown): FetchOutcome {
       retryable: httpStatus === 429 || httpStatus >= 500,
       httpStatus,
     };
+  }
+  // Narrow transport retry: only TypeError with "fetch failed" or
+  // "terminated" message (Node undici network errors) plus
+  // AbortError/TimeoutError from AbortSignal.timeout.
+  // Validation/programming TypeErrors stay non-retryable.
+  if (err instanceof TypeError && /fetch failed|terminated/i.test(msg)) {
+    return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
+  }
+  const errName = err instanceof Error ? err.name : String(err);
+  if (errName === "AbortError" || errName === "TimeoutError") {
+    return { kind: "failed", code: `SCRAPER_TRANSPORT: ${msg.slice(0, 100)}`, retryable: true };
   }
   // Schema validation failure (ZodError from ScrapeResponseSchema.parse) or
   // other unclassified errors — never retried.
@@ -348,11 +395,44 @@ export function createCollectBatch(
       runnerVersion: args.runnerVersion,
     });
 
+    // Apply cost suppression: read decision once, filter every source
+    // through the pure isExperimentalSuppressed predicate.
+    let pendingSources: SourceContract[];
+    if (deps.readCostDecision) {
+      const decision = await deps.readCostDecision();
+      pendingSources = decision
+        ? sources.filter((s) => !isExperimentalSuppressed(decision, s))
+        : sources;
+    } else {
+      pendingSources = sources;
+    }
+
     const skipIds = await deps.ledger.alreadySucceeded(runId);
-    const pendingSources = sources.filter((s) => !skipIds.has(s.id));
+    pendingSources = pendingSources.filter((s) => !skipIds.has(s.id));
 
     // Track in-invocation failures that never reached the ledger (BLOCKER 2 fix).
     let unreportedFailures = 0;
+
+    // ---- scraper readiness gate (once per batch) ----
+    const scraperPending = pendingSources.filter((s) => s.fetchMethod === "SCRAPER");
+    if (scraperPending.length > 0 && deps.scraperReadinessGate) {
+      try {
+        await deps.scraperReadinessGate();
+      } catch (_gateErr) {
+        for (const s of scraperPending) {
+          try {
+            await deps.ledger.recordOutcome(runId, s.id, {
+              kind: "failed",
+              code: "SCRAPER_READINESS_TIMEOUT",
+              retryable: true,
+            });
+          } catch {
+            unreportedFailures++;
+          }
+        }
+        pendingSources = pendingSources.filter((s) => s.fetchMethod !== "SCRAPER");
+      }
+    }
 
     await mapWithLimit(pendingSources, 5, async (source) => {
       const retryResult = await retryUnit({
@@ -418,11 +498,35 @@ export function createCollectBatch(
   };
 }
 
+/** Production: bounded scraper readiness gate. Polls the scraper service health
+ *  endpoint with a finite timeout so cold-start is tolerated. Rejects after the
+ *  timeout so the batch fails closed with per-source SCRAPER_READINESS_TIMEOUT. */
+async function scraperReadinessGate(): Promise<void> {
+  const start = Date.now();
+  const timeoutMs = 30_000;
+  const pollMs = 1000;
+  const baseUrl = env.SCRAPER_SERVICE_URL;
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(`${baseUrl}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) return;
+    } catch {
+      // Not ready or health endpoint unreachable — keep polling
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  throw new Error("SCRAPER_READINESS_TIMEOUT");
+}
+
 /** Production two-parameter entry point — exactly the spec shape. */
 export const collectBatch = createCollectBatch({
   getSources: getSourcesForGroup,
   fetchSource: fetchSourceViaRegistry,
   ledger: DB_LEDGER,
+  readCostDecision,
+  scraperReadinessGate,
 });
 
 // ---- job registration ----

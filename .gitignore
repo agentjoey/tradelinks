@@ -28,3 +28,6 @@ design/*.png
 
 # Playwright run artifacts
 test-results/
+
+# local operational rollback records (redacted IDs only; never commit)
+.agent/private/

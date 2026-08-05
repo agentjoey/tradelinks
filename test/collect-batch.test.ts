@@ -116,8 +116,18 @@ function makeCollector(deps: Partial<CollectBatchDeps> = {}) {
       getSources: deps.getSources ?? (() => []),
       fetchSource: deps.fetchSource ?? (async () => successOutcome("x")),
       ledger: deps.ledger ?? ledger,
+      readCostDecision: deps.readCostDecision,
+      scraperReadinessGate: deps.scraperReadinessGate,
     }),
   };
+}
+
+function scraperSource(id: string) {
+  return testSourceContract(id, { fetchMethod: "SCRAPER" });
+}
+
+function rssSource(id: string) {
+  return testSourceContract(id, { fetchMethod: "RSS" });
 }
 
 // ============================= pure =============================
@@ -412,10 +422,60 @@ describe("classifyCallScraperError", () => {
     if (outcome.kind === "blocked") expect(outcome.code).toBe("BOT_WALL");
   });
 
-  it("classifies non-HTTP error as non-retryable (schema validation / transport)", () => {
+  it("classifies non-HTTP error as non-retryable (schema validation)", () => {
     const outcome = classifyCallScraperError(new Error("Unexpected token"));
     assertFailed(outcome, false);
     if (outcome.kind === "failed") expect(outcome.code).toContain("SCRAPER_ERROR");
+  });
+
+  // ---- cold-start transport error regression ----
+  it("classifies TypeError transport error (fetch failed) as retryable", () => {
+    const outcome = classifyCallScraperError(new TypeError("fetch failed"));
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
+
+  it("classifies TypeError transport error (terminated) as retryable", () => {
+    const outcome = classifyCallScraperError(new TypeError("terminated"));
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
+
+  // ---- narrowed transport retry: non-transport TypeError ----
+  it("classifies non-transport TypeError (validation) as non-retryable", () => {
+    const outcome = classifyCallScraperError(new TypeError("Invalid URL"));
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(false);
+      expect(outcome.code).toContain("SCRAPER_ERROR");
+    }
+  });
+
+  // ---- AbortError / TimeoutError as transport retries ----
+  it("classifies AbortError as retryable transport", () => {
+    const abortErr = new DOMException("The operation was aborted", "AbortError");
+    const outcome = classifyCallScraperError(abortErr);
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
+  });
+
+  it("classifies TimeoutError as retryable transport", () => {
+    const timeoutErr = new DOMException("The operation timed out", "TimeoutError");
+    const outcome = classifyCallScraperError(timeoutErr);
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind === "failed") {
+      expect(outcome.retryable).toBe(true);
+      expect(outcome.code).toContain("SCRAPER_TRANSPORT");
+    }
   });
 });
 
@@ -474,7 +534,6 @@ describe("collectBatch — scraper retry via injected fetchSource", () => {
       getSources: () => [source],
       fetchSource: async (s) => {
         counts.set(s.id, (counts.get(s.id) ?? 0) + 1);
-        // Simulate the fail-closed path: buildAdapter throws → INVARIANT → non-retryable.
         return { kind: "failed", code: "INVARIANT: Source X json=true but missing jsonShape", retryable: false };
       },
     });
@@ -482,4 +541,243 @@ describe("collectBatch — scraper retry via injected fetchSource", () => {
     expect(counts.get(source.id)).toBe(1);
     expect(r.failed).toBe(1);
   }, 10000);
+});
+
+// ============================ cost suppression (BLOCKER 1 pin) =========
+
+describe("collectBatch — cost suppression", () => {
+  it("at HARD_CAP, EXPERIMENTAL is skipped and MONITORED/VERIFIED are fetched", async () => {
+    const experimental = testSourceContract("exp-src", { readiness: "EXPERIMENTAL" });
+    const monitored = testSourceContract("mon-src", { readiness: "MONITORED" });
+    const verified = testSourceContract("ver-src", { readiness: "VERIFIED" });
+    const fetched: string[] = [];
+    let readCount = 0;
+    const { call } = makeCollector({
+      getSources: () => [experimental, monitored, verified],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => { readCount++; return { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] }; },
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("mon-src");
+    expect(fetched).toContain("ver-src");
+    expect(fetched).not.toContain("exp-src");
+    expect(readCount).toBe(1);
+  });
+
+  it("at NORMAL, nothing is skipped", async () => {
+    const experimental = testSourceContract("exp-src2", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => ({ level: "NORMAL", suppress: [] }),
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src2");
+  });
+
+  it("at REVIEW, nothing is skipped", async () => {
+    const experimental = testSourceContract("exp-src3", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => ({ level: "REVIEW", suppress: [] }),
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src3");
+  });
+
+  it("when readCostDecision returns null, nothing is skipped (fail open)", async () => {
+    const experimental = testSourceContract("exp-src4", { readiness: "EXPERIMENTAL" });
+    const fetched: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [experimental],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      readCostDecision: async () => null,
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("exp-src4");
+  });
+
+  it("reads cost decision exactly once per invocation", async () => {
+    let readCount = 0;
+    const sources = [
+      testSourceContract("a"), testSourceContract("b"), testSourceContract("c"),
+      testSourceContract("d"), testSourceContract("e"),
+    ];
+    const { call } = makeCollector({
+      getSources: () => sources,
+      fetchSource: async () => successOutcome("x"),
+      readCostDecision: async () => { readCount++; return { level: "HARD_CAP", suppress: ["experimental-demand"] }; },
+    });
+    await call("FAST", baseArgs());
+    expect(readCount).toBe(1);
+  });
+});
+
+// ============================ isExperimentalSuppressed ==============
+
+describe("isExperimentalSuppressed", () => {
+  it("returns true for EXPERIMENTAL source at HARD_CAP with experimental-demand", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"] },
+      testSourceContract("x", { readiness: "EXPERIMENTAL" }),
+    )).toBe(true);
+  });
+
+  it("returns false for MONITORED source at HARD_CAP", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "HARD_CAP", suppress: ["experimental-demand"] },
+      testSourceContract("x", { readiness: "MONITORED" }),
+    )).toBe(false);
+  });
+
+  it("returns false for EXPERIMENTAL source at REVIEW", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(
+      { level: "REVIEW", suppress: [] },
+      testSourceContract("x", { readiness: "EXPERIMENTAL" }),
+    )).toBe(false);
+  });
+
+  it("returns false for null decision", async () => {
+    const { isExperimentalSuppressed } = await import("../src/jobs/collect-batch.js");
+    expect(isExperimentalSuppressed(null, testSourceContract("x", { readiness: "EXPERIMENTAL" }))).toBe(false);
+  });
+});
+
+// ============================ scraper readiness gate ================
+
+describe("collectBatch — scraper readiness gate", () => {
+  it("calls readiness gate exactly once when SCRAPER sources exist", async () => {
+    const gateCalls: number[] = [];
+    const { call } = makeCollector({
+      getSources: () => [scraperSource("s1"), scraperSource("s2"), rssSource("r1")],
+      fetchSource: async () => successOutcome("x"),
+      scraperReadinessGate: async () => { gateCalls.push(Date.now()); },
+    });
+    await call("FAST", baseArgs());
+    expect(gateCalls.length).toBe(1);
+  }, 10000);
+
+  it("skips readiness gate when no SCRAPER sources exist", async () => {
+    let called = false;
+    const { call } = makeCollector({
+      getSources: () => [rssSource("r1"), rssSource("r2")],
+      fetchSource: async () => successOutcome("x"),
+      scraperReadinessGate: async () => { called = true; },
+    });
+    await call("FAST", baseArgs());
+    expect(called).toBe(false);
+  }, 10000);
+
+  it("fails all SCRAPER sources with SCRAPER_READINESS_TIMEOUT when gate rejects", async () => {
+    const sources = [scraperSource("s1"), scraperSource("s2")];
+    const fetched: string[] = [];
+    const recordedOutcomes: Map<string, FetchOutcome> = new Map();
+    const ledger = fakeLedger();
+    const orig = ledger.recordOutcome.bind(ledger);
+    ledger.recordOutcome = async (rid, sid, o) => {
+      recordedOutcomes.set(sid, o);
+      return orig(rid, sid, o);
+    };
+    const call = createCollectBatch({
+      getSources: () => sources,
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      ledger,
+      scraperReadinessGate: async () => { throw new Error("SCRAPER_READINESS_TIMEOUT"); },
+    });
+    const r = await call("FAST", baseArgs());
+    expect(fetched.length).toBe(0);
+    expect(r.failed).toBe(2);
+    expect(r.exitCode).toBe(1);
+    for (const s of sources) {
+      const o = recordedOutcomes.get(s.id);
+      expect(o).toBeDefined();
+      if (o && o.kind === "failed") {
+        expect(o.code).toBe("SCRAPER_READINESS_TIMEOUT");
+        expect(o.retryable).toBe(true);
+      }
+    }
+  }, 10000);
+
+  it("non-SCRAPER sources are fetched normally when readiness gate rejects", async () => {
+    const scraper = scraperSource("s1");
+    const rss = rssSource("r1");
+    const fetched: string[] = [];
+    const call = createCollectBatch({
+      getSources: () => [scraper, rss],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      ledger: fakeLedger(),
+      scraperReadinessGate: async () => { throw new Error("SCRAPER_READINESS_TIMEOUT"); },
+    });
+    await call("FAST", baseArgs());
+    expect(fetched).toContain("r1");
+    expect(fetched).not.toContain("s1");
+  }, 10000);
+
+  it("readiness gate is called before any source is fetched", async () => {
+    const fetchOrder: string[] = [];
+    const { call } = makeCollector({
+      getSources: () => [scraperSource("s1"), scraperSource("s2")],
+      fetchSource: async (s) => { fetchOrder.push(`fetch-${s.id}`); return successOutcome(s.id); },
+      scraperReadinessGate: async () => {
+        fetchOrder.push("gate");
+        // Simulate cold-start delay
+        await new Promise(r => setTimeout(r, 50));
+      },
+    });
+    await call("FAST", baseArgs());
+    expect(fetchOrder[0]).toBe("gate");
+    expect(fetchOrder.filter(x => x === "gate").length).toBe(1);
+  }, 10000);
+
+  it("tolerates missing readiness gate (fail-open for non-SCRAPER deployments)", async () => {
+    const fetched: string[] = [];
+    const call = createCollectBatch({
+      getSources: () => [scraperSource("s1"), rssSource("r1")],
+      fetchSource: async (s) => { fetched.push(s.id); return successOutcome(s.id); },
+      ledger: fakeLedger(),
+      // no scraperReadinessGate — must not throw
+    });
+    const r = await call("FAST", baseArgs());
+    expect(r.succeeded).toBe(2);
+  }, 10000);
+});
+
+// ============================ readModelEnrichmentSuppressed ==========
+
+describe("readModelEnrichmentSuppressed", () => {
+  it("returns true when HARD_CAP suppresses model-enrichment", async () => {
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand", "model-enrichment"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await rd(fakeDb as any)).toBe(true);
+  });
+
+  it("returns false when model-enrichment is not suppressed", async () => {
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
+    const fakeDb = {
+      pipelineRun: {
+        findFirst: async () => ({
+          metadata: { level: "HARD_CAP", suppress: ["experimental-demand"], projectedTotalUsd: 55, message: "" },
+        }),
+      },
+    };
+    expect(await rd(fakeDb as any)).toBe(false);
+  });
+
+  it("returns false when no decision exists", async () => {
+    const { readModelEnrichmentSuppressed: rd } = await import("../src/jobs/cost-report.js");
+    const fakeDb = { pipelineRun: { findFirst: async () => null } };
+    expect(await rd(fakeDb as any)).toBe(false);
+  });
 });

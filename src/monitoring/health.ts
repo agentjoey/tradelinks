@@ -15,6 +15,7 @@ import {
   recomputeAllCapabilityReadiness,
 } from "../canonicalize/coverage.js";
 import type { ReadinessLevel } from "../domain/intelligence/taxonomy.js";
+import type { HealthReport } from "../jobs/health-check.js";
 
 export type HealthTier = "healthy" | "degraded" | "unhealthy" | "silent" | "disabled";
 
@@ -55,6 +56,7 @@ export function expectedIntervalMin(cron: string): number {
     return 720; // 12h fallback
   }
 }
+
 
 /** Pure scoring — no DB, no clock except the injected `now`. */
 export function scoreSource(m: SourceMetrics, now = Date.now()): SourceHealth {
@@ -287,4 +289,18 @@ export async function getCoverageOverview(now = new Date()): Promise<CoverageOve
   views.sort((a, b) => READINESS_RANK[a.readiness] - READINESS_RANK[b.readiness] || a.key.localeCompare(b.key));
 
   return { capabilities: views, bySource };
+}
+
+// ---- operational health (read-only, no delivery side effects) ----
+
+/**
+ * Evaluate operational health. Returns a HealthReport with all currently-
+ * detected failure classes. Pure read: detectFailures defaults to
+ * {@code deliver: false}, so no Telegram alerts are sent and no PipelineRun
+ * ledger rows are written. Only the 'health' job handler passes
+ * {@code deliver: true}.
+ */
+export async function evaluateOperationalHealth(now: Date): Promise<HealthReport> {
+  const { evaluateOperationalHealth: impl } = await import("../jobs/health-check.js");
+  return impl(now);
 }
