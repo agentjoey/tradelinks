@@ -1,40 +1,49 @@
 # Current Status — TradeLinks
 
-Version:        v0.12.0 + Phase 1 Foundation + Public Intelligence（已合并 main，未上生产）
-Sprint:         Phase 1 Product Refresh — Public Intelligence
-Sprint Status:  ✅ 10/10 Pact tasks accepted · 已合并 `main` `08c0d6b` · staging 已部署验证 · **production 未变更**
-Last Updated:   2026-08-04 by Claude Opus 5（Public Intelligence 10 任务验收、合并 main、staging 部署与验证）
-Sprint File:    docs/superpowers/plans/2026-07-23-tradelinks-phase1-public-intelligence.md
-验证记录:        docs/superpowers/verification/2026-08-02-phase1-public-intelligence/
-切换 Runbook:    docs/superpowers/verification/2026-08-02-phase1-public-intelligence/cutover-runbook.md
-Agent Handoff:  .agent/HANDOFF.md
-Efficiency:     docs/superpowers/plans/2026-07-28-tradelinks-development-efficiency-optimization.md（计划已写，门禁尚未启用）
+Version:        v0.12.0 + Phase 1 Foundation + Operations + Public Intelligence（全部在 main 与 production）
+Sprint:         Phase 1 — 跳过 Track A 试运行，直接上生产
+Sprint Status:  ✅ operations 已合并 main · Railway 八服务全部跑 main · cluster→CanonicalChange 促成已上线
+Last Updated:   2026-08-05 by Claude Opus 5
 
-## Phase 1 Public Intelligence（2026-08-04，已合并 main，production 未切换）
+## 2026-08-05：合并 operations + 补上管线缺失的一环
 
-**10/10 Pact 任务 accepted。** 实现 worker 为 Kimi Code `kimi-code/k3`（Task 1 与 Task 10 提交由 OpenCode `deepseek/deepseek-v4-pro`），独立 reviewer 为 Claude Opus 5 全程。逐任务审查记录见上方验证目录。
+Owner 决策：Track A 原为切换前试运行，出现问题后决定**跳过其验收仪式直接上生产**。仪式可跳，代码不可——Railway 自 2026-08-01 起就在跑那个分支。
 
-- **公开产品已完整**：`/` `/changes` `/changes/[slug]` `/us` `/amazon-us` `/shopify-us` `/categories(/[c])` `/topics(/[t])` `/guides(/[slug])` `/briefings(weekly|monthly|daily)` `/coverage`，加 RSS 四路、匿名 API v1、OpenAPI 3.1、Agent Skill v1.0.0。
-- **设计门禁**：Direction A 配色 × Direction B3 证据卡，**亮色默认**（`app/globals.css` 的 `:root` 与 `[data-theme="dark"]` 已对调）。`DESIGN.md` 为契约。
-- **测试套件已确定性**：schema-per-worker 隔离（`test/global-setup.ts` + `test/setup-db-schema.ts`）。全量 **778 passed / 2 failed / 780**，五轮连跑失败集逐字节一致；仅剩的 2 条是 `foundation-backfill` 的端点白名单拒绝，设计如此。代价是全量从 ~380s 变 ~450–550s，换取可信度。
-- **内链零死链**：`test/e2e/public-link-integrity.spec.ts` 爬 22 页 25 链，0 个非 200。
-- **指南语料库为不可发布草稿**：9 篇（1558–1857 词），`readiness: EXPERIMENTAL` / `reviewedBy: null` / `citationsVerified: false`，`publishGuide` 对每个条件分别抛错，`--import` 全数拒绝。`/guides` 渲染诚实缺席态。
+### 1. `feat-phase1-operations` 已合并 main（`9b55774`）
 
-### staging 状态（2026-08-04）
+105/92 提交分叉，但自分叉点后**两边都改过的文件只有 `.gitignore` 与两个 pact 账本**，`src/` 下全部是增量。冲突按并集解决；账本保留三个 feature 共 23 个任务，`log.jsonl` 去重后按时间排序合并（60+73，零重复）。
 
-- Git `staging` 已快进至 `08c0d6b`；Vercel Preview 构建 Ready，稳定 alias `https://tradelinks-git-staging-agentjoeys-projects.vercel.app`（保持 Deployment Protection）。
-- Neon staging `br-delicate-snow-aoi9sgtw` / `ep-odd-violet-ao98q1jy`：**13/13 migrations**（本轮应用 `0013_phase1_public_content`，纯增量、5 张新表、0 条破坏性语句）。迁移前检查点 `br-shy-band-aol21p63`，2026-08-18 自动过期。
-- 新增 Vercel 变量 `PUBLIC_API_CURSOR_SECRET`（Preview/staging 作用域，32 字节）。`PUBLIC_CUTOVER_ENABLED` **故意不设**——默认 false，legacy 路由在验证期保持可用。
-- 路由实测：新公开面、机器契约、`robots.txt`/`sitemap.xml` 全 200；`/feed.xml` 308；`/wire` `/trends` `/daily` `/subscribe` 仍 200。
-- **`/us` `/amazon-us` `/shopify-us` 返回 404，这是产品在按设计工作**：staging 无 worker 进程（Railway 为生产专用），源最后成功抓取为 2026-07-02、27 个源从未成功，readiness 判为 `STALE`，而 `canRenderHub` 只接受 `MONITORED`/`VERIFIED`。没有新鲜来源就不假装有覆盖。
+`test/production-runtime.test.ts` 转为 **skip 而非删除**，重新启用条件写在文件里：它断言删除 pg-boss 与 `pnpm worker`，而 `src/workers/index.ts` 是 `seedSources()`（进而 `seedPhase1Coverage()`）的唯一调用方——有限作业拓扑从未接管 coverage seeding 与 `refreshCapabilityReadiness()`。先删 worker 会让 capability readiness 永久且无声地冻结。
 
-### 生产切换（Task 9b）未开始，两条前置条件未满足
+### 2. Railway 八个 cron 服务全部重新部署到 main
 
-切换机器已就绪且完全可逆——重定向映射在 `PUBLIC_CUTOVER_ENABLED` 开关后（默认 off，未接入任何路由）、`planPublicBackfill` 仅 dry-run 无 `--apply`、`0014` 退役 migration **尚未编写**。
+此前 `meta.branch` 显示 `main` 但 `commitHash` 是 ops 分支 tip（`34e7fbf`）——标签与真相不一致。现全部为 `9b55774`+，SUCCESS。`legacy-worker` 未动（启动命令是 `next start`，待删）。
 
-- ⛔ **Operations 七天 P0 报告从未运行**（Track A）。
-- ⛔ **生产零条可发布 canonical 记录**：`CanonicalChange` 0，公开契约要求 `isCurrent` + `PUBLISHED` + `reviewedAt` + `MONITORED|VERIFIED`。Foundation backfill 产出 `EXPERIMENTAL`/`IN_REVIEW`/非 current，**按设计不满足**该契约。今日切换 = 用空站替换有内容的站（生产 legacy 现有 570 alerts / 22 daily notes / 3743 items）。
-- 使可发布内容存在，需人工在 `/admin/review` 审核约 570 条 alert 与 22 篇日报——**数周编辑工作量，不是部署步骤**。详见 cutover-runbook.md。
+### 3. cluster → CanonicalChange 促成（`9a5669a`，管线缺失的一环）
+
+`src/canonicalize/promote.ts` + `canonicalize` 作业内的促成阶段（每时隙上限 150）。
+
+**两条铁律**：绝不发明文字（标题/摘要/影响取自来源，分类取自源契约；无依据的字段留空并记 `classificationConfidence: 0`）；绝不产出公众可见行（全部 DRAFT、非 current、证据未复核，`reviewedAt`/`reviewedBy` **键根本不写入**）。
+
+**锚点门槛 = 发布不变量反过来读**：只有既能满足一级证据、又已被评为 MONITORED/VERIFIED 的源才能锚定一条被声称的变更。生产上即 B03（联邦公报贸易/关税）、A02（Shopify Changelog）、AMZ-ANNOUNCEMENTS；BSR 抓取器被排除（那是需求快照，不是政策变更）。EXPERIMENTAL 源也被排除——审核端无法改 readiness，基于它的草稿一出生就不可发布，只能被拒。
+
+生产分支隔离副本实跑验证：600 条变更 / 600 个不同簇 / 600 个不同 slug（跨 600 个真实标题零碰撞），609 条证据，600/600 安全草稿，**0 条满足公开读契约**。
+
+同时给 `/admin/review` 队列加了 50 条上限并在页头显示 `showing N of M` ——该查询对每条草稿急加载证据与全部历史版本，几千条会拖垮页面；而截断后看起来像"队列已清空"会误导编辑。
+
+### 现在的状态与预期
+
+- 生产 `9a5669a`，Vercel Ready，路由实测：新公开面 200、legacy 308、admin 307。
+- `canonicalize` 每 4 小时（`17 */4 * * *`）促成至多 150 条，约 1650 条积压预计 **1–2 天排空**。
+- 排空后 `/admin/review` 会有内容；**每一条都需要人工审核才会公开**，`publish` 作业随后自动发布已审核的草稿。
+- `/changes` 与各 hub 在首批人工审核通过前仍为空。这是设计，不是故障。
+
+### 仍未解决
+
+- **coverage seeding 与 readiness 重算无归属**：有限作业无一调用，生产 readiness 已冻结。这也是 `platform:amazon-us` 仍为 `UNAVAILABLE`（→ `/amazon-us` 与 `/trends` 404）的原因，尽管其 4 个源全部健康。修法是把两者放进 `health-check`（每小时），届时 owner 决策 4 会自动生效。
+- **briefing 契约错位**：ops 的 `briefing-batch` 写 `scopeKey="weekly-briefing"`，main 的 `briefings.ts` 找 `kind:periodKey`；且 `generateBriefing()` 生产无调用方。
+- `E02` 持续 FETCH_ERROR，导致 `collect-fast` exit 1 被 Railway 记为 CRASHED（10 个源里 9 个成功）。
+- Step 8（`0014` 退役）未开始，退役集为 `alerts`/`daily_notes`/legacy `clusters`，**不含 `items`**。
 
 ## Phase 1 Foundation 状态（2026-07-28，production 未部署）
 
