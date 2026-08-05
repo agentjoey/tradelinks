@@ -38,12 +38,23 @@ Owner 决策：Track A 原为切换前试运行，出现问题后决定**跳过�
 - 排空后 `/admin/review` 会有内容；**每一条都需要人工审核才会公开**，`publish` 作业随后自动发布已审核的草稿。
 - `/changes` 与各 hub 在首批人工审核通过前仍为空。这是设计，不是故障。
 
-### 仍未解决
+### 2026-08-05 下午：三件事的处置
 
-- **coverage seeding 与 readiness 重算无归属**：有限作业无一调用，生产 readiness 已冻结。这也是 `platform:amazon-us` 仍为 `UNAVAILABLE`（→ `/amazon-us` 与 `/trends` 404）的原因，尽管其 4 个源全部健康。修法是把两者放进 `health-check`（每小时），届时 owner 决策 4 会自动生效。
-- **briefing 契约错位**：ops 的 `briefing-batch` 写 `scopeKey="weekly-briefing"`，main 的 `briefings.ts` 找 `kind:periodKey`；且 `generateBriefing()` 生产无调用方。
-- `E02` 持续 FETCH_ERROR，导致 `collect-fast` exit 1 被 Railway 记为 CRASHED（10 个源里 9 个成功）。
-- Step 8（`0014` 退役）未开始，退役集为 `alerts`/`daily_notes`/legacy `clusters`，**不含 `items`**。
+**① coverage seeding / readiness 重算已安家（`7852be6`）。** `health-check` 每小时先 `seedSources()` 再 `refreshCapabilityReadiness()`。同步失败使该次运行降级为 `PARTIAL` 并在 metadata 中具名，但绝不影响检测环节，也不以非零退出（降级的重新评级不是服务崩溃）。
+
+生产实测：`platform:amazon-us` **UNAVAILABLE → MONITORED**，决策 4 首次真正生效。连带 `/amazon-us` 由 404 变 200、`/trends` 重定向终点从 404 变 200，且决策 4 要求的"我们能看见什么/看不见什么"告知面板已在页面上。
+
+**② briefing 契约错位：按计划等待。** 在有已发布的 canonical change 之前无从验证。
+
+**③ `collect-fast` 已修（同一提交）。** 根因是 FreightWaves（E02）feed 里一个未转义的 `&`，`rss-parser` 严格模式因此丢弃整个 750 KB 文档 → 0 条 → FETCH_ERROR → 重试 3 次 → 作业 exit 1 → Railway 记 CRASHED。`parseFeed` 改为先严格解析、**仅在失败时**修复实体后重试一次；格式良好的 feed 永不被改写，结构性损坏仍然抛错。对真实 feed：修复前 0 条，修复后 **56 条**。
+
+**促成已在生产运行**：04:17 时隙创建 150 条变更 + 156 条证据；审核队列 150 条；**公开面 0 条**（feed 0 项、`/api/v1/changes` 返回 `data: []`）；证据 0 条已复核。剩余约 1620 个合格簇，按每 4 小时 150 条排空。
+
+### 发布前仍需你决定
+
+1. **canonical 域名。** 生产实际服务于 `https://tradelinks.agentjoey.ai`，但 `NEXT_PUBLIC_SITE_URL` 未设，canonical/sitemap/robots/JSON-LD/OG 全部写成 `https://tradelinks-mvp.vercel.app`——服务主机与声明主机不一致，是发布级 SEO 缺陷。计划里记录的 `https://tradelinks.us` **不可购买**（已被他人持有），该假设作废。设一个环境变量即可全部修正，无需改代码。
+2. **Neon 免费计划余量。** 100 CU-h/月，本周期已用约 12 CU-h（第 4 天），实测燃烧率外推 66–88 CU-h/月；超限后计算实例挂起 = 站点与管线一起停。存储 51%、分支 8/10。
+3. **`tradelinks-legacy-worker`** 启动命令仍是 `next start`，长期 CRASHED，待删。
 
 ## Phase 1 Foundation 状态（2026-07-28，production 未部署）
 
