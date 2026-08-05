@@ -26,6 +26,7 @@ import type { SourceContract } from "../domain/intelligence/source-contract.js";
 import { PHASE1_SOURCES, PHASE1_SOURCES_BY_ID } from "../config/phase1-sources.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
+import { isSettledDrop } from "../ai/prompts/seller-relevance.js";
 
 const MAX_ITEMS_PER_RUN = 200;
 
@@ -494,11 +495,13 @@ export function createCanonicalizeBatch(
         const verdict = verdicts.get(draft.fingerprint);
         if (!verdict?.keep) {
           relevanceDropped++;
-          // Persist only a real verdict. An absent one means the classifier
-          // was unavailable, not that the change is irrelevant — burying a
-          // cluster over a missing key or a bad minute would be unrecoverable
-          // without a manual reset.
-          if (verdict && deps.rejectCluster) {
+          // Persist only a real verdict the model was confident about. An
+          // absent one means the classifier was unavailable, and an uncertain
+          // one means it did not know — neither is evidence that the change is
+          // irrelevant, and burying a cluster on either basis would be
+          // unrecoverable without a manual reset. Unsettled clusters are
+          // simply judged again next slot.
+          if (verdict && isSettledDrop(verdict) && deps.rejectCluster) {
             try {
               await deps.rejectCluster(draft.clusterId, verdict.reason);
             } catch {

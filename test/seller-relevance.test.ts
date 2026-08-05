@@ -12,7 +12,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   RELEVANCE_CONFIDENCE_THRESHOLD,
+  SETTLE_CONFIDENCE_THRESHOLD,
   buildSellerRelevancePrompt,
+  isSettledDrop,
   foldRelevance,
   parseSellerRelevance,
   type RelevanceItem,
@@ -160,5 +162,63 @@ describe("foldRelevance — every uncertain path drops", () => {
       { id: "a", keep: false, reason: "optional POS feature", confidence: 0.9 },
     ]);
     expect(v.get("a")!.reason).toBe("optional POS feature");
+  });
+});
+
+// ---- settling a verdict ----------------------------------------------------
+
+/**
+ * Two thresholds, because the two mistakes are not symmetrical.
+ *
+ * Promoting is a public claim, so an uncertain keep must not promote — that is
+ * the 0.70 gate above. Settling is destructive: it buries a cluster for good
+ * (or, in the sweep, deletes a draft), so an uncertain DROP must not settle
+ * either. Measured runs put real verdicts at 0.60 ("MSG… borderline
+ * industrial"), and burying a change a seller might need on that basis is the
+ * worse of the two errors.
+ *
+ * Both rules are the same rule: when unsure, take the reversible action. An
+ * unsettled item is simply re-judged on the next slot and reaches a human if
+ * it ever reads as relevant.
+ */
+
+describe("isSettledDrop", () => {
+  it("settles a confident drop", () => {
+    expect(isSettledDrop({ keep: false, reason: "industrial goods", confidence: 0.95 })).toBe(true);
+  });
+
+  it("does not settle an uncertain drop — it will be judged again", () => {
+    expect(isSettledDrop({ keep: false, reason: "borderline", confidence: 0.6 })).toBe(false);
+  });
+
+  it("settles exactly at the threshold", () => {
+    expect(isSettledDrop({ keep: false, reason: "r", confidence: SETTLE_CONFIDENCE_THRESHOLD })).toBe(true);
+  });
+
+  it("requires more certainty to bury than to publish", () => {
+    // The destructive action must be the harder one to reach.
+    expect(SETTLE_CONFIDENCE_THRESHOLD).toBeGreaterThan(RELEVANCE_CONFIDENCE_THRESHOLD);
+  });
+
+  it("never settles a keep, whatever its confidence", () => {
+    expect(isSettledDrop({ keep: true, reason: "r", confidence: 1 })).toBe(false);
+  });
+
+  it("never settles a low-confidence keep that was folded into a drop", () => {
+    // foldRelevance rewrites an uncertain keep as a drop tagged LOW_CONFIDENCE
+    // and carries the original confidence, which is below both thresholds —
+    // so an uncertain keep cannot become a permanent rejection.
+    const folded = foldRelevance(
+      [item("a")],
+      [{ id: "a", keep: true, reason: "maybe", confidence: 0.5 }],
+    ).get("a")!;
+    expect(folded.keep).toBe(false);
+    expect(isSettledDrop(folded)).toBe(false);
+  });
+
+  it("never settles a verdict that was never made", () => {
+    const absent = foldRelevance([item("a")], []).get("a")!;
+    expect(absent.reason).toBe("NO_VERDICT");
+    expect(isSettledDrop(absent)).toBe(false);
   });
 });

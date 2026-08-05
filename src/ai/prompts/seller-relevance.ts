@@ -30,6 +30,20 @@ import { extractJson } from "../json.js";
 /** Below this the item is not promoted. Uncertainty is not a yes. */
 export const RELEVANCE_CONFIDENCE_THRESHOLD = 0.7;
 
+/**
+ * Below this a DROP is not made permanent.
+ *
+ * The two mistakes are not symmetrical. Not promoting is reversible — the
+ * cluster is judged again next slot and reaches a human the moment it reads as
+ * relevant. Settling is not: it buries the cluster, or deletes the draft. Real
+ * runs put genuine verdicts at 0.60 ("MSG… borderline industrial"), and
+ * burying a change a seller might need on that basis is the worse error.
+ *
+ * So the destructive action is the harder one to reach. Same rule in both
+ * directions: when unsure, take the reversible option.
+ */
+export const SETTLE_CONFIDENCE_THRESHOLD = 0.8;
+
 export interface RelevanceItem {
   id: string;
   title: string;
@@ -156,4 +170,20 @@ export function foldRelevance(
     out.set(item.id, { keep: true, reason: r.reason, confidence: r.confidence });
   }
   return out;
+}
+
+/**
+ * May this verdict be made permanent — the cluster rejected, the draft deleted?
+ *
+ * Only an explicit drop the model was confident about. A keep is never
+ * settled; nor is an uncertain drop, nor the LOW_CONFIDENCE rewrite of an
+ * uncertain keep, nor `NO_VERDICT` — those all carry a confidence below the
+ * bar by construction, so a missing key or one bad minute can never bury a
+ * change.
+ */
+export function isSettledDrop(
+  verdict: RelevanceVerdict,
+  threshold: number = SETTLE_CONFIDENCE_THRESHOLD,
+): boolean {
+  return !verdict.keep && verdict.confidence >= threshold;
 }
