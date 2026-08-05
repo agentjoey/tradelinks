@@ -60,5 +60,10 @@ export function toFetchOutcome(
       httpStatus: status,
     };
   }
+  // A wrong selector cannot be made right by retrying — three attempts would
+  // only burn the slot's budget and delay an honest failure.
+  if (result.error?.startsWith("SELECTOR_")) {
+    return { kind: "failed", code: result.error.split(":")[0]!, retryable: false };
+  }
   return { kind: "failed", code: "FETCH_ERROR", retryable: true };
 }

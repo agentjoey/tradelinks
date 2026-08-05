@@ -756,9 +756,10 @@ export const SOURCES: SourceConfig[] = [
     enabled: false,
     note: "Finite-only (resumable-batches). Legacy queue disabled.",
     fetchConfig: {
-      itemSelector: "article",
-      titleSelector: "h2, h3",
-      linkSelector: "a",
+      itemSelector: ".PageListD-items-item",
+      titleSelector: ".PagePromo-title",
+      linkSelector: ".PagePromo-title a",
+      dateSelector: ".PagePromo-date",
     },
   },
   {

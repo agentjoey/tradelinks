@@ -11,6 +11,26 @@ const BROWSER_HEADERS = {
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
 };
 
+/**
+ * Parse a publication date without letting the crawler's timezone move it.
+ *
+ * `new Date("May 22, 2026")` is local midnight, so `toISOString()` renders it
+ * as the 21st anywhere east of Greenwich — every date-only byline would shift
+ * a day, and the ninety-day promotion window would inherit the error. A
+ * date-only string names a calendar day, not an instant, so its Y/M/D is taken
+ * as UTC. Strings that do carry a time (ISO `datetime` attributes) are left
+ * exactly as the publisher wrote them.
+ */
+export function parsePublishedDate(text: string): Date | undefined {
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const hasTimeOfDay = /\d:\d/.test(text);
+  if (hasTimeOfDay) return parsed;
+  return new Date(
+    Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()),
+  );
+}
+
 /** Parse already-fetched HTML with a per-source config. Pulled out for unit testing. */
 export function parseHtml(
   html: string,
@@ -42,7 +62,7 @@ export function parseHtml(
       ? node.find(config.dateSelector).first().attr("datetime") ??
         node.find(config.dateSelector).first().text().trim()
       : undefined;
-    const parsedDate = dateText ? new Date(dateText) : undefined;
+    const parsedDate = dateText ? parsePublishedDate(dateText) : undefined;
     items.push({
       url,
       title,
@@ -77,7 +97,21 @@ export class FetchAdapter implements SourceAdapter {
       if (isBlocked({ body, expectedSelectors: this.config.expectedSelectors })) {
         return { ok: false, blocked: true, items: [], error: "blocked: bot-wall detected" };
       }
+      const matched = cheerio.load(body)(this.config.itemSelector).length;
       const items = parseHtml(body, job.url, this.config, this.lang);
+      if (items.length === 0) {
+        // A listing page that parses to nothing is a broken selector far more
+        // often than a genuinely empty feed, and reporting it as an empty
+        // success is how AMZ-ANNOUNCEMENTS looked healthy while parsing zero
+        // items for its entire life. Say which of the two failures it is: no
+        // container matched at all, or containers matched but carried no
+        // extractable title and link.
+        const error =
+          matched === 0
+            ? `SELECTOR_NO_MATCH: ${this.config.itemSelector}`
+            : `SELECTOR_NO_ITEMS: ${this.config.itemSelector} matched ${matched}, none yielded a title and link`;
+        return { ok: false, blocked: false, items: [], error };
+      }
       return { ok: true, blocked: false, items };
     } catch (err) {
       return {

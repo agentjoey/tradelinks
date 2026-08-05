@@ -384,7 +384,17 @@ export const PHASE1_SOURCES = SourceContractSchema.array().parse([
     userPromise: "Public Amazon announcements only; not complete Seller Central policy coverage.",
     enabled: true,
     fixture: "amz-announcements.html",
-    selectors: { item: "article", title: "h2, h3", link: "a" },
+    // Brightspot CMS. The two <article> elements on this page are marketing
+    // blocks with neither title nor link; the announcements are cards under
+    // .PageListD-items-item. Each card holds three anchors — image, category
+    // chip ("Announcements") and headline — so the title selector must name
+    // the headline specifically or the category chip wins.
+    selectors: {
+      item: ".PageListD-items-item",
+      title: ".PagePromo-title",
+      link: ".PagePromo-title a",
+      date: ".PagePromo-date",
+    },
   },
   {
     id: "AMZ-PRICING-PAGE",
