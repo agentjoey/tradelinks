@@ -11,6 +11,7 @@ import {
 } from "../src/public-intelligence/telegram.js";
 import type { CanonicalPublicRecord } from "../src/public-intelligence/types.js";
 import type { ChannelSendResult } from "../src/push/send.js";
+import { canonicalBase } from "../src/public-intelligence/site-url.js";
 
 // Public Intelligence Task 8 — public Telegram distribution.
 //
@@ -239,7 +240,7 @@ describe("renderPublicTelegramMessage", () => {
     expect(text).toContain("2026-08-01"); // effective date
     expect(text).toContain(eligibleA.permalink);
     // The permalink is the serializer's own bytes.
-    expect(eligibleA.permalink).toBe(`https://tradelinks.us/changes/${eligibleA.slug}`);
+    expect(eligibleA.permalink).toBe(`${canonicalBase()}/changes/${eligibleA.slug}`);
   });
 
   it("never carries actions or personal impact, and escapes HTML", () => {
@@ -268,7 +269,7 @@ describe("runPublicTelegramPush", () => {
     // The tappable link preview is the canonical permalink, never a source URL.
     for (const call of sent) {
       expect((call.opts as { previewUrl?: string }).previewUrl).toMatch(
-        /^https:\/\/tradelinks\.us\/changes\//,
+        new RegExp(`^${canonicalBase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/changes/`),
       );
     }
 

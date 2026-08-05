@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { canonicalBase } from "../src/public-intelligence/site-url.js";
 
 // Public Intelligence Task 3 — SEO & sitemap contract (plan Step 4), extended
 // by Task 8 (Debt 2 + distribution surfaces).
@@ -344,7 +345,7 @@ describe("structured data", () => {
         effectiveAt: "2026-08-01T00:00:00.000Z",
         reviewedAt: "2026-07-28T00:00:00.000Z",
         readiness: "VERIFIED",
-        permalink: "https://tradelinks.us/changes/published-change",
+        permalink: `${canonicalBase()}/changes/published-change`,
       },
     };
     const graph = buildChangeJsonLd(detail as any) as Array<Record<string, unknown>>;
@@ -354,7 +355,7 @@ describe("structured data", () => {
     expect(breadcrumbs).toBeDefined();
     expect(article!.headline).toBe("A published change");
     expect(article!.datePublished).toBe("2026-07-15T00:00:00.000Z");
-    expect(article!.mainEntityOfPage).toBe("https://tradelinks.us/changes/published-change");
+    expect(article!.mainEntityOfPage).toBe(`${canonicalBase()}/changes/published-change`);
     // Readiness is a coverage statement, never a quality or endorsement
     // signal: no rating/review fields, and the raw readiness claim does not
     // leak into structured data at all.

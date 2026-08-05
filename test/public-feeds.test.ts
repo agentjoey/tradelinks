@@ -22,6 +22,7 @@ import { GET as briefingsFeedGET } from "../app/feeds/briefings.xml/route.js";
 import { GET as categoryFeedGET } from "../app/feeds/categories/[category]/route.js";
 import { GET as changesFeedGET } from "../app/feeds/changes.xml/route.js";
 import { GET as platformFeedGET } from "../app/feeds/platforms/[platform]/route.js";
+import { canonicalBase } from "../src/public-intelligence/site-url.js";
 
 // Canonical scoped feeds — the first surface where the channel-consistency
 // invariant is asserted over RENDERED XML, not projection objects. Every
@@ -251,7 +252,7 @@ function fakeRecord(i: number): CanonicalPublicRecord {
     readiness: "VERIFIED",
     generalImpact: "",
     generalActionTemplate: null,
-    permalink: `https://tradelinks.us/changes/fake-${i}`,
+    permalink: `${canonicalBase()}/changes/fake-${i}`,
     reviewedAt: "2026-07-20T00:00:00.000Z",
     evidence: [],
     correctionHistory: [],
@@ -331,7 +332,7 @@ describe("feed contract", () => {
   it("caps a feed at 50 items", () => {
     const records = Array.from({ length: FEED_MAX_ITEMS + 5 }, (_, i) => fakeRecord(i));
     const xml = renderChangesFeedXml(
-      { title: "t", link: "https://tradelinks.us/changes", self: "https://tradelinks.us/feeds/changes.xml", description: "d" },
+      { title: "t", link: `${canonicalBase()}/changes`, self: `${canonicalBase()}/feeds/changes.xml`, description: "d" },
       records,
     );
     const doc = parseXml(xml);
@@ -353,7 +354,7 @@ describe("feed contract", () => {
       path: `/briefings/weekly/2026/${i + 1}`,
     }));
     const xml = renderBriefingsFeedXml(
-      { title: "t", link: "https://tradelinks.us/briefings", self: "https://tradelinks.us/feeds/briefings.xml", description: "d" },
+      { title: "t", link: `${canonicalBase()}/briefings`, self: `${canonicalBase()}/feeds/briefings.xml`, description: "d" },
       briefings,
     );
     const doc = parseXml(xml);
@@ -372,9 +373,9 @@ describe("feed contract", () => {
     const doc = parseXml(xml);
     const channel = doc.querySelector("channel")!;
     expect(channel.querySelector(":scope > title")!.textContent).toContain("TradeLinks");
-    expect(channel.querySelector(":scope > link")!.textContent).toBe("https://tradelinks.us/changes");
+    expect(channel.querySelector(":scope > link")!.textContent).toBe(`${canonicalBase()}/changes`);
     const self = channel.querySelector("[rel='self']")!;
-    expect(self.getAttribute("href")).toBe("https://tradelinks.us/feeds/changes.xml");
+    expect(self.getAttribute("href")).toBe(`${canonicalBase()}/feeds/changes.xml`);
     expect(channel.querySelector("language")!.textContent).toBe("en-us");
   });
 
@@ -423,7 +424,7 @@ describe("scoped feeds", () => {
 
   it("an empty feed for a scope that exists is valid XML with zero items", () => {
     const xml = renderChangesFeedXml(
-      { title: "t", link: "https://tradelinks.us/changes", self: "https://tradelinks.us/feeds/changes.xml", description: "d" },
+      { title: "t", link: `${canonicalBase()}/changes`, self: `${canonicalBase()}/feeds/changes.xml`, description: "d" },
       [],
     );
     const doc = parseXml(xml);
@@ -502,7 +503,7 @@ describe("route handlers", () => {
     const doc = parseXml(xml);
 
     expect(xml).toContain("Weekly briefing — feed test");
-    expect(xml).toContain(`https://tradelinks.us${briefingPath("WEEKLY", BRIEFING_PERIOD_KEY)}`);
+    expect(xml).toContain(`${canonicalBase()}${briefingPath("WEEKLY", BRIEFING_PERIOD_KEY)}`);
     expect(xml).not.toContain("DRAFT briefing must not appear");
     expect(doc.querySelectorAll("item").length).toBeGreaterThan(0);
   }, 60000);

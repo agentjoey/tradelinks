@@ -19,6 +19,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "../db/client.js";
 import type { Briefing, ReadinessLevel } from "@prisma/client";
 import type { CanonicalPublicRecord, VersionWithEvidence } from "./types.js";
+import { canonicalUrl } from "./site-url.js";
 
 export const NO_QUALIFIED_CONTENT = "NO_QUALIFIED_CONTENT";
 export type NoQualifiedContent = typeof NO_QUALIFIED_CONTENT;
@@ -351,7 +352,7 @@ function serializePinnedVersion(version: VersionWithEvidence): CanonicalPublicRe
     readiness: version.readiness as "MONITORED" | "VERIFIED",
     generalImpact: version.generalImpact,
     generalActionTemplate: version.generalActionTemplate,
-    permalink: `https://tradelinks.us/changes/${version.canonicalChange.slug}`,
+    permalink: canonicalUrl(`/changes/${version.canonicalChange.slug}`),
     reviewedAt: version.reviewedAt?.toISOString() ?? "",
     evidence: version.evidence.map((e) => ({
       sourceId: e.sourceId,

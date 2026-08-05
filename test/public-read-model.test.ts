@@ -11,6 +11,7 @@ import {
   serializeCanonicalVersion,
 } from "../src/public-intelligence/serialize.js";
 import { PUBLIC_CACHE } from "../src/public-intelligence/cache.js";
+import { canonicalUrl } from "../src/public-intelligence/site-url.js";
 
 // Public Content Schema and Read Model contract coverage
 // (Phase 1 Public Intelligence Task 1).
@@ -458,7 +459,7 @@ describe("serialized output omissions and ordering", () => {
   });
 
   it("includes a valid permalink", () => {
-    expect(record.permalink).toMatch(/^https:\/\/tradelinks\.us\/changes\//);
+    expect(record.permalink).toBe(canonicalUrl(`/changes/${record.slug}`));
     expect(record.permalink).toContain(record.slug);
   });
 

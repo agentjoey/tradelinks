@@ -23,6 +23,7 @@ import {
 } from "../src/public-intelligence/api.js";
 import { PUBLIC_CACHE } from "../src/public-intelligence/cache.js";
 import { serializeCanonicalVersion } from "../src/public-intelligence/serialize.js";
+import { canonicalBase } from "../src/public-intelligence/site-url.js";
 
 // Anonymous Public API v1 — the machine-readable contract. Like Task 6's
 // feeds, the channel-consistency invariant is asserted over the RENDERED
@@ -211,7 +212,7 @@ describe("GET /api/v1/changes — envelope, limits, headers", () => {
 
   it("carries canonical attribution (permalink + evidence links) on every record", async () => {
     for (const item of listBody.data) {
-      expect(item.permalink).toBe(`https://tradelinks.us/changes/${item.slug}`);
+      expect(item.permalink).toBe(`${canonicalBase()}/changes/${item.slug}`);
       expect(Array.isArray(item.evidence)).toBe(true);
       for (const e of item.evidence) {
         expect(typeof e.url).toBe("string");

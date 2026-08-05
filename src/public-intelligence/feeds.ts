@@ -28,11 +28,13 @@ import type { PublishedBriefingSummary } from "./briefings.js";
 import { PUBLIC_CACHE } from "./cache.js";
 import { searchPublicChanges } from "./search.js";
 import type { CanonicalPublicRecord } from "./types.js";
+import { canonicalBase } from "./site-url.js";
 
 export const FEED_MAX_ITEMS = 50;
 
 /** Canonical origin — the same base the serializer uses for permalinks. */
-const CANONICAL_BASE = "https://tradelinks.us";
+// Host comes from the deployment, not a compile-time constant — see site-url.ts.
+const CANONICAL_BASE = canonicalBase();
 
 const PLATFORM_SCOPES: Record<string, PlatformCode> = {
   "amazon-us": "AMAZON",

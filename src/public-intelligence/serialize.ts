@@ -12,6 +12,7 @@ import type {
   CanonicalPublicRecord,
   VersionWithEvidence,
 } from "./types.js";
+import { canonicalUrl } from "./site-url.js";
 
 const PUBLIC_READINESS: ReadonlySet<string> = new Set(["MONITORED", "VERIFIED"]);
 
@@ -68,7 +69,7 @@ export function serializeCanonicalVersion(
 ): CanonicalPublicRecord {
   assertPublicVersion(version);
 
-  const permalink = `https://tradelinks.us/changes/${version.canonicalChange.slug}`;
+  const permalink = canonicalUrl(`/changes/${version.canonicalChange.slug}`);
   const fingerprint = createHash("sha256")
     .update(`${version.id}|${version.version}|${version.updatedAt.toISOString()}`)
     .digest("hex");

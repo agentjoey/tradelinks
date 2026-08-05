@@ -35,6 +35,7 @@ import { getCoverageMatrix } from "./coverage.js";
 import { decodeCursor, encodeCursor, getPublicChangeBySlug, listPublicChanges } from "./query.js";
 import { searchPublicChanges } from "./search.js";
 import type { CanonicalPublicRecord } from "./types.js";
+import { canonicalBase } from "./site-url.js";
 
 export const API_VERSION = "1.0" as const;
 export const API_DEFAULT_LIMIT = 20;
@@ -670,7 +671,7 @@ export function openApiDocument(): Record<string, unknown> {
         "Every record carries its canonical permalink (cite it) and official evidence links (verify against them). " +
         "All list responses are ETag-cached; send If-None-Match for a 304.",
     },
-    servers: [{ url: "https://tradelinks.us" }],
+    servers: [{ url: canonicalBase() }],
     paths: {
       "/api/v1/changes": {
         get: {
