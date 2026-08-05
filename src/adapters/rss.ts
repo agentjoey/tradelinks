@@ -11,9 +11,36 @@ const parser = new Parser({
   },
 });
 
-/** Parse an already-fetched feed string. Pulled out for unit testing. */
+/**
+ * Escape ampersands that do not begin a valid entity reference.
+ *
+ * Publishers routinely emit `?utm_source=rss&utm_medium=feed` unescaped. That
+ * is malformed XML, and a strict parser is right to reject it — but rejecting
+ * the document costs every item in the feed, which is a far worse outcome than
+ * repairing one character. Named, decimal and hex entities are left alone, so
+ * running this over an already-valid document is a no-op.
+ */
+export function repairXmlEntities(xml: string): string {
+  return xml.replace(
+    /&(?!(?:[a-zA-Z][a-zA-Z0-9]{0,31}|#\d{1,7}|#x[0-9a-fA-F]{1,6});)/g,
+    "&amp;",
+  );
+}
+
+/**
+ * Parse an already-fetched feed string. Pulled out for unit testing.
+ *
+ * Strict first: a feed that parses cleanly is never rewritten. The repair is a
+ * fallback, so a structurally broken document still throws rather than being
+ * silently downgraded to an empty success.
+ */
 export async function parseFeed(xml: string, lang?: string): Promise<RawItem[]> {
-  const feed = await parser.parseString(xml);
+  let feed;
+  try {
+    feed = await parser.parseString(xml);
+  } catch {
+    feed = await parser.parseString(repairXmlEntities(xml));
+  }
   const items: RawItem[] = [];
   for (const entry of feed.items) {
     const url = entry.link?.trim();

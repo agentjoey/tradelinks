@@ -67,6 +67,19 @@ export interface HealthCheckDeps {
   getSourceFacts(sourceIds: string[]): Promise<Record<string, SourceFacts>>;
   getCoverageCapabilities(): Promise<CapabilitySummary[]>;
   getBriefingStatus(now: Date): Promise<{ absent: boolean }>;
+  /**
+   * Re-seed the source/capability contracts and recompute readiness.
+   *
+   * These ran from the persistent pg-boss worker until the Railway cron
+   * cutover, after which no finite job owned them and production readiness
+   * froze — sources could all miss their SLA without a single capability
+   * turning STALE. Hourly health detection is the right home: it exists to
+   * notice when reality and the stated grade diverge, and it must therefore
+   * be the thing that keeps the grade current.
+   *
+   * Optional so existing callers and detection-only tests are unaffected.
+   */
+  syncCoverage?(): Promise<void>;
   maxSlaWindowHours: number;
   now(): Date;
 }
@@ -160,25 +173,49 @@ export function createHealthCheck(
     }
 
     const now = deps.now();
+
+    // Re-grade before detecting, so detection reads current readiness rather
+    // than whatever was last written. A sync failure degrades the run but must
+    // never cost us the detection pass — that is the part that pages a human.
+    let coverageSync: string | null = null;
+    if (deps.syncCoverage) {
+      try {
+        await deps.syncCoverage();
+        coverageSync = "OK";
+      } catch (err) {
+        coverageSync = `FAILED: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+    const syncFailed = coverageSync != null && coverageSync !== "OK";
+
     const detections = await detectFailures(deps, now, { deliver: true });
 
-    const status: JobStatus = detections.length > 0 ? "SUCCEEDED_ITEMS" : "SUCCEEDED_EMPTY";
+    const status: JobStatus = syncFailed
+      ? "PARTIAL"
+      : detections.length > 0
+        ? "SUCCEEDED_ITEMS"
+        : "SUCCEEDED_EMPTY";
+    const failed = syncFailed ? 1 : 0;
 
     await deps.finishRun(runId, {
       status,
       itemCount: detections.length,
-      attempted: detections.length, succeeded: detections.length, failed: 0,
+      attempted: detections.length + failed, succeeded: detections.length, failed,
       metadata: {
         detections: detections.map((d) => ({ code: d.code, subjectId: d.subjectId })),
         checkedAt: now.toISOString(),
+        ...(coverageSync != null ? { coverageSync } : {}),
       },
       outputFingerprint: detections.map((d) => `${d.code}:${d.subjectId}`).join(";") || "",
     });
 
     return {
       runId, status,
-      attempted: detections.length, succeeded: detections.length,
-      failed: 0, itemCount: detections.length, exitCode: 0,
+      attempted: detections.length + failed, succeeded: detections.length,
+      failed, itemCount: detections.length,
+      // A degraded re-grade is not a crashed service: exit 0 keeps the hourly
+      // job green while the PARTIAL status and metadata carry the truth.
+      exitCode: 0,
     };
   };
 }
@@ -361,6 +398,16 @@ const REAL_DEPS: HealthCheckDeps = {
     });
     const isMonday = now.getUTCDay() === 1;
     return { absent: run == null && isMonday };
+  },
+  async syncCoverage() {
+    // Seed first so every contracted source and capability row exists (and so
+    // a regraded seed ceiling reaches a never-reviewed row), then recompute
+    // readiness from actual source freshness. Order matters: recomputing
+    // before seeding would grade rows that do not exist yet.
+    const { seedSources } = await import("../workers/seed-sources.js");
+    const { refreshCapabilityReadiness } = await import("../monitoring/health.js");
+    await seedSources();
+    await refreshCapabilityReadiness();
   },
   maxSlaWindowHours: 48,
   now: () => new Date(),
