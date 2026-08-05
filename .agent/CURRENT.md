@@ -50,11 +50,27 @@ Owner 决策：Track A 原为切换前试运行，出现问题后决定**跳过�
 
 **促成已在生产运行**：04:17 时隙创建 150 条变更 + 156 条证据；审核队列 150 条；**公开面 0 条**（feed 0 项、`/api/v1/changes` 返回 `data: []`）；证据 0 条已复核。剩余约 1620 个合格簇，按每 4 小时 150 条排空。
 
-### 发布前仍需你决定
+### 2026-08-05：发布前置已清（`895ef4f`）
 
-1. **canonical 域名。** 生产实际服务于 `https://tradelinks.agentjoey.ai`，但 `NEXT_PUBLIC_SITE_URL` 未设，canonical/sitemap/robots/JSON-LD/OG 全部写成 `https://tradelinks-mvp.vercel.app`——服务主机与声明主机不一致，是发布级 SEO 缺陷。计划里记录的 `https://tradelinks.us` **不可购买**（已被他人持有），该假设作废。设一个环境变量即可全部修正，无需改代码。
-2. **Neon 免费计划余量。** 100 CU-h/月，本周期已用约 12 CU-h（第 4 天），实测燃烧率外推 66–88 CU-h/月；超限后计算实例挂起 = 站点与管线一起停。存储 51%、分支 8/10。
-3. **`tradelinks-legacy-worker`** 启动命令仍是 `next start`，长期 CRASHED，待删。
+**canonical 主机统一。** 决策：正式域名为 `https://tradelinks.agentjoey.ai`（`tradelinks.us` 已被他人持有、不可购买，该计划假设作废）。此前有三个来源给出两个错误答案：页面读 `NEXT_PUBLIC_SITE_URL`（未设 → vercel.app），而 feeds/OpenAPI/permalink/Telegram 预览**硬编码** `tradelinks.us`。新增 `src/public-intelligence/site-url.ts` 为唯一真相源，按调用读取而非导入期捕获。生产实测：canonical、sitemap、robots、`openapi.json` 的 `servers`、feed 自指 URL 全部为 `tradelinks.agentjoey.ai`。
+
+**sitemap 不再宣告自己的重定向。** 切换后 `/wire` `/trends` `/daily`、全部 legacy 日报 slug 与所有 `/zh` 变体都会 308；sitemap 却仍在列它们，等于让爬虫去取不会服务的 URL，且列 `/zh` 与英文单语发布决策直接矛盾。现为 15 条纯公开面，legacy/zh 残留 0。开关关闭时行为不变，回滚会一并恢复旧 sitemap。
+
+**上线状态实测（`https://tradelinks.agentjoey.ai`）**
+- 公开面 14 条路由全 200，含 `/openapi.json`、`/feeds/changes.xml`、`/agent/tradelinks/SKILL.md`。
+- legacy 6 条全部 308 到契约目标，Location 均指向正式域名。
+- `platform:amazon-us` = MONITORED，0 个 capability 为 STALE，6 小时内 23 个源成功。
+- 促成：150 条变更在审核队列，**0 条公开**（feed 0 项、`/api/v1/changes` 返回 `data: []`）。
+
+**Neon**：已删三个已死检查点分支（分支数 8 → 5）。存储几乎未降（它们与 production 共享绝大部分页面，独有增量很小），真实收益是槽位与心智负担，不是配额。CU-h 12.7 / 100。
+
+### 仍未闭合
+
+- **`tradelinks-legacy-worker` 未能删除**：project token 权限不足（`Not Authorized`），需在 Railway 面板手动删除，或提供账户级 token。
+- **`collect-fast` 修复待验证**：下一个时隙 08:07 UTC。本地对真实 feed 已验证 0 → 56 条。
+- **内容仍需人工审核**：`/changes` 与各 hub 在首批审核通过前保持空态。审核队列每页 50 条，页头显示 `showing N of M`。
+- **briefing 契约错位**（`scopeKey` 常量 vs `kind:periodKey`、`generateBriefing()` 无生产调用方）：按决定等待，需先有已发布的 canonical change 才能验证。
+- **Neon 免费档余量**：按当前节奏月末 66–88 / 100 CU-h，超限即挂起计算实例。已选择只做分支清理，未升级。
 
 ## Phase 1 Foundation 状态（2026-07-28，production 未部署）
 
