@@ -23,6 +23,8 @@ import {
   isPromotableAnchor,
   promotionSlug,
   PROMOTION_MAX_AGE_DAYS,
+  deriveSummary,
+  SUMMARY_MAX_CHARS,
   type PromotableCluster,
   type PromotableMember,
   type PromotionDraft,
@@ -744,5 +746,113 @@ describe("relevance verdicts persist", () => {
     const result = await batch(batchArgs());
     expect(promoted).toEqual(["fp-a"]);
     expect(result.exitCode).toBe(0);
+  });
+});
+
+// ---- summary derivation ----------------------------------------------------
+
+/**
+ * The draft must carry the publisher's words, not just their headline.
+ *
+ * Promotion wrote `summaryEn ?? title`, and `summaryEn` is null on all but 24
+ * of A02's 1,564 items — so six of the eight production drafts had a summary
+ * that was the title repeated verbatim. The site's "What changed" panel read
+ * as a headline echo, and there was nothing for an interpreter to work from.
+ *
+ * The body was there the whole time: 1,550 A02 items carry up to 10 KB of
+ * rawContent. It simply never reached the draft.
+ */
+
+describe("deriveSummary", () => {
+  const TITLE = "Benchmark Comparisons will be removed";
+
+  it("prefers a reviewed English summary when one exists", () => {
+    expect(
+      deriveSummary({ titleEn: null, summaryEn: "A human-checked summary.", rawContent: { contentSnippet: "raw" } }, TITLE),
+    ).toBe("A human-checked summary.");
+  });
+
+  it("falls back to the publisher's own plain-text snippet", () => {
+    expect(
+      deriveSummary({ titleEn: null, summaryEn: null, rawContent: { contentSnippet: "Benchmark data stops on May 19." } }, TITLE),
+    ).toBe("Benchmark data stops on May 19.");
+  });
+
+  it("accepts an abstract, which is what the Federal Register supplies", () => {
+    expect(
+      deriveSummary({ titleEn: null, summaryEn: null, rawContent: { abstract: "Commerce amended the final results." } }, TITLE),
+    ).toBe("Commerce amended the final results.");
+  });
+
+  it("strips markup when only the HTML body is available", () => {
+    const summary = deriveSummary(
+      { titleEn: null, summaryEn: null, rawContent: { content: "<p>Data stops <b>May 19</b>.</p>\n<p>Use targets.</p>" } },
+      TITLE,
+    );
+    expect(summary).toBe("Data stops May 19. Use targets.");
+    expect(summary).not.toMatch(/[<>]/);
+  });
+
+  it("falls back to the title only when there is genuinely no body", () => {
+    expect(deriveSummary({ titleEn: null, summaryEn: null, rawContent: null }, TITLE)).toBe(TITLE);
+  });
+
+  it("ignores a body too short to say anything", () => {
+    // A stray "Read more" is not a summary; the title is more honest.
+    expect(
+      deriveSummary({ titleEn: null, summaryEn: null, rawContent: { contentSnippet: "Read more" } }, TITLE),
+    ).toBe(TITLE);
+  });
+
+  it("bounds a long body and cuts at a sentence, not mid-word", () => {
+    const body = "First sentence here. " + "Filler sentence that runs on. ".repeat(60);
+    const summary = deriveSummary({ titleEn: null, summaryEn: null, rawContent: { contentSnippet: body } }, TITLE);
+    expect(summary.length).toBeLessThanOrEqual(SUMMARY_MAX_CHARS);
+    expect(summary).toMatch(/[.!?]$/);
+    // The cut must land on a real boundary in the source, never inside a word:
+    // the excerpt is a verbatim prefix, and the source continues with a space.
+    expect(body.startsWith(summary)).toBe(true);
+    expect(body[summary.length]).toBe(" ");
+  });
+
+  it("keeps a body that has no sentence break usable rather than dropping it", () => {
+    const body = "word ".repeat(300).trim();
+    const summary = deriveSummary({ titleEn: null, summaryEn: null, rawContent: { contentSnippet: body } }, TITLE);
+    expect(summary.length).toBeLessThanOrEqual(SUMMARY_MAX_CHARS);
+    expect(summary.startsWith("word")).toBe(true);
+  });
+
+  it("collapses the whitespace RSS bodies arrive with", () => {
+    expect(
+      deriveSummary(
+        { titleEn: null, summaryEn: null, rawContent: { contentSnippet: "Benchmark data stops.\n\n  Use Metric Targets instead." } },
+        TITLE,
+      ),
+    ).toBe("Benchmark data stops. Use Metric Targets instead.");
+  });
+});
+
+describe("buildPromotionDraft summary", () => {
+  it("no longer repeats the title when a body exists", () => {
+    const m = member({ itemId: "i" });
+    m.item.rawContent = { contentSnippet: "Shopify will apply the default disclosure on June 22." };
+    const draft = buildPromotionDraft(cluster([m]))!;
+    expect(draft.version.summary).toBe("Shopify will apply the default disclosure on June 22.");
+    expect(draft.version.summary).not.toBe(draft.version.title);
+  });
+
+  it("gives the evidence record the same grounded text", () => {
+    const m = member({ itemId: "i" });
+    m.item.rawContent = { contentSnippet: "Shopify will apply the default disclosure on June 22." };
+    const draft = buildPromotionDraft(cluster([m]))!;
+    expect(draft.evidence[0]!.normalizedSummary).toBe(draft.version.summary);
+  });
+
+  it("still restates the source as impact — never an inferred consequence", () => {
+    const m = member({ itemId: "i" });
+    m.item.rawContent = { contentSnippet: "Shopify will apply the default disclosure on June 22." };
+    const draft = buildPromotionDraft(cluster([m]))!;
+    expect(draft.version.generalImpact).toBe(draft.version.summary);
+    expect(draft.version.generalActionTemplate).toBeNull();
   });
 });

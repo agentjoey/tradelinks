@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import type { LlmCompleteOpts } from "../client.js";
 import { extractJson } from "../json.js";
+import { confidenceField } from "../confidence.js";
 
 /** Below this the item is not promoted. Uncertainty is not a yes. */
 export const RELEVANCE_CONFIDENCE_THRESHOLD = 0.7;
@@ -112,7 +113,7 @@ export const SellerRelevanceSchema = z.object({
       id: z.string(),
       keep: z.boolean(),
       reason: z.string(),
-      confidence: z.number().min(0).max(1),
+      confidence: confidenceField,
     }),
   ),
 });

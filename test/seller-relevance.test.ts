@@ -76,10 +76,29 @@ describe("parseSellerRelevance", () => {
     expect(out[0]!.keep).toBe(true);
   });
 
-  it("rejects a malformed confidence rather than coercing it", () => {
-    expect(() =>
-      parseSellerRelevance('{"results":[{"id":"a","keep":true,"reason":"r","confidence":5}]}'),
-    ).toThrow();
+  it("reads a malformed confidence as zero rather than as certainty", () => {
+    // Previously this threw, which killed the whole batch — and a batch is up
+    // to 20 items, so one bad field discarded 19 good verdicts. Now the value
+    // reads as 0 and that item fails its own threshold, leaving the rest
+    // intact. Uncertainty about the confidence is itself a lack of confidence.
+    const out = parseSellerRelevance(
+      '{"results":[{"id":"a","keep":true,"reason":"r","confidence":5},' +
+        '{"id":"b","keep":true,"reason":"r","confidence":0.9}]}',
+    );
+    expect(out[0]!.confidence).toBe(0);
+    expect(out[1]!.confidence).toBe(0.9);
+    expect(foldRelevance([item("a"), item("b")], out).get("a")!.keep).toBe(false);
+    expect(foldRelevance([item("a"), item("b")], out).get("b")!.keep).toBe(true);
+  });
+
+  it("reads the word forms models actually emit", () => {
+    // MiniMax answers "medium" as readily as 0.75 for the same prompt.
+    const out = parseSellerRelevance(
+      '{"results":[{"id":"a","keep":true,"reason":"r","confidence":"high"},' +
+        '{"id":"b","keep":true,"reason":"r","confidence":"low"}]}',
+    );
+    expect(out[0]!.confidence).toBeGreaterThanOrEqual(RELEVANCE_CONFIDENCE_THRESHOLD);
+    expect(out[1]!.confidence).toBeLessThan(RELEVANCE_CONFIDENCE_THRESHOLD);
   });
 
   it("rejects a missing field rather than filling a default", () => {

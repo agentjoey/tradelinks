@@ -208,6 +208,10 @@ const REAL_DEPS: CanonicalizeDeps = {
           title: m.item.title,
           titleEn: m.item.titleEn,
           summaryEn: m.item.summaryEn,
+          // The publisher's body. Without it a draft can only repeat its own
+          // headline, which is what six of the first eight production drafts
+          // did.
+          rawContent: m.item.rawContent,
           url: m.item.url,
           publishedAt: m.item.publishedAt,
           crawledAt: m.item.crawledAt,

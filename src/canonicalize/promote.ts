@@ -65,6 +65,25 @@ export const DEFAULT_URGENCY = 3;
  */
 export const PROMOTION_MAX_AGE_DAYS = 90;
 
+/**
+ * Longest summary a draft carries.
+ *
+ * Long enough for a full changelog post or a Federal Register abstract to
+ * arrive intact — which is what the interpreter and the "What changed" panel
+ * both need — and short enough that a card stays a card.
+ */
+export const SUMMARY_MAX_CHARS = 700;
+
+/**
+ * Below this a "body" is a link label, not a summary.
+ *
+ * Tuned against what actually appears: "Read more" (9), "Continue reading"
+ * (16). A real one-sentence Federal Register abstract — "Commerce amended the
+ * final results." (35) — must survive, so the floor sits just above the
+ * labels rather than at a round number that would discard real prose.
+ */
+const MIN_BODY_CHARS = 25;
+
 /** Longest slug we emit; the disambiguating suffix is always preserved. */
 const SLUG_MAX = 80;
 const SLUG_HASH_LEN = 8;
@@ -75,6 +94,12 @@ export interface PromotableItem {
   title: string;
   titleEn: string | null;
   summaryEn: string | null;
+  /**
+   * The publisher's own body, as stored by the adapter. RSS gives
+   * `contentSnippet` (plain) and `content` (HTML); the Federal Register gives
+   * `abstract`. Without it a draft can only repeat its headline.
+   */
+  rawContent?: unknown;
   url: string;
   publishedAt: Date;
   crawledAt: Date;
@@ -223,6 +248,58 @@ export function promotionSlug(title: string, fingerprint: string): string {
   return body === "" ? `change-${suffix}` : `${body}-${suffix}`;
 }
 
+/**
+ * The best available prose for a change, in order of how well it is grounded.
+ *
+ * A reviewed English summary first; then the publisher's own words, preferring
+ * the plain-text forms over HTML; the title only when there is genuinely no
+ * body. The title fallback is honest but nearly worthless — it produced six
+ * production drafts whose summary was their own headline — so it is last.
+ */
+export function deriveSummary(
+  item: { titleEn: string | null; summaryEn: string | null; rawContent?: unknown },
+  title: string,
+): string {
+  const reviewed = item.summaryEn?.trim();
+  if (reviewed) return reviewed;
+
+  const raw = (item.rawContent ?? {}) as Record<string, unknown>;
+  for (const key of ["contentSnippet", "abstract", "content"] as const) {
+    const value = raw[key];
+    if (typeof value !== "string") continue;
+    const text = value
+      // Tags become spaces so `<p>a</p><p>b</p>` does not weld into "ab" —
+      // but that leaves "May 19 ." wherever markup wrapped a word before
+      // punctuation, so the stray space is closed up again.
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\s+([.,;:!?])/g, "$1")
+      .trim();
+    if (text.length < MIN_BODY_CHARS) continue;
+    return truncateAtSentence(text, SUMMARY_MAX_CHARS);
+  }
+  return title;
+}
+
+/**
+ * Cut to a full sentence where possible, and never mid-word.
+ *
+ * A summary ending in "the seller must sub" is worse than a shorter one that
+ * ends cleanly — it reads as corruption rather than as an excerpt.
+ */
+function truncateAtSentence(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const window = text.slice(0, max);
+  const lastSentence = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+  );
+  if (lastSentence > max * 0.4) return window.slice(0, lastSentence + 1);
+  const lastSpace = window.lastIndexOf(" ");
+  return lastSpace > 0 ? window.slice(0, lastSpace) : window;
+}
+
 // ---- builder --------------------------------------------------------------
 
 /**
@@ -245,8 +322,10 @@ export function buildPromotionDraft(
   const contract = anchor.contract!;
 
   const title = (anchor.item.titleEn ?? anchor.item.title).trim();
-  // No summary is not a licence to write one: restate the title instead.
-  const summary = (anchor.item.summaryEn ?? title).trim();
+  // Still no invention — this only widens what counts as "the source's own
+  // words" from a rarely-present summaryEn to the body the adapter already
+  // stored.
+  const summary = deriveSummary(anchor.item, title);
 
   const version: PromotionVersion = {
     version: 1,
@@ -293,7 +372,7 @@ export function buildPromotionDraft(
       publishedAt: m.item.publishedAt,
       access: m.contract.access,
       licenseNote: m.contract.license,
-      normalizedSummary: (m.item.summaryEn ?? m.item.titleEn ?? m.item.title).trim(),
+      normalizedSummary: deriveSummary(m.item, (m.item.titleEn ?? m.item.title).trim()),
       contentHash: sha256(`${m.item.url}:${m.item.title}`),
       fetchedAt: m.item.crawledAt,
       // reviewedAt stays unset: a reviewed PRIMARY_OFFICIAL record is exactly
