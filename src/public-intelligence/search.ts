@@ -24,7 +24,7 @@ import {
 } from "../domain/intelligence/taxonomy.js";
 import { toDemandContext } from "./coverage.js";
 import type { DemandContext } from "./coverage.js";
-import { decodeCursor, encodeCursor, getPublicChangeBySlug } from "./query.js";
+import { decodeCursor, encodeCursor, getPublicChangeBySlug, DEFAULT_PUBLIC_POOL } from "./query.js";
 import { serializeCanonicalVersion } from "./serialize.js";
 import type { CanonicalPublicRecord, PublicPage, VersionWithEvidence } from "./types.js";
 
@@ -67,8 +67,8 @@ function parseDateParam(value: string | null): string | null {
 }
 
 /**
- * Parses the public filter vocabulary. The safe default is `verified` for an
- * absent, empty, unknown or hostile pool; invalid values for the other
+ * Parses the public filter vocabulary. An absent, empty, unknown or hostile
+ * pool falls back to DEFAULT_PUBLIC_POOL; invalid values for the other
  * allowed filters are dropped, never widened into a leak. Unknown parameters
  * are ignored — they never survive into the returned object, so they can
  * never reach a query.
@@ -76,7 +76,9 @@ function parseDateParam(value: string | null): string | null {
 export function parsePublicSearchParams(input: URLSearchParams): PublicSearchFilters {
   const poolRaw = input.get("pool");
   const pool: PublicSearchPool =
-    poolRaw === "monitored" || poolRaw === "experimental-demand" ? poolRaw : "verified";
+    poolRaw === "monitored" || poolRaw === "experimental-demand" || poolRaw === "verified"
+      ? poolRaw
+      : DEFAULT_PUBLIC_POOL;
 
   const signalRaw = input.get("signal");
   const signal = (SIGNAL_TYPES as readonly string[]).includes(signalRaw ?? "")

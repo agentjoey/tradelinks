@@ -19,6 +19,7 @@ import {
   searchPublicChanges,
 } from "../src/public-intelligence/search.js";
 import { listPublicChanges } from "../src/public-intelligence/query.js";
+import { DEFAULT_PUBLIC_POOL } from "../src/public-intelligence/query.js";
 
 const prisma = new PrismaClient();
 
@@ -179,18 +180,23 @@ afterAll(async () => {
 // ---------- parsePublicSearchParams: the safe-default contract ----------
 
 describe("parsePublicSearchParams", () => {
-  it("defaults to verified for an absent, empty, unknown or hostile pool", () => {
-    expect(parsePublicSearchParams(new URLSearchParams()).pool).toBe("verified");
-    expect(parsePublicSearchParams(new URLSearchParams("pool=")).pool).toBe("verified");
-    expect(parsePublicSearchParams(new URLSearchParams("pool=draft")).pool).toBe("verified");
-    expect(parsePublicSearchParams(new URLSearchParams("pool=';DROP TABLE--")).pool).toBe("verified");
-    expect(parsePublicSearchParams(new URLSearchParams("pool=VERIFIED")).pool).toBe("verified");
+  it("falls back to the default for an absent, empty, unknown or hostile pool", () => {
+    // The property is that a junk pool never widens the result set beyond the
+    // default and never errors — not that the default is any one value.
+    // "pool=VERIFIED" is included deliberately: matching is exact, so the
+    // uppercase form is unknown input, not a synonym.
+    for (const query of ["", "pool=", "pool=draft", "pool=';DROP TABLE--", "pool=VERIFIED"]) {
+      expect(parsePublicSearchParams(new URLSearchParams(query)).pool, query).toBe(
+        DEFAULT_PUBLIC_POOL,
+      );
+    }
   });
 
-  it("accepts the two expert pools only by exact value", () => {
+  it("accepts every named pool only by exact value", () => {
+    expect(parsePublicSearchParams(new URLSearchParams("pool=verified")).pool).toBe("verified");
     expect(parsePublicSearchParams(new URLSearchParams("pool=monitored")).pool).toBe("monitored");
     expect(parsePublicSearchParams(new URLSearchParams("pool=experimental-demand")).pool).toBe("experimental-demand");
-    expect(parsePublicSearchParams(new URLSearchParams("pool=experimental")).pool).toBe("verified");
+    expect(parsePublicSearchParams(new URLSearchParams("pool=experimental")).pool).toBe(DEFAULT_PUBLIC_POOL);
   });
 
   it("parses allowed filters and ignores everything else", () => {
@@ -252,22 +258,26 @@ describe("searchPublicChanges", () => {
     }
   }, 60000);
 
-  it("defaults to verified and widens to monitored only by explicit selection", async () => {
+  it("shows monitored and verified by default, and narrows to verified on request", async () => {
     const token = `${runId}-pool`;
     await seedChange({ readiness: "VERIFIED", title: `${token} verified one` });
     await seedChange({ readiness: "MONITORED", title: `${token} monitored one` });
 
-    const verifiedOnly = await searchPublicChanges({
+    // Default: the whole publishable stream. Verified was the default until
+    // 2026-08-06, which made every published entry invisible here, because
+    // VERIFIED is unreachable without a way to mark evidence reviewed.
+    const byDefault = await searchPublicChanges({
       ...parsePublicSearchParams(new URLSearchParams()),
       q: token,
     });
-    expect(verifiedOnly.items.map((i) => i.readiness)).toEqual(["VERIFIED"]);
+    expect(byDefault.items.map((i) => i.readiness).sort()).toEqual(["MONITORED", "VERIFIED"]);
 
-    const allMonitored = await searchPublicChanges({
-      ...parsePublicSearchParams(new URLSearchParams(`pool=monitored`)),
+    // The stronger claim is still reachable — it is a filter, not the floor.
+    const verifiedOnly = await searchPublicChanges({
+      ...parsePublicSearchParams(new URLSearchParams(`pool=verified`)),
       q: token,
     });
-    expect(allMonitored.items.map((i) => i.readiness).sort()).toEqual(["MONITORED", "VERIFIED"]);
+    expect(verifiedOnly.items.map((i) => i.readiness)).toEqual(["VERIFIED"]);
   }, 60000);
 
   it("applies structured filters without widening on invalid combinations", async () => {

@@ -169,22 +169,27 @@ afterAll(async () => {
 // ---------- /changes index ----------
 
 describe("/changes index", () => {
-  it("defaults to verified and shows monitored entries only on explicit selection", async () => {
+  it("shows the whole publishable stream by default, and narrows to verified on request", async () => {
     const token = `${runId}-idx`;
     await seedChange({ readiness: "VERIFIED", title: `${token} verified entry` });
     await seedChange({ readiness: "MONITORED", title: `${token} monitored entry` });
 
-    const base = parsePublicSearchParams(new URLSearchParams());
-    render(await ChangesResults({ filters: { ...base, q: token } }));
+    // Verified was the default until 2026-08-06, which hid every published
+    // entry: VERIFIED needs reviewed primary-official evidence and the review
+    // desk has no action that grants it. The readiness chip still tells the
+    // two apart on the card — the distinction is shown, not used as a filter
+    // the reader never asked for.
+    render(await ChangesResults({ filters: { ...parsePublicSearchParams(new URLSearchParams()), q: token } }));
     expect(screen.getByText(`${token} verified entry`)).toBeVisible();
-    expect(screen.queryByText(`${token} monitored entry`)).toBeNull();
-    expect(screen.getAllByText("Verified").length).toBeGreaterThan(0);
+    expect(screen.getByText(`${token} monitored entry`)).toBeVisible();
     cleanup();
 
     render(
-      await ChangesResults({ filters: { ...parsePublicSearchParams(new URLSearchParams("pool=monitored")), q: token } }),
+      await ChangesResults({ filters: { ...parsePublicSearchParams(new URLSearchParams("pool=verified")), q: token } }),
     );
-    expect(screen.getAllByText(`${token} monitored entry`).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(`${token} verified entry`).length).toBeGreaterThan(0);
+    expect(screen.queryByText(`${token} monitored entry`)).toBeNull();
+    expect(screen.getAllByText("Verified").length).toBeGreaterThan(0);
   }, 60000);
 
   it("teaches the surface on an empty filter instead of padding it", async () => {

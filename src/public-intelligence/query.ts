@@ -34,6 +34,24 @@ function publicBaseCondition() {
   };
 }
 
+/**
+ * The pool a caller gets when it asks for nothing in particular.
+ *
+ * `verified` was the original default on every surface, and it is currently
+ * unreachable — VERIFIED needs reviewed PRIMARY_OFFICIAL evidence, and the
+ * review desk has no action that marks evidence reviewed. The first entries a
+ * human published were therefore live in the database and invisible in
+ * /changes, the feeds and the API, so an RSS subscriber would have received
+ * nothing, ever.
+ *
+ * Owner decision 2026-08-06: default to `monitored`. Verified remains an
+ * explicit filter — the stronger claim stays available, it just stops being
+ * the silent precondition for seeing anything at all. Distribution surfaces
+ * import this rather than writing the word, because it was previously spelled
+ * out in five places and the OpenAPI document drifted from the handler.
+ */
+export const DEFAULT_PUBLIC_POOL = "monitored" as const;
+
 function readinessForPool(pool: "verified" | "monitored") {
   if (pool === "verified") return ["VERIFIED" as const];
   return [...PUBLIC_READINESS];

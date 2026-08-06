@@ -319,9 +319,12 @@ describe("GET /api/v1/changes — signed cursor pagination", () => {
     expect(okReplay.status).toBe(200);
 
     // Changed filters (different pool): the cursor must not be reusable.
+    // `verified` is the non-default pool since 2026-08-06 — using the default
+    // here would not be a filter change at all, and the test would pass by
+    // asserting nothing.
     const reused = await listChangesGET(
       new Request(
-        apiUrl(`/api/v1/changes?q=${runId}&pool=monitored&cursor=${encodeURIComponent(cursor)}`),
+        apiUrl(`/api/v1/changes?q=${runId}&pool=verified&cursor=${encodeURIComponent(cursor)}`),
       ),
     );
     expect(reused.status).toBe(400);

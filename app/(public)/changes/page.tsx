@@ -20,6 +20,7 @@ import {
 } from "../IntelligenceCard";
 import { ReadinessBadge } from "../ReadinessBadge";
 import { StatePanel } from "../StatePanel";
+import { DEFAULT_PUBLIC_POOL } from "../../../src/public-intelligence/query.js";
 
 export const revalidate = PUBLIC_CACHE.canonicalChangeRevalidate;
 export const dynamic = "force-dynamic";
@@ -38,7 +39,9 @@ export const metadata: Metadata = {
 function hrefWith(filters: PublicSearchFilters, overrides: Partial<PublicSearchFilters>): string {
   const next = { ...filters, ...overrides };
   const params = new URLSearchParams();
-  if (next.pool !== "verified") params.set("pool", next.pool);
+  // Omit only the default, or every link would carry a redundant param —
+  // and picking the wrong one to omit silently rewrites the user's filter.
+  if (next.pool !== DEFAULT_PUBLIC_POOL) params.set("pool", next.pool);
   if (next.signal) params.set("signal", next.signal);
   if (next.platform) params.set("platform", next.platform.toLowerCase());
   if (next.category) params.set("category", next.category.toLowerCase().replace(/_/g, "-"));

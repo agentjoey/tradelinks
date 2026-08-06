@@ -36,6 +36,7 @@ import { decodeCursor, encodeCursor, getPublicChangeBySlug, listPublicChanges } 
 import { searchPublicChanges } from "./search.js";
 import type { CanonicalPublicRecord } from "./types.js";
 import { canonicalBase } from "./site-url.js";
+import { DEFAULT_PUBLIC_POOL } from "./query.js";
 
 export const API_VERSION = "1.0" as const;
 export const API_DEFAULT_LIMIT = 20;
@@ -284,7 +285,7 @@ function parseListParams(url: URL): ParsedListParams | Response {
   if (poolRaw !== null && poolRaw !== "verified" && poolRaw !== "monitored") {
     return apiError(400, "INVALID_FILTER", `unknown pool: ${poolRaw}`);
   }
-  const pool = poolRaw === "monitored" ? "monitored" : "verified";
+  const pool = poolRaw === "verified" ? "verified" : DEFAULT_PUBLIC_POOL;
 
   const signalRaw = url.searchParams.get("signal");
   let signal: SignalType | null = null;
@@ -679,7 +680,9 @@ export function openApiDocument(): Record<string, unknown> {
           parameters: [
             { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: API_MAX_LIMIT, default: API_DEFAULT_LIMIT }, description: "Out-of-range is a 400, never a silent clamp." },
             { name: "cursor", in: "query", schema: { type: "string" }, description: "Opaque signed cursor from a previous page's nextCursor." },
-            { name: "pool", in: "query", schema: { type: "string", enum: ["verified", "monitored"], default: "verified" } },
+            // Declared from the same constant the handler applies — the two
+            // drifting apart is a documented lie about the contract.
+            { name: "pool", in: "query", schema: { type: "string", enum: ["verified", "monitored"], default: DEFAULT_PUBLIC_POOL } },
             { name: "signal", in: "query", schema: { type: "string", enum: [...SIGNAL_TYPES] } },
             { name: "platform", in: "query", schema: { type: "string", enum: ["amazon", "amazon-us", "shopify", "shopify-us"] } },
             { name: "category", in: "query", schema: { type: "string" }, description: "Category slug, e.g. pet-supplies." },
@@ -745,7 +748,7 @@ export function openApiDocument(): Record<string, unknown> {
         get: {
           summary: "Cheap content-state probe — poll for change without transferring records",
           description:
-            "Observes the whole public stream (MONITORED and VERIFIED), so totalRecords can exceed a default verified-pool /api/v1/changes list.",
+            "Observes the whole public stream (MONITORED and VERIFIED), so totalRecords can exceed a filtered /api/v1/changes list.",
           responses: {
             "200": {
               description: "Content-state fingerprint",

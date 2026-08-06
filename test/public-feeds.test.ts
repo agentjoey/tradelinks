@@ -157,6 +157,7 @@ let recHostile: CanonicalPublicRecord;
 let recShopifyBeauty: CanonicalPublicRecord;
 let recAmazonHome: CanonicalPublicRecord;
 let recMonitoredId: string;
+let recDraftId: string;
 
 beforeAll(async () => {
   recAmazonPets = await seedPublicVersion({ platforms: ["AMAZON"], productCategories: ["PET_SUPPLIES"] });
@@ -169,6 +170,14 @@ beforeAll(async () => {
   recShopifyBeauty = await seedPublicVersion({ platforms: ["SHOPIFY"], productCategories: ["BEAUTY_PERSONAL_CARE"] });
   recAmazonHome = await seedPublicVersion({ platforms: ["AMAZON"], productCategories: ["HOME_KITCHEN"] });
   recMonitoredId = (await seedPublicVersion({ readiness: "MONITORED" })).versionId;
+  // Seeded published, then demoted: the serializer refuses to build a record
+  // from a draft at all (a second, independent guard), so the only way to put
+  // an unpublishable row in front of the feed is to write one directly.
+  recDraftId = (await seedPublicVersion({})).versionId;
+  await prisma.canonicalChangeVersion.update({
+    where: { id: recDraftId },
+    data: { editorialStatus: "DRAFT" },
+  });
 
   await prisma.briefing.create({
     data: {
@@ -362,10 +371,23 @@ describe("feed contract", () => {
     expect(xml).not.toContain("fake-briefing-50");
   });
 
-  it("change feeds never include monitored-pool records", async () => {
+  it("carries the default pool, so a published entry actually reaches subscribers", async () => {
+    // Feeds used to be pinned to the verified pool. VERIFIED is unreachable
+    // without a way to mark evidence reviewed, so the first entries a human
+    // published never appeared here — an RSS subscriber would have received
+    // nothing, ever. (Owner decision 2026-08-06.)
     const res = await renderPublicFeed({ kind: "changes" });
     const xml = await res.text();
-    expect(xml).not.toContain(recMonitoredId);
+    expect(xml).toContain(recMonitoredId);
+  }, 60000);
+
+  it("still excludes anything unpublished, whatever the pool", async () => {
+    // The leak guard the previous assertion was standing in for. Widening the
+    // pool must not widen editorial state: a draft is not a weaker claim, it
+    // is an unmade one.
+    const res = await renderPublicFeed({ kind: "changes" });
+    const xml = await res.text();
+    expect(xml).not.toContain(recDraftId);
   }, 60000);
 
   it("channel carries title, link, atom self link and language", () => {

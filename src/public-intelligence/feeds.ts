@@ -29,6 +29,7 @@ import { PUBLIC_CACHE } from "./cache.js";
 import { searchPublicChanges } from "./search.js";
 import type { CanonicalPublicRecord } from "./types.js";
 import { canonicalBase } from "./site-url.js";
+import { DEFAULT_PUBLIC_POOL } from "./query.js";
 
 export const FEED_MAX_ITEMS = 50;
 
@@ -257,7 +258,7 @@ export function feedChannel(scope: FeedScope): FeedChannel {
 
 /**
  * Renders one feed. Change feeds consume CanonicalPublicRecord from the
- * accepted read model (verified pool — the safe public default); the
+ * accepted read model (DEFAULT_PUBLIC_POOL — see query.ts); the
  * briefings feed consumes published briefing summaries. Unknown scopes are
  * rejected before this is called (resolvePlatformScope/resolveCategoryScope
  * return null and the route answers 404, never an empty feed).
@@ -274,7 +275,7 @@ export async function renderPublicFeed(scope: FeedScope): Promise<Response> {
   }
 
   const page = await searchPublicChanges({
-    pool: "verified",
+    pool: DEFAULT_PUBLIC_POOL,
     signal: null,
     platform: scope.kind === "platform" ? scope.platform : null,
     category: scope.kind === "category" ? scope.category : null,
