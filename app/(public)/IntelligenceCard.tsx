@@ -151,11 +151,9 @@ function whenLine(record: CanonicalPublicRecord, now: Date): string {
  */
 export function IntelligenceCard({
   record,
-  limitNote,
   now = new Date(),
 }: {
   record: CanonicalPublicRecord;
-  limitNote?: string | null;
   now?: Date;
 }) {
   const href = `/changes/${record.slug}`;
@@ -169,11 +167,6 @@ export function IntelligenceCard({
         </Link>
       </h3>
       <ImpactLine text={record.generalImpact} />
-      {limitNote && (
-        <p className="mt-3 max-w-[68ch] rounded-md border border-urgent/45 px-3 py-2.5 text-meta text-urgent">
-          {limitNote}
-        </p>
-      )}
       {record.riskAttributes.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className="ticker text-[0.625rem] uppercase tracking-[0.12em] text-faint">

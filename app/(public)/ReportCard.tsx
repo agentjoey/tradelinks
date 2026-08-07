@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import type { ReadinessLevel } from "@prisma/client";
 import type { PublishedBriefing } from "../../src/public-intelligence/briefings.js";
-import { IntelligenceCard, MONITORED_LIMIT_NOTE, formatDate } from "./IntelligenceCard";
+import { IntelligenceCard, formatDate } from "./IntelligenceCard";
 import { JsonLd, articleJsonLd, breadcrumbJsonLd } from "./JsonLd";
 import { ReadinessBadge } from "./ReadinessBadge";
 
@@ -133,9 +133,6 @@ export function BriefingPeriodView({ briefing }: { briefing: PublishedBriefing }
             <IntelligenceCard
               key={entry.changeVersionId}
               record={entry.record}
-              limitNote={
-                entry.record.readiness === "MONITORED" ? MONITORED_LIMIT_NOTE : null
-              }
             />
           ))}
         </div>

@@ -4,19 +4,17 @@ import { notFound } from "next/navigation";
 
 import { PUBLIC_CACHE } from "../../../src/public-intelligence/cache.js";
 import { getHub } from "../../../src/public-intelligence/coverage.js";
-import type { PublicHub } from "../../../src/public-intelligence/coverage.js";
-import type { CanonicalPublicRecord } from "../../../src/public-intelligence/types.js";
 import { CoveragePanel } from "../CoveragePanel";
 import { JsonLd, breadcrumbJsonLd } from "../JsonLd";
 import {
   CompactChangeRow,
   GuideCard,
   IntelligenceCard,
-  MONITORED_LIMIT_NOTE,
   formatDate,
   formatDateTimeUtc,
   formatSla,
 } from "../IntelligenceCard";
+import { MonitoredPageNote } from "../MonitoredPageNote";
 import { ReadinessBadge } from "../ReadinessBadge";
 import { StatePanel } from "../StatePanel";
 
@@ -87,15 +85,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** Monitored cards state their limit in prose, never a bare badge. */
-function limitNoteFor(hub: PublicHub, record: CanonicalPublicRecord): string | null {
-  if (record.readiness !== "MONITORED") return null;
-  if (hub.slug === "amazon-us") {
-    return "We cannot verify this. Amazon's official policy pages require a seller login, so this entry rests on public announcements and reviewed secondary reporting. Treat exact figures as unconfirmed.";
-  }
-  return MONITORED_LIMIT_NOTE;
-}
-
 export default async function UsMarketHubPage() {
   const hub = await getHub(SLUG);
   if (!hub) notFound();
@@ -161,13 +150,13 @@ export default async function UsMarketHubPage() {
         moreHref="/changes"
         moreLabel="All →"
       />
+      <MonitoredPageNote records={hub.changes} />
       {hub.changes.length > 0 ? (
         <div className="mt-4 flex flex-col gap-3.5">
           {hub.changes.map((record) => (
             <IntelligenceCard
               key={record.versionId}
               record={record}
-              limitNote={limitNoteFor(hub, record)}
             />
           ))}
         </div>

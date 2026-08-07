@@ -224,8 +224,13 @@ describe("/changes index", () => {
     expect(monitored.getAttribute("aria-current")).toBe("page");
     const verified = screen.getByRole("link", { name: "Verified" });
     expect(verified.getAttribute("aria-current")).toBeNull();
-    expect(screen.getByText(/Expert view/i)).toBeVisible();
-    expect(screen.getByText(/has not reached primary-official strength/i)).toBeVisible();
+    // The "Expert view" strip is gone: it framed Monitored as an opt-in
+    // widening of a Verified default, and Monitored has been the default since
+    // 2026-08-06. Its closing instruction also pointed at a per-card notice
+    // that no longer exists. The limit is now stated once, by
+    // MonitoredPageNote, beside the entries it qualifies — covered by
+    // test/monitored-page-note.test.tsx.
+    expect(screen.queryByText(/Expert view/i)).toBeNull();
   }, 30000);
 
   it("renders the experimental-demand boundary copy whenever the demand pool is selected", async () => {

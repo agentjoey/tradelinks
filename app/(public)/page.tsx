@@ -14,7 +14,8 @@ import {
   categorySlug,
 } from "../../src/domain/intelligence/taxonomy.js";
 import { CoveragePanel } from "./CoveragePanel";
-import { IntelligenceCard, MONITORED_LIMIT_NOTE, formatDateTimeUtc } from "./IntelligenceCard";
+import { IntelligenceCard, formatDateTimeUtc } from "./IntelligenceCard";
+import { MonitoredPageNote } from "./MonitoredPageNote";
 import { ReadinessBadge } from "./ReadinessBadge";
 import { StatePanel } from "./StatePanel";
 
@@ -167,13 +168,13 @@ export default async function Home() {
         moreHref="/changes"
         moreLabel="All changes →"
       />
+      <MonitoredPageNote records={records} />
       {records.length > 0 ? (
         <div className="mt-4 flex flex-col gap-3.5">
           {records.map((record) => (
             <IntelligenceCard
               key={record.versionId}
               record={record}
-              limitNote={record.readiness === "MONITORED" ? MONITORED_LIMIT_NOTE : null}
             />
           ))}
         </div>

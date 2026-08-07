@@ -13,11 +13,8 @@ import {
 } from "../../../src/public-intelligence/search.js";
 import type { PublicSearchFilters } from "../../../src/public-intelligence/search.js";
 import { FilterBar } from "../FilterBar";
-import {
-  IntelligenceCard,
-  MONITORED_LIMIT_NOTE,
-  formatDateTimeUtc,
-} from "../IntelligenceCard";
+import { IntelligenceCard, formatDateTimeUtc } from "../IntelligenceCard";
+import { MonitoredPageNote } from "../MonitoredPageNote";
 import { ReadinessBadge } from "../ReadinessBadge";
 import { StatePanel } from "../StatePanel";
 import { DEFAULT_PUBLIC_POOL } from "../../../src/public-intelligence/query.js";
@@ -101,15 +98,12 @@ export function ChangesShell({
         ))}
       </nav>
 
-      {filters.pool === "monitored" && (
-        <div className="mt-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md border border-line bg-surface px-3.5 py-2.5 text-meta text-muted">
-          <span className="ticker text-label uppercase tracking-[0.06em] text-faint">Expert view</span>
-          <span>
-            Monitored entries are included. Their evidence has not reached primary-official
-            strength — read each entry's limit before acting.
-          </span>
-        </div>
-      )}
+      {/* The "Expert view" strip that stood here framed Monitored as an opt-in
+          widening of a Verified default. Monitored became the default on
+          2026-08-06, so calling it expert was wrong, and its closing
+          instruction — "read each entry's limit before acting" — pointed at
+          the per-card notice removed on 2026-08-07. MonitoredPageNote states
+          the limit once, in the results, next to what it qualifies. */}
 
       {filters.pool !== "experimental-demand" && (
         <>
@@ -222,13 +216,14 @@ export async function ChangesResults({ filters }: { filters: PublicSearchFilters
         </span>
       </div>
 
+      <MonitoredPageNote records={page.items} />
+
       {page.items.length > 0 ? (
         <div className="mt-4 flex flex-col gap-3.5">
           {page.items.map((record) => (
             <IntelligenceCard
               key={record.versionId}
               record={record}
-              limitNote={record.readiness === "MONITORED" ? MONITORED_LIMIT_NOTE : null}
             />
           ))}
         </div>

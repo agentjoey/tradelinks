@@ -63,4 +63,17 @@ Token 逐字取自 `app/globals.css`，条目取自生产已发布的 3 条，�
 
 ## 决定与证据
 
-- ⏳ 等待 Human Owner 对 rendered mockup 的批准（Mockup Gate）。
+- ✅ **Mockup Gate：Human Owner 批准（2026-08-07）**
+- ✅ 实现：`app/(public)/MonitoredPageNote.tsx`；`IntelligenceCard` 的 `limitNote` prop 整体移除；六个公开面接入页级说明；详情页不动。
+- ✅ 门禁：`tsc --noEmit` exit 0；组件测试 7/7；全量 **1047 passed / 2 failed（foundation-backfill 端点白名单拒绝，设计如此）/ 2 skipped**；`next build` 成功。
+- ✅ 最终 build 浏览器实测（非 mockup）：本地 `next start` 接生产库，`/changes` 页级说明 1 条、卡片红框 0 处；详情页红框与文案均保留（各 2 处，含 RSC payload）。截图 `design/shots/monitored-note/build/`。
+
+### 真实 build 暴露、mockup 看不到的一处
+
+`/changes` 上原本已有一条 `Expert view` 提示，只在 `pool === "monitored"` 时显示——**而那自 2026-08-06 起就是默认值**。它的三个前提同时过期：把默认视图称作"专家视图"是错的；结尾"read each entry's limit before acting"指向已被本次移除的每卡提示；位置上与新的页级说明重复。
+
+已移除该条，并把钉住它的测试**改写为断言其消失**并说明原因，而非删除断言。
+
+### 未做（明确记录）
+
+`amazon-us` 原有的 hub 专属文案（"Amazon 官方政策页需要卖家登录……"）随每卡提示一并移除。该页顶部的 `AMZ_WARNING_PANEL`（owner 决策 4，"What we can and cannot see here"）**仍在**，且信息更完整——此前是面板 + chip + 每卡散文三重冗余。若 Human Owner 认为需要在该页保留更强的措辞，可单独提出。
