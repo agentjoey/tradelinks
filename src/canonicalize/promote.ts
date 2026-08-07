@@ -142,7 +142,7 @@ export interface PromotionVersion {
   urgency: number;
   readiness: "MONITORED" | "VERIFIED";
   generalImpact: string;
-  generalActionTemplate: null;
+  generalActionTemplate: string | null;
   editorialStatus: "DRAFT";
   classificationConfidence: number;
 }
@@ -311,6 +311,13 @@ function truncateAtSentence(text: string, max: number): string {
 export function buildPromotionDraft(
   cluster: PromotableCluster,
   now: Date = new Date(),
+  /**
+   * The interpreted "what this means for you" note, when one was written and
+   * survived its grounding check. Always arrives unreviewed, so attaching it
+   * makes the draft *harder* to publish (ACTION_TEMPLATE_REQUIRES_REVIEW) —
+   * the right direction for the product asserting what a seller must do.
+   */
+  actionTemplate: string | null = null,
 ): PromotionDraft | null {
   const anchor = selectPromotionAnchor(cluster);
   if (!anchor) return null;
@@ -349,7 +356,7 @@ export function buildPromotionDraft(
     readiness: contract.readiness as "MONITORED" | "VERIFIED",
     // A restatement of the source, never an inferred consequence.
     generalImpact: summary,
-    generalActionTemplate: null,
+    generalActionTemplate: actionTemplate,
     editorialStatus: "DRAFT",
     // We ran no classifier. Saying so is the honest value.
     classificationConfidence: 0,

@@ -29,7 +29,7 @@ import {
   type PromotableMember,
   type PromotionDraft,
 } from "../src/canonicalize/promote.js";
-import { createCanonicalizeBatch } from "../src/jobs/canonicalize-batch.js";
+import { createCanonicalizeBatch, TEMPLATE_MAX_PER_RUN } from "../src/jobs/canonicalize-batch.js";
 import type { CanonicalizeDeps } from "../src/jobs/canonicalize-batch.js";
 import type { JobArgs } from "../src/jobs/types.js";
 import type { SourceContract } from "../src/domain/intelligence/source-contract.js";
@@ -854,5 +854,149 @@ describe("buildPromotionDraft summary", () => {
     const draft = buildPromotionDraft(cluster([m]))!;
     expect(draft.version.generalImpact).toBe(draft.version.summary);
     expect(draft.version.generalActionTemplate).toBeNull();
+  });
+});
+
+// ---- action templates ------------------------------------------------------
+
+/**
+ * Generating the "what this means for you" note during promotion.
+ *
+ * The slot has been designed and gated since the Foundation and left null,
+ * because promotion refuses to write prose it cannot ground. The interpreter
+ * grounds it: the model must quote the phrase from the source that carries its
+ * conclusion, and the quote is checked against the source before the template
+ * is kept.
+ *
+ * Attaching a template deliberately makes the draft harder to publish, not
+ * easier: ACTION_TEMPLATE_REQUIRES_REVIEW blocks publication until a reviewer
+ * has read it. That is the correct direction — the template is the product
+ * asserting something about what a seller must do.
+ */
+
+describe("promotion action templates", () => {
+  function freshMember(id: string): PromotableMember {
+    const m = member({ itemId: `${id}-item` });
+    m.item.publishedAt = new Date("2026-08-01T00:00:00Z");
+    m.item.rawContent = { contentSnippet: "Shopify will apply the default disclosure on June 22." };
+    return m;
+  }
+  function freshCluster(id: string): PromotableCluster {
+    return cluster([freshMember(id)], `fp-${id}`);
+  }
+  function allowAll(items: Array<{ id: string }>) {
+    return new Map(items.map((i) => [i.id, { keep: true, reason: "r", confidence: 1 }]));
+  }
+
+  it("attaches a generated template to the draft", async () => {
+    let seen: PromotionDraft | null = null;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate() { return "Review the disclosure before June 22."; },
+      async promoteCluster(draft) { seen = draft; return "PROMOTED"; },
+    });
+    await batch(batchArgs());
+    expect(seen!.version.generalActionTemplate).toBe("Review the disclosure before June 22.");
+  });
+
+  it("leaves the template unreviewed, so publication still needs a human", async () => {
+    let seen: PromotionDraft | null = null;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate() { return "Do the thing."; },
+      async promoteCluster(draft) { seen = draft; return "PROMOTED"; },
+    });
+    await batch(batchArgs());
+    expect("actionTemplateReviewedAt" in seen!.version).toBe(false);
+    expect("actionTemplateReviewedBy" in seen!.version).toBe(false);
+  });
+
+  it("promotes without a template when the writer declines", async () => {
+    // A refusal is the correct answer for material too thin to interpret. The
+    // change is still worth publishing; it just carries no note.
+    let seen: PromotionDraft | null = null;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate() { return null; },
+      async promoteCluster(draft) { seen = draft; return "PROMOTED"; },
+    });
+    const result = await batch(batchArgs());
+    expect(seen!.version.generalActionTemplate).toBeNull();
+    expect(result.itemCount).toBe(1);
+  });
+
+  it("promotes without a template when the writer throws", async () => {
+    // Fail soft in this one direction only: a missing note costs a reader
+    // nothing, while losing the draft loses the change entirely.
+    let seen: PromotionDraft | null = null;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate() { throw new Error("model timeout"); },
+      async promoteCluster(draft) { seen = draft; return "PROMOTED"; },
+    });
+    const result = await batch(batchArgs());
+    expect(seen!.version.generalActionTemplate).toBeNull();
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("promotes normally when no writer is configured at all", async () => {
+    let seen: PromotionDraft | null = null;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async promoteCluster(draft) { seen = draft; return "PROMOTED"; },
+    });
+    await batch(batchArgs());
+    expect(seen!.version.generalActionTemplate).toBeNull();
+  });
+
+  it("never writes a template for a cluster the relevance gate dropped", async () => {
+    // Interpretation is the expensive call; spending it on something that will
+    // not be promoted is pure waste.
+    let calls = 0;
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a"), freshCluster("b")]; },
+      async classifyRelevance(items) {
+        return new Map(items.map((i) => [i.id, { keep: i.id === "fp-a", reason: "r", confidence: 1 }]));
+      },
+      async generateActionTemplate() { calls++; return "note"; },
+      async promoteCluster() { return "PROMOTED"; },
+      async rejectCluster() {},
+    });
+    await batch(batchArgs());
+    expect(calls).toBe(1);
+  });
+
+  it("passes the anchor's source text, not the headline", async () => {
+    let received = "";
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return [freshCluster("a")]; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate(input) { received = input.sourceText; return "note"; },
+      async promoteCluster() { return "PROMOTED"; },
+    });
+    await batch(batchArgs());
+    expect(received).toContain("default disclosure on June 22");
+  });
+
+  it("stops writing templates past a per-slot bound", async () => {
+    // One model call per draft is the quality-driven choice (batched judging
+    // measurably collapsed to applies=false), so the slot needs a ceiling.
+    let calls = 0;
+    const many = Array.from({ length: TEMPLATE_MAX_PER_RUN + 5 }, (_, i) => freshCluster(`c${i}`));
+    const { batch } = makeBatch({
+      async selectPromotableClusters() { return many; },
+      async classifyRelevance(items) { return allowAll(items); },
+      async generateActionTemplate() { calls++; return "note"; },
+      async promoteCluster() { return "PROMOTED"; },
+    });
+    const result = await batch(batchArgs());
+    expect(calls).toBe(TEMPLATE_MAX_PER_RUN);
+    // Every cluster is still promoted; only the note is rationed.
+    expect(result.succeeded).toBe(many.length);
   });
 });

@@ -16,6 +16,7 @@ import { candidateFingerprint, type SourceItemFacts } from "../canonicalize/fing
 import { decideCluster } from "../canonicalize/cluster.js";
 import {
   buildPromotionDraft,
+  deriveSummary,
   isPromotableAnchor,
   PROMOTION_MAX_AGE_DAYS,
   type PromotableCluster,
@@ -45,6 +46,19 @@ export type PromotionOutcome = "PROMOTED" | "ALREADY_PROMOTED";
  * with room to spare, and a chunk that fails costs only its own items.
  */
 const RELEVANCE_BATCH_SIZE = 20;
+
+/**
+ * Templates written per slot.
+ *
+ * Interpretation is one model call per draft — batching it was measured and
+ * collapsed to applies=false on every item, so quality forces the call rate
+ * and the slot needs a ceiling instead. Past the bound the change is still
+ * promoted; only the note is rationed, and the next slot can write it.
+ */
+export const TEMPLATE_MAX_PER_RUN = 25;
+
+/** Below this there is no body to interpret — only a headline. */
+const MIN_TEMPLATE_SOURCE_CHARS = 120;
 
 /**
  * Sources whose items may anchor a claimed change. Computed once from the
@@ -100,6 +114,19 @@ export interface CanonicalizeDeps {
   selectPromotableClusters?(limit: number): Promise<PromotableCluster[]>;
   /** Persist one built draft. Must be idempotent on the cluster. */
   promoteCluster?(draft: PromotionDraft): Promise<PromotionOutcome>;
+  /**
+   * Write the "what this means for you" note for one draft, or return null
+   * when the source is too thin to interpret honestly. Absent means drafts are
+   * promoted without notes — which is what happened for the product's whole
+   * life until now.
+   */
+  generateActionTemplate?(input: {
+    id: string;
+    title: string;
+    sourceId: string;
+    publishedAt: string;
+    sourceText: string;
+  }): Promise<string | null>;
   /**
    * Judge whether each candidate is a change a cross-border seller must act
    * on. Absent (no API key configured) means promotion is skipped entirely —
@@ -255,6 +282,27 @@ const REAL_DEPS: CanonicalizeDeps = {
     // The cluster row carries the decision; the log carries the why. Reversing
     // one is a single UPDATE back to DRAFT.
     logger.info({ clusterId, reason }, "cluster rejected by relevance gate");
+  },
+  async generateActionTemplate(input) {
+    const { env } = await import("../config/env.js");
+    if (!env.MINIMAX_API_KEY) return null;
+    // Nothing to interpret. Asking anyway is how a headline becomes a
+    // confident-sounding invention.
+    if (input.sourceText.trim().length < MIN_TEMPLATE_SOURCE_CHARS) return null;
+
+    const { minimaxJudge } = await import("../ai/client.js");
+    const { buildActionTemplatePrompt, parseActionTemplates, foldActionTemplates } = await import(
+      "../ai/prompts/action-template.js"
+    );
+
+    // One item per call, deliberately. Batching was measured against real
+    // drafts and collapsed to applies=false on every item, while the same
+    // inputs one at a time produced grounded, deadline-bearing notes.
+    const res = await minimaxJudge.complete(buildActionTemplatePrompt([input]));
+    const folded = foldActionTemplates([input], parseActionTemplates(res.text));
+    const out = folded.get(input.id);
+    if (!out || "rejected" in out) return null;
+    return out.body;
   },
   async promoteCluster(draft: PromotionDraft): Promise<PromotionOutcome> {
     const { prisma: db } = await import("../db/client.js");
@@ -460,6 +508,7 @@ export function createCanonicalizeBatch(
     // run's so a slot that promoted changes never reports itself empty.
     // Nothing it writes is publicly visible — every draft needs a human.
     let relevanceDropped = 0;
+    let templatesWritten = 0;
     if (deps.selectPromotableClusters && deps.promoteCluster) {
       const candidates = await deps.selectPromotableClusters(MAX_PROMOTIONS_PER_RUN);
 
@@ -516,7 +565,31 @@ export function createCanonicalizeBatch(
         }
         attempted++;
         try {
-          const outcome = await deps.promoteCluster(draft);
+          // Interpretation runs only on what will actually be promoted — it is
+          // the expensive call, and spending it on a dropped cluster is waste.
+          // A failure or refusal costs the note, never the draft: a missing
+          // note tells a reader nothing, while losing the draft loses the
+          // change.
+          let templated = draft;
+          if (deps.generateActionTemplate && templatesWritten < TEMPLATE_MAX_PER_RUN) {
+            templatesWritten++;
+            try {
+              const anchor = built.find((b) => b.draft.fingerprint === draft.fingerprint)?.anchor;
+              const note = await deps.generateActionTemplate({
+                id: draft.fingerprint,
+                title: draft.version.title,
+                sourceId: draft.evidence[0]?.sourceId ?? "unknown",
+                publishedAt: draft.version.sourcePublishedAt.toISOString().slice(0, 10),
+                sourceText: anchor ? deriveSummary(anchor.item, draft.version.title) : draft.version.summary,
+              });
+              if (note && note.trim() !== "") {
+                templated = { ...draft, version: { ...draft.version, generalActionTemplate: note.trim() } };
+              }
+            } catch {
+              // Keep the draft, drop the note.
+            }
+          }
+          const outcome = await deps.promoteCluster(templated);
           succeeded++;
           if (outcome === "PROMOTED") totalItems++;
         } catch {
