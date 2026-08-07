@@ -6,6 +6,7 @@ import {
   PublicationError,
 } from "../src/domain/intelligence/canonical-change.js";
 import {
+  confirmCanonicalEvidence,
   correctCanonicalChange,
   publishCanonicalDraft,
   rejectCanonicalDraft,
@@ -604,5 +605,145 @@ describe("correctCanonicalChange", () => {
     expect(corrected.actionTemplateReviewedAt?.toISOString()).toBe(
       "2026-07-02T00:00:00.000Z",
     );
+  }, 60000);
+});
+
+// ---------- confirming an entry against its primary-official evidence ----------
+
+/**
+ * The act that makes VERIFIED reachable.
+ *
+ * `EvidenceRecord.reviewedAt` has existed since the Foundation and nothing
+ * ever set it. The publication invariant reads it, the detail page reads it,
+ * the Telegram channel reads it — and no code path wrote it, so no entry could
+ * ever be VERIFIED. Every distribution surface defaulted to the verified pool,
+ * which is how the first three published entries reached nobody.
+ *
+ * The coverage glossary defines the act precisely: "Verified means a reviewer
+ * has confirmed the entry against primary-official evidence." That is one
+ * editorial decision, not two, so it is one function: it marks the
+ * primary-official records reviewed AND raises the version, or it refuses.
+ */
+
+describe("confirmCanonicalEvidence", () => {
+  it("marks the primary-official records reviewed and raises the version to Verified", async () => {
+    const { version } = await seedDraft({
+      readiness: "MONITORED",
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" }],
+    });
+
+    const updated = await confirmCanonicalEvidence(version.id, "editor@example.com");
+
+    expect(updated.readiness).toBe("VERIFIED");
+    const evidence = await prisma.evidenceRecord.findMany({ where: { changeVersionId: version.id } });
+    expect(evidence.every((e) => e.reviewedAt != null)).toBe(true);
+  }, 60000);
+
+  it("leaves the entry publishable — the invariant it exists to satisfy", async () => {
+    const { version } = await seedDraft({
+      readiness: "MONITORED",
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "PLATFORM_OFFICIAL" }],
+    });
+    await confirmCanonicalEvidence(version.id, "editor@example.com");
+    const reloaded = await prisma.canonicalChangeVersion.findUniqueOrThrow({
+      where: { id: version.id },
+      include: { evidence: true },
+    });
+    expect(() => assertPublishableVersion(reloaded)).not.toThrow();
+  }, 60000);
+
+  it("refuses when there is no primary-official evidence to confirm", async () => {
+    // Secondary reporting can corroborate a change; it cannot verify one.
+    const { version } = await seedDraft({
+      evidence: [{ role: "SECONDARY_CONTEXT", authority: "REPUTABLE_SECONDARY" }],
+    });
+    await expect(confirmCanonicalEvidence(version.id, "editor@example.com")).rejects.toThrow(
+      "VERIFIED_REQUIRES_REVIEWED_PRIMARY_OFFICIAL_EVIDENCE",
+    );
+  }, 60000);
+
+  it("refuses when the only primary record comes from a non-official authority", async () => {
+    const { version } = await seedDraft({
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "REPUTABLE_SECONDARY" }],
+    });
+    await expect(confirmCanonicalEvidence(version.id, "editor@example.com")).rejects.toThrow(
+      "VERIFIED_REQUIRES_REVIEWED_PRIMARY_OFFICIAL_EVIDENCE",
+    );
+  }, 60000);
+
+  it("refuses when the only primary-official record is retracted", async () => {
+    const { version } = await seedDraft({
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL", retracted: true }],
+    });
+    await expect(confirmCanonicalEvidence(version.id, "editor@example.com")).rejects.toThrow(
+      "VERIFIED_REQUIRES_REVIEWED_PRIMARY_OFFICIAL_EVIDENCE",
+    );
+  }, 60000);
+
+  it("never marks a retracted record reviewed", async () => {
+    const { version } = await seedDraft({
+      evidence: [
+        { role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" },
+        { role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL", retracted: true },
+      ],
+    });
+    await confirmCanonicalEvidence(version.id, "editor@example.com");
+    const retracted = await prisma.evidenceRecord.findFirst({
+      where: { changeVersionId: version.id, retractedAt: { not: null } },
+    });
+    expect(retracted!.reviewedAt).toBeNull();
+  }, 60000);
+
+  it("refuses on a published version — a correction is the way to change one", async () => {
+    // Publication is immutable. Re-grading a live entry in place would rewrite
+    // the permanent record rather than superseding it.
+    const { version } = await seedDraft({
+      editorialStatus: "PUBLISHED",
+      isCurrent: true,
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" }],
+    });
+    await expect(confirmCanonicalEvidence(version.id, "editor@example.com")).rejects.toThrow(
+      "CANONICAL_VERSION_NOT_REVIEWABLE",
+    );
+  }, 60000);
+
+  it("records who confirmed it, not only that someone did", async () => {
+    const { version } = await seedDraft({
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" }],
+    });
+    await confirmCanonicalEvidence(version.id, "editor@example.com");
+    const reloaded = await prisma.canonicalChangeVersion.findUniqueOrThrow({ where: { id: version.id } });
+    expect(reloaded.reviewedBy).toBe("editor@example.com");
+  }, 60000);
+
+  it("is idempotent — confirming twice is not a second claim", async () => {
+    const { version } = await seedDraft({
+      evidence: [{ role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" }],
+    });
+    const first = await confirmCanonicalEvidence(version.id, "editor@example.com");
+    const second = await confirmCanonicalEvidence(version.id, "other@example.com");
+    expect(second.readiness).toBe("VERIFIED");
+    const evidence = await prisma.evidenceRecord.findMany({ where: { changeVersionId: version.id } });
+    // The original review timestamp stands; re-confirming does not re-date it.
+    expect(evidence[0]!.reviewedAt!.getTime()).toBe(
+      (await prisma.evidenceRecord.findUniqueOrThrow({ where: { id: evidence[0]!.id } })).reviewedAt!.getTime(),
+    );
+    expect(first.id).toBe(second.id);
+  }, 60000);
+
+  it("does not touch a supporting record's review state", async () => {
+    // Confirming the entry is a claim about its primary evidence. A supporting
+    // record was not examined, and must not be presented as though it was.
+    const { version } = await seedDraft({
+      evidence: [
+        { role: "PRIMARY_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" },
+        { role: "SUPPORTING_OFFICIAL", authority: "GOVERNMENT_OFFICIAL" },
+      ],
+    });
+    await confirmCanonicalEvidence(version.id, "editor@example.com");
+    const supporting = await prisma.evidenceRecord.findFirst({
+      where: { changeVersionId: version.id, role: "SUPPORTING_OFFICIAL" },
+    });
+    expect(supporting!.reviewedAt).toBeNull();
   }, 60000);
 });

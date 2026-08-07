@@ -3,7 +3,10 @@ import {
   type CanonicalReviewDraft,
 } from "../../../src/alerts/review.js";
 import { checkPublishableVersion } from "../../../src/domain/intelligence/canonical-change.js";
-import { isReviewedPrimaryOfficialEvidence } from "../../../src/domain/intelligence/evidence.js";
+import {
+  OFFICIAL_AUTHORITY_LEVELS,
+  isReviewedPrimaryOfficialEvidence,
+} from "../../../src/domain/intelligence/evidence.js";
 import {
   PRODUCT_CATEGORY_LABELS,
   SIGNAL_TYPE_LABELS,
@@ -95,6 +98,16 @@ function DraftCard({ draft }: { draft: CanonicalReviewDraft }) {
     ?? draft.evidence.find((e) => e.role === "PRIMARY_OFFICIAL")
     ?? null;
   const hasTemplate = !!draft.generalActionTemplate && draft.generalActionTemplate.trim() !== "";
+  // Offer the confirm action only when there is something to confirm: an
+  // unretracted primary-official record from an official authority that no
+  // reviewer has signed off yet.
+  const confirmableEvidence = draft.evidence.some(
+    (ev) =>
+      ev.role === "PRIMARY_OFFICIAL" &&
+      OFFICIAL_AUTHORITY_LEVELS.includes(ev.authorityLevel) &&
+      ev.retractedAt == null &&
+      ev.reviewedAt == null,
+  );
   const templateReviewed = draft.actionTemplateReviewedAt != null;
   const hasReviewedPrimary = draft.evidence.some(isReviewedPrimaryOfficialEvidence);
 
@@ -288,6 +301,8 @@ function DraftCard({ draft }: { draft: CanonicalReviewDraft }) {
           publishBlockers={blockers}
           hasActionTemplate={hasTemplate}
           actionTemplateReviewed={templateReviewed}
+          canConfirmEvidence={confirmableEvidence}
+          readiness={draft.readiness}
           currentVersionId={current?.id ?? null}
         />
       </div>

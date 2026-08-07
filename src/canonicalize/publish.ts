@@ -18,6 +18,7 @@
 import type { CanonicalChangeVersion } from "@prisma/client";
 
 import { prisma } from "../db/client.js";
+import { OFFICIAL_AUTHORITY_LEVELS } from "../domain/intelligence/evidence.js";
 import {
   assertPublishableVersion,
   PublicationError,
@@ -133,6 +134,64 @@ export async function reviewCanonicalActionTemplate(
       actionTemplateReviewedBy: reviewerId,
     },
   });
+}
+
+/**
+ * Confirm an entry against its primary-official evidence — the act that makes
+ * VERIFIED reachable.
+ *
+ * `EvidenceRecord.reviewedAt` has existed since the Foundation and nothing
+ * ever wrote it. The publication invariant reads it, the detail page reads it,
+ * the Telegram selector reads it, and no editorial action set it — so no entry
+ * could reach VERIFIED, and every surface that defaulted to the verified pool
+ * showed nothing.
+ *
+ * The coverage glossary states the act in one sentence: "Verified means a
+ * reviewer has confirmed the entry against primary-official evidence." That is
+ * a single editorial decision, so this is a single function. Splitting it into
+ * "mark evidence reviewed" and "raise readiness" would let the two drift, and
+ * a VERIFIED grade whose evidence was never confirmed is precisely the claim
+ * the invariant exists to prevent.
+ *
+ * What it deliberately does not touch: retracted records (a withdrawn document
+ * cannot be confirmed) and supporting records (they were not examined, and
+ * marking them reviewed would overstate what happened). Published versions are
+ * refused outright — publication is immutable, and re-grading a live entry in
+ * place would rewrite the permanent record instead of superseding it. Use a
+ * correction.
+ */
+export async function confirmCanonicalEvidence(
+  versionId: string,
+  reviewerId: string,
+): Promise<CanonicalChangeVersion> {
+  const draft = await loadVersionWithEvidence(versionId);
+  assertReviewable(draft);
+
+  const confirmable = draft.evidence.filter(
+    (ev) =>
+      ev.role === "PRIMARY_OFFICIAL" &&
+      OFFICIAL_AUTHORITY_LEVELS.includes(ev.authorityLevel) &&
+      ev.retractedAt == null,
+  );
+  if (confirmable.length === 0) {
+    throw new PublicationError(
+      "VERIFIED_REQUIRES_REVIEWED_PRIMARY_OFFICIAL_EVIDENCE",
+      "no unretracted primary-official evidence to confirm",
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.evidenceRecord.updateMany({
+      // Only records not already reviewed: re-confirming must not re-date an
+      // earlier reviewer's decision.
+      where: { id: { in: confirmable.map((ev) => ev.id) }, reviewedAt: null },
+      data: { reviewedAt: new Date() },
+    });
+    return tx.canonicalChangeVersion.update({
+      where: { id: draft.id },
+      data: { readiness: "VERIFIED", reviewedBy: reviewerId },
+    });
+  }, TX_OPTIONS);
 }
 
 /**

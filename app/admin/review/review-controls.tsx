@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import {
   correctDraft,
+  confirmEvidence,
   publishDraft,
   rejectDraft,
   reviewTemplate,
@@ -25,6 +26,9 @@ export interface ReviewControlsProps {
   publishBlockers: string[];
   hasActionTemplate: boolean;
   actionTemplateReviewed: boolean;
+  /** Holds unretracted primary-official evidence that has not been confirmed. */
+  canConfirmEvidence: boolean;
+  readiness: string;
   /** The change's current published version (correction target), if any. */
   currentVersionId: string | null;
 }
@@ -37,6 +41,8 @@ export function ReviewControls({
   publishBlockers,
   hasActionTemplate,
   actionTemplateReviewed,
+  canConfirmEvidence,
+  readiness,
   currentVersionId,
 }: ReviewControlsProps) {
   const router = useRouter();
@@ -117,6 +123,22 @@ export function ReviewControls({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {canConfirmEvidence && readiness !== "VERIFIED" && (
+          <button
+            type="button"
+            disabled={pending}
+            title="Confirm this entry against its primary-official evidence and grade it Verified"
+            onClick={() =>
+              run(
+                () => confirmEvidence(draftId),
+                "Confirmed against primary-official evidence — now Verified.",
+              )
+            }
+            className="ticker rounded-sm border border-calm/50 px-3.5 py-2.5 text-[10px] uppercase tracking-[0.12em] text-calm transition-colors sm:py-1.5 hover:bg-calm/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Confirm evidence → Verified
+          </button>
+        )}
         {hasActionTemplate && !actionTemplateReviewed && (
           <button
             type="button"

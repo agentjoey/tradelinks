@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  confirmCanonicalEvidence,
   correctCanonicalChange,
   publishCanonicalDraft,
   rejectCanonicalDraft,
@@ -47,6 +48,16 @@ export async function rejectDraft(
 
 export async function reviewTemplate(draftId: string): Promise<ReviewActionResult> {
   return run((reviewerId) => reviewCanonicalActionTemplate(draftId, reviewerId));
+}
+
+/**
+ * Confirm the entry against its primary-official evidence, raising it to
+ * Verified. The single act the coverage glossary describes; nothing else in
+ * the product could set EvidenceRecord.reviewedAt, so Verified was
+ * unreachable and the verified-pool surfaces were permanently empty.
+ */
+export async function confirmEvidence(draftId: string): Promise<ReviewActionResult> {
+  return run((reviewerId) => confirmCanonicalEvidence(draftId, reviewerId));
 }
 
 export async function correctDraft(
