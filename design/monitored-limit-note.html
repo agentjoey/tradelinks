@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitored limit note — before / after</title>
+<style>
+  /* Tokens copied verbatim from app/globals.css so the mockup is judged on
+     the real palette, not an approximation of it. */
+  :root{
+    --c-bg:244 241 232; --c-surface:251 249 243; --c-surface2:255 255 255;
+    --c-ink:27 26 22; --c-muted:92 89 82; --c-faint:111 106 92;
+    --c-line:rgba(27,26,22,.12); --c-linestrong:rgba(27,26,22,.22);
+    --c-signal:138 90 11; --c-urgent:198 58 45; --c-calm:14 117 104;
+  }
+  html[data-theme="dark"]{
+    --c-bg:8 9 12; --c-surface:14 16 21; --c-surface2:19 22 29;
+    --c-ink:236 231 219; --c-muted:139 143 154; --c-faint:124 130 144;
+    --c-line:rgba(233,228,217,.1); --c-linestrong:rgba(233,228,217,.2);
+    --c-signal:232 180 74; --c-urgent:255 90 77; --c-calm:79 209 197;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:rgb(var(--c-bg)); color:rgb(var(--c-ink));
+    font:16px/1.55 ui-serif,Georgia,"Times New Roman",serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .ticker{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .wrap{max-width:78rem;margin:0 auto;padding:2rem 1.25rem 5rem}
+  h1{font-size:1.5rem;margin:0 0 .25rem;letter-spacing:-.01em}
+  .sub{color:rgb(var(--c-muted));font-size:.875rem;margin:0 0 2rem;max-width:68ch;text-wrap:pretty}
+  .cols{display:grid;gap:2rem}
+  @media(min-width:1000px){.cols{grid-template-columns:1fr 1fr}}
+  .panel{border:1px solid var(--c-line);border-radius:.5rem;background:rgb(var(--c-surface));padding:1.25rem}
+  .panel > h2{
+    font-family:ui-monospace,monospace;font-size:.625rem;text-transform:uppercase;
+    letter-spacing:.14em;color:rgb(var(--c-faint));margin:0 0 .25rem;font-weight:400
+  }
+  .panel > .verdict{font-size:.8125rem;color:rgb(var(--c-muted));margin:0 0 1rem;text-wrap:pretty}
+  .bad{color:rgb(var(--c-urgent))}
+  .good{color:rgb(var(--c-calm))}
+
+  /* --- the real card, as IntelligenceCard renders it --- */
+  .card{
+    border:1px solid var(--c-line);border-radius:.5rem;background:rgb(var(--c-surface));
+    padding:1.25rem;margin-bottom:.875rem
+  }
+  .chip{
+    font-family:ui-monospace,monospace;display:inline-flex;flex-wrap:wrap;align-items:baseline;
+    gap:0 .625rem;font-size:.6875rem;text-transform:uppercase;letter-spacing:.1em
+  }
+  .chip .w-mon{color:rgb(var(--c-faint))}
+  .chip .w-ver{color:rgb(var(--c-calm));font-weight:600}
+  .chip .when{color:rgb(var(--c-faint))}
+  .card h3{font-size:1.0625rem;line-height:1.35;margin:.5rem 0 0;text-wrap:balance;font-weight:500}
+  .card h3 a{color:inherit;text-decoration:none}
+  .card h3 a:hover{color:rgb(var(--c-signal))}
+  .impact{font-size:.875rem;color:rgb(var(--c-muted));margin:.5rem 0 0;max-width:68ch;text-wrap:pretty}
+
+  /* the block under review */
+  .limit{
+    margin:.75rem 0 0;max-width:68ch;border:1px solid rgb(var(--c-urgent)/.45);
+    border-radius:.375rem;padding:.625rem .75rem;font-size:.8125rem;color:rgb(var(--c-urgent));
+    text-wrap:pretty
+  }
+
+  /* the proposed page-level line */
+  /* Sentence case, not the ticker style. Thirty words of uppercase mono is
+     harder to read than the block it replaces — moving the text and then
+     making it painful is not a fix. */
+  .pagenote{
+    font-size:.8125rem;color:rgb(var(--c-faint));margin:.5rem 0 1.25rem;
+    max-width:68ch;text-wrap:pretty;line-height:1.55
+  }
+  .pagenote b{color:rgb(var(--c-muted));font-weight:600}
+  .pagenote a{color:rgb(var(--c-signal));text-underline-offset:2px}
+
+  .pagehead{font-size:1.25rem;margin:0;letter-spacing:-.01em}
+  /* A four-column table cannot shrink below its content, so it widened the
+     whole page at 390 and clipped every paragraph. It scrolls inside its own
+     box instead; the body never scrolls sideways. */
+  .matrixwrap{overflow-x:auto;margin-top:.75rem}
+  .matrix{width:100%;min-width:34rem;border-collapse:collapse;font-size:.8125rem}
+  .matrix th,.matrix td{text-align:left;padding:.5rem .625rem;border-bottom:1px solid var(--c-line);vertical-align:top}
+  .matrix th{font-family:ui-monospace,monospace;font-size:.625rem;text-transform:uppercase;letter-spacing:.1em;color:rgb(var(--c-faint));font-weight:400}
+  .section{margin-top:2.5rem}
+  .section > h2{font-size:1.125rem;margin:0 0 .5rem}
+  .note{font-size:.8125rem;color:rgb(var(--c-muted));max-width:72ch;text-wrap:pretty}
+  .toggle{
+    position:fixed;top:1rem;right:1rem;z-index:10;font-family:ui-monospace,monospace;
+    font-size:.625rem;text-transform:uppercase;letter-spacing:.12em;
+    background:rgb(var(--c-surface2));color:rgb(var(--c-ink));
+    border:1px solid var(--c-linestrong);border-radius:.25rem;padding:.5rem .75rem;cursor:pointer
+  }
+  .detail{border:1px solid var(--c-line);border-radius:.5rem;background:rgb(var(--c-surface));padding:1.25rem}
+  .detail h3{font-size:1.25rem;margin:.5rem 0 0;text-wrap:balance;font-weight:500}
+  .panelbox{border-top:1px solid var(--c-line);margin-top:1.25rem;padding-top:.875rem}
+  .panelbox h4{font-family:ui-monospace,monospace;font-size:.625rem;text-transform:uppercase;letter-spacing:.14em;color:rgb(var(--c-faint));margin:0;font-weight:400}
+  .panelbox p{font-size:.9375rem;color:rgb(var(--c-muted));margin:.375rem 0 0;max-width:68ch;text-wrap:pretty}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</button>
+<div class="wrap">
+
+  <h1>Monitored limit note — what a reader actually sees</h1>
+  <p class="sub">
+    Real tokens from <code>app/globals.css</code>, real entries from production. Every entry today is
+    Monitored, because readiness is inherited from the source contract and both live sources
+    (Shopify Changelog, Federal Register) are graded Monitored — so the notice fires on 100% of rows.
+  </p>
+
+  <div class="cols">
+    <!-- BEFORE -->
+    <div class="panel">
+      <h2>Before — today's build</h2>
+      <p class="verdict bad">
+        The same 30 words, three times on three cards. On a full page of twenty it repeats twenty
+        times. A signal that never varies carries no information, and the red repetition reads as
+        breakage rather than as honesty.
+      </p>
+
+      <h3 class="pagehead">Latest changes</h3>
+      <div style="height:.75rem"></div>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-07</span></span>
+        <h3><a href="#">New and updated staff permissions for payments, payouts, disputes, and tax documents</a></h3>
+        <p class="impact">Shopify is splitting payments-related staff permissions into finer roles.</p>
+        <p class="limit">We cannot verify this to the Verified standard — this entry has not been confirmed against reviewed primary-official evidence, so details may be restated.</p>
+      </article>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-31</span></span>
+        <h3><a href="#">Certain Preserved Mushrooms From Chile, the People's Republic of China, India, and Indonesia: Continuation of Antidumping Duty Orders</a></h3>
+        <p class="impact">Commerce continues the antidumping duty orders on preserved mushrooms.</p>
+        <p class="limit">We cannot verify this to the Verified standard — this entry has not been confirmed against reviewed primary-official evidence, so details may be restated.</p>
+      </article>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-24</span></span>
+        <h3><a href="#">Certain Crepe Paper Products From the People's Republic of China: Continuation of Antidumping Duty Order</a></h3>
+        <p class="impact">Commerce continues the antidumping duty order on crepe paper products.</p>
+        <p class="limit">We cannot verify this to the Verified standard — this entry has not been confirmed against reviewed primary-official evidence, so details may be restated.</p>
+      </article>
+    </div>
+
+    <!-- AFTER -->
+    <div class="panel">
+      <h2>After — proposed</h2>
+      <p class="verdict good">
+        Said once, where it applies to the whole page. The readiness word stays on every card, so
+        nothing is hidden — and the moment one entry is Verified, the difference is visible at a
+        glance instead of buried in identical prose.
+      </p>
+
+      <h3 class="pagehead">Latest changes</h3>
+      <p class="pagenote">
+        Every entry here is <b>Monitored</b> — published and watched, not yet
+        confirmed against reviewed primary-official evidence, so details may be restated.
+        <a href="#">How we grade coverage →</a>
+      </p>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-07</span></span>
+        <h3><a href="#">New and updated staff permissions for payments, payouts, disputes, and tax documents</a></h3>
+        <p class="impact">Shopify is splitting payments-related staff permissions into finer roles.</p>
+      </article>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-31</span></span>
+        <h3><a href="#">Certain Preserved Mushrooms From Chile, the People's Republic of China, India, and Indonesia: Continuation of Antidumping Duty Orders</a></h3>
+        <p class="impact">Commerce continues the antidumping duty orders on preserved mushrooms.</p>
+      </article>
+
+      <article class="card">
+        <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-24</span></span>
+        <h3><a href="#">Certain Crepe Paper Products From the People's Republic of China: Continuation of Antidumping Duty Order</a></h3>
+        <p class="impact">Commerce continues the antidumping duty order on crepe paper products.</p>
+      </article>
+    </div>
+  </div>
+
+  <!-- MIXED STATE -->
+  <div class="section">
+    <h2>The state the change exists for: one Verified entry among Monitored ones</h2>
+    <p class="note">
+      Now reachable — the review desk gained a “confirm evidence” action on 2026-08-07. Before this
+      change the two were typographically identical apart from a block of prose one of them lacked;
+      after it, the stronger claim reads as stronger. The page line drops the absolute “every”.
+    </p>
+    <div class="cols" style="margin-top:1rem">
+      <div class="panel">
+        <h2>Mixed page — after</h2>
+        <p class="pagenote">
+          Entries marked <b>Monitored</b> are published and watched, not yet
+          confirmed against reviewed primary-official evidence, so details may be restated.
+          <a href="#">How we grade coverage →</a>
+        </p>
+        <article class="card">
+          <span class="chip"><span class="w-ver">Verified</span><span class="when">Published 2026-08-05</span></span>
+          <h3><a href="#">FTC finalises the Negative Option Rule for subscription sellers</a></h3>
+          <p class="impact">Sellers offering subscriptions must provide click-to-cancel parity.</p>
+        </article>
+        <article class="card">
+          <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-07</span></span>
+          <h3><a href="#">New and updated staff permissions for payments, payouts, disputes, and tax documents</a></h3>
+          <p class="impact">Shopify is splitting payments-related staff permissions into finer roles.</p>
+        </article>
+      </div>
+      <div class="panel">
+        <h2>All Verified — the notice disappears entirely</h2>
+        <p class="verdict good">
+          No Monitored entry on the page means no limit to state. A caveat that renders when it does
+          not apply is the same failure as one that never varies.
+        </p>
+        <article class="card">
+          <span class="chip"><span class="w-ver">Verified</span><span class="when">Published 2026-08-05</span></span>
+          <h3><a href="#">FTC finalises the Negative Option Rule for subscription sellers</a></h3>
+          <p class="impact">Sellers offering subscriptions must provide click-to-cancel parity.</p>
+        </article>
+        <article class="card">
+          <span class="chip"><span class="w-ver">Verified</span><span class="when">Published 2026-08-02</span></span>
+          <h3><a href="#">CPSC recalls portable power banks over lithium-ion fire risk</a></h3>
+          <p class="impact">Listings for the affected models must be withdrawn.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL PAGE -->
+  <div class="section">
+    <h2>Detail page — unchanged</h2>
+    <p class="note">
+      Kept exactly as it is. A reader here is looking at one entry and deciding whether to act on it,
+      which is the one place the caveat is doing work rather than repeating itself.
+    </p>
+    <div class="detail" style="margin-top:1rem;max-width:52rem">
+      <span class="chip"><span class="w-mon">Monitored</span><span class="when">Published 2026-07-07 · Shopify</span></span>
+      <h3>New and updated staff permissions for payments, payouts, disputes, and tax documents</h3>
+      <p class="limit">We cannot verify this to the Verified standard — this entry has not been confirmed against reviewed primary-official evidence, so details may be restated.</p>
+      <div class="panelbox">
+        <h4>What changed</h4>
+        <p>Shopify is splitting payments-related staff permissions into finer roles covering payouts, disputes and tax documents.</p>
+      </div>
+      <div class="panelbox">
+        <h4>Who it hits</h4>
+        <p>Merchants who delegate finance operations to staff accounts.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATRIX -->
+  <div class="section">
+    <h2>State matrix</h2>
+    <div class="matrixwrap"><table class="matrix">
+      <thead><tr><th>State</th><th>Card</th><th>Page line</th><th>Detail page</th></tr></thead>
+      <tbody>
+        <tr><td>All Monitored <em>(production today)</em></td><td>chip <code>Monitored</code></td><td>shown, “Every entry here…”</td><td>notice shown</td></tr>
+        <tr><td>Mixed Monitored + Verified</td><td>both chips, visibly different</td><td>shown, “Entries marked Monitored…”</td><td>per entry</td></tr>
+        <tr><td>All Verified</td><td>chip <code>Verified</code></td><td><b>not shown</b></td><td>not shown</td></tr>
+        <tr><td>Empty list</td><td>existing StatePanel</td><td>not shown</td><td>—</td></tr>
+        <tr><td>Reduced motion / greyscale / print</td><td>literal word, never colour alone</td><td>text only</td><td>text only</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="section">
+    <h2>What this does not change</h2>
+    <p class="note">
+      No token, type scale, spacing or chrome change. No new interaction, route or data contract.
+      The readiness word already rendered on every card via <code>ReadinessBadge</code> — the prose
+      block was layered on top of it. Surfaces touched: home, <code>/changes</code>, <code>/us</code>,
+      <code>/amazon-us</code>, <code>/shopify-us</code>, <code>/categories/*</code>.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

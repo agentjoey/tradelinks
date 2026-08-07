@@ -46,6 +46,21 @@ Human checkpoints: ① mockup 批准 ② 合并前走查
 | 空列表 | 既有 StatePanel | 不显示 | — |
 | VERIFIED 单条详情 | — | — | 不显示红框 |
 
+## Mockup
+
+`design/monitored-limit-note.html` · 截图 `design/shots/monitored-note/{light-1440,dark-1440,light-390}.png`
+
+Token 逐字取自 `app/globals.css`，条目取自生产已发布的 3 条，不用示意内容。
+
+**自查发现并已修的两处（在提交给 Human Owner 之前）：**
+
+1. 页头说明句最初套用了 ticker 的大写+字距样式。30 个词大写三行比原来的红框更难读——把文字墙搬个位置还加重它，不是修复。改为正常句式大小写、faint 色、`max-width:68ch`。
+2. 状态矩阵四列表格在窄屏撑宽整页。改为在自身容器内横向滚动，页面本身永不横滚。
+
+**方法学更正：** headless Chrome 在 macOS 下最小视口为 500px，`--window-size=390` 只是把 500px 画面裁到 390 宽——我最初那张"390 截图"里的裁切是**假象**而非布局缺陷。实测 `scrollWidth == clientWidth`，无页面级溢出。真实 390 视图改用约束 body 宽度的方式取得。
+
+**390 视图强化了论据**：手机上该免责声明占 5 行，每张卡片近一半是免责声明。
+
 ## 决定与证据
 
-- 待 mockup 批准后回填。
+- ⏳ 等待 Human Owner 对 rendered mockup 的批准（Mockup Gate）。
