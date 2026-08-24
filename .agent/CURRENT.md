@@ -3,7 +3,25 @@
 Version:        v0.12.0 + Phase 1 Foundation + Operations + Public Intelligence（全部在 main 与 production）
 Sprint:         Phase 1 — 跳过 Track A 试运行，直接上生产
 Sprint Status:  ✅ operations 已合并 main · Railway 八服务全部跑 main · cluster→CanonicalChange 促成已上线
-Last Updated:   2026-08-05 by Claude Opus 5
+Last Updated:   2026-08-24 by Claude Sonnet 5
+
+## 2026-08-24：运维告警从「每小时无限重发」改为「每日一次 + 已恢复通知」
+
+**触发**：owner 发来 Telegram 截图，`[Briefing Absent]` 从 00:36 起每小时重复一条，连续三周未停。根因是 `createDeliveryAdapter` 的去重键 `{code, subjectId, bucket}` 里 `bucket` 取**当前小时**、每次运行现算——对一个逐小时跑的作业，这个键永远和上一次不同，去重形同虚设。受影响的 6 个告警码（`SOURCE_STALE`/`CONTENT_COLLAPSE`/`GLOBAL_GAP`/`BRIEFING_ABSENT` 来自 `health-check.ts`、`BRIEFING_ABSENT` 自身来自 `briefing-batch.ts`、`HARD_CAP` 来自 `cost-report.ts`）全部共享这条broken路径。
+
+Owner 决策「1.每天 2.补上」：冷却期改为按天，并补上"已恢复"通知。
+
+**实现**：新增持久模型 `OperationalAlertState`（`code`+`subjectId` 唯一），migration `0014_operational_alert_state`。`record()` 同一 (code, subjectId) 每 24h 至多发一次；若已恢复(`resolvedAt` 非空)后再次触发，视为新一轮事件立即发送，不受旧冷却期约束。`recordResolved()` 在条件消失时发一次"RESOLVED"通知。状态只在 `sendOpsAlert` 确认返回 `"sent"` 后才推进——`skipped`/`failed`/抛错都保持原状，下一轮自然重试。
+
+`SOURCE_STALE`/`CONTENT_COLLAPSE`/`GLOBAL_GAP` 三码接了自动"已恢复"检测（`resolveCleared`：上次活跃、这次不在活跃集合里的 subjectId 视为已清）。**`BRIEFING_ABSENT` 故意不接**——它的 subjectId 是"缺失那周的周一"，每周向前滚动，与病因是否修复无关；接上会导致每周一都发一条假的"已恢复"。
+
+**⚠️ 给下一个碰 migration 编号的人**：line 324/349 提到的 Step 8（退役 `alerts`/`daily_notes`/legacy `clusters`）曾预留 `0014` 这个序号但从未写出文件。这次的 `0014_operational_alert_state` 占用了它，Step 8 落地时请用 `0015` 起。
+
+**验证**：64 个新/改测试全绿（`test/health-check.test.ts` 36、`test/briefing-job.test.ts` 15、`test/cost-guardrail.test.ts` 13）；全量 `pnpm test` 1055 passed / 2 failed（失败的 2 条在 `test/foundation-backfill.test.ts`，是 backfill apply 的已知环境门禁——本地 `DATABASE_URL` 未指向那条专门获批的隔离 Neon endpoint，与本次改动无关）；`pnpm build` 干净。
+
+**部署**：migration 已用 Neon MCP 直连生产分支 `br-autumn-smoke-aof5n7pe`（`ep-mute-base-aotkza3n`）应用（本地无 `.env.production`，`pnpm db:migrate:prod` 会静默回落到 dev——同一个此前 2026-08-05 撤回记录里点过的坑，见下方旧条目）。三个受影响 cron 服务 `tradelinks-health`/`tradelinks-cost-report`/`tradelinks-public-briefing` 已 `railway redeploy --from-source`，均回到 Online。已推送 `main`（`8586739`）。
+
+**仍未做**：Amazon 源 `US-APHIS` 静默失败（0 条却记 `SUCCEEDED_EMPTY`）的修复——已提出方案，owner 尚未拍板；P0-2（`US-CPSC-RSS` 转正、`US-FTC-CONSUMER` 去留）同样待决。
 
 ## 2026-08-05：合并 operations + 补上管线缺失的一环
 
@@ -289,6 +307,7 @@ SPEC/PLAN：docs/specs/{data-model,crawler-contract,ai-pipeline,IMPL-PLAN-sprint
 ## Version History（最近 6 版）
 | Version | Date | Summary |
 |---------|------|---------|
+| v0.12.0+ | 2026-08-24 | 运维告警去重从「按当前小时」（对逐小时作业形同虚设）改为持久化 `OperationalAlertState`：每 24h 冷却 + 恢复后立即重报 + 首次"已恢复"通知；`BRIEFING_ABSENT` 因 subjectId 每周滚动故意不接自动恢复检测；migration `0014_operational_alert_state` 已上生产，三个 Railway cron 服务已重部署（64 测试） |
 | v0.12.0+ | 2026-07-19 | BL-045 前端重设计（workflow T3）：双主题 token 体系 + cookie 主题机制 + 移动端 tab bar + Radix More 下拉 + labels/SignalCard/PageHeader/EmptyState/ui.ts 组件层 + 路由状态层 + Instrument Panel 动效 + 订阅页修复（297 测试；merged main `17aa648`，生产冒烟通过） |
 | v0.12.0+ | 2026-06-10 | BL-044 The Movers v1：洞察引擎接进 radar-review（生成+持久化 `MoverInsight`，migration 0010 上 prod）+ /radar「The Movers」门面 + 标题公式 + 纯函数 `rankMovers`（287 测试；merged main `3547ce1`） |
 | v0.12.0+ | 2026-06-10 | BL-033 写作模块库：core/topic-gate/self-check/columns 拆分 + 三消费方迁移、单一 `BANNED_PHRASES`、confidence 桶化修复（282 测试；merged main PR #2，未单独 tag） |
