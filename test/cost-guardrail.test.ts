@@ -73,12 +73,12 @@ describe("costReport job handler", () => {
   });
 
   it("emits HARD_CAP alert at $50+", async () => {
-    const alerts: Array<{ code: string; subjectId: string; bucket: string }> = [];
+    const alerts: Array<{ code: string; subjectId: string; now: Date }> = [];
     const handler = createCostReport({
       beginRun: async () => "run-2",
       finishRun: async () => {},
       getProjectedCost: async () => ({ total: 55, breakdown: { vercel: 30, ai: 25 } }),
-      recordOperationalAlert: async (key: { code: string; subjectId: string; bucket: string }) => { alerts.push(key); },
+      recordOperationalAlert: async (key: { code: string; subjectId: string; now: Date }) => { alerts.push(key); },
     });
     const result = await handler(baseArgs());
     expect(result.status).toBe("SUCCEEDED_ITEMS");

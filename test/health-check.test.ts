@@ -15,27 +15,68 @@ function baseArgs(overrides?: Partial<JobArgs>): JobArgs {
   };
 }
 
-function toKey(k: AlertDeliveryKey): string {
-  return `${k.code}:${k.subjectId}:${k.bucket}`;
-}
+const HOUR = 60 * 60000;
+const DAY = 24 * HOUR;
+const BASE = new Date("2026-07-30T12:00:00Z").getTime();
+function hoursAgo(n: number): Date { return new Date(BASE - n * HOUR); }
 
+/**
+ * Mirrors the real OperationalAlertState-backed adapter (src/email/transactional.ts):
+ * an ongoing (code, subjectId) pages at most once per 24h, immediately again
+ * if it cleared and recurred, and `resolveCleared` reports (without marking)
+ * which previously-unresolved subjectIds dropped out of the active set —
+ * matching the split between the read-only diff and the send-and-mark that
+ * production uses.
+ */
 class InMemoryAlertStore {
-  readonly alerts = new Map<string, boolean>();
-  readonly recordCounts = new Map<string, number>();
-  async record(key: AlertDeliveryKey) {
-    const k = toKey(key);
-    if (this.alerts.has(k)) return; // dedup like adapter's finishedAt check
-    this.alerts.set(k, true);
-    this.recordCounts.set(k, (this.recordCounts.get(k) ?? 0) + 1);
+  private readonly state = new Map<string, Map<string, { firstAlertedAt: Date; lastAlertedAt: Date; resolvedAt: Date | null }>>();
+  readonly sent: Array<{ code: string; subjectId: string; now: Date }> = [];
+  readonly resolvedSent: Array<{ code: string; subjectId: string; now: Date }> = [];
+
+  private bucket(code: string) {
+    let m = this.state.get(code);
+    if (!m) { m = new Map(); this.state.set(code, m); }
+    return m;
   }
-  async load(key: AlertDeliveryKey) {
-    return this.alerts.has(toKey(key));
+
+  async record({ code, subjectId, now }: AlertDeliveryKey) {
+    const m = this.bucket(code);
+    const existing = m.get(subjectId);
+    const isNewEpisode = !existing || existing.resolvedAt != null;
+    const cooldownElapsed = !!existing && now.getTime() - existing.lastAlertedAt.getTime() >= DAY;
+    if (!isNewEpisode && !cooldownElapsed) return;
+    this.sent.push({ code, subjectId, now });
+    m.set(subjectId, {
+      firstAlertedAt: isNewEpisode ? now : existing!.firstAlertedAt,
+      lastAlertedAt: now,
+      resolvedAt: null,
+    });
   }
-  getCount(key: AlertDeliveryKey): number {
-    return this.recordCounts.get(toKey(key)) ?? 0;
+
+  async recordResolved({ code, subjectId, now }: AlertDeliveryKey) {
+    const existing = this.bucket(code).get(subjectId);
+    if (!existing) return;
+    this.resolvedSent.push({ code, subjectId, now });
+    existing.resolvedAt = now;
   }
-  has(key: AlertDeliveryKey): boolean {
-    return this.alerts.has(toKey(key));
+
+  async resolveCleared({ code, activeSubjectIds }: { code: string; activeSubjectIds: string[] }): Promise<string[]> {
+    const cleared: string[] = [];
+    for (const [subjectId, row] of this.bucket(code)) {
+      if (row.resolvedAt == null && !activeSubjectIds.includes(subjectId)) cleared.push(subjectId);
+    }
+    return cleared;
+  }
+
+  // ---- test helpers ----
+  getCount(code: string, subjectId: string): number {
+    return this.sent.filter((s) => s.code === code && s.subjectId === subjectId).length;
+  }
+  has(code: string, subjectId: string): boolean {
+    return this.sent.some((s) => s.code === code && s.subjectId === subjectId);
+  }
+  resolvedCount(code: string, subjectId: string): number {
+    return this.resolvedSent.filter((s) => s.code === code && s.subjectId === subjectId).length;
   }
 }
 
@@ -43,18 +84,6 @@ interface FakeSourceCheck { sourceId: string; status: string; itemCount: number;
 interface FakeSourceFacts { id: string; isActive: boolean; freshnessSlaMinutes: number | null; lastOkAt: Date | null; }
 interface FakeCapability { key: string; sources: { sourceId: string }[]; }
 type FakeSourceFactsMap = Record<string, FakeSourceFacts>;
-
-const HOUR = 60 * 60000;
-const BASE = new Date("2026-07-30T12:00:00Z").getTime();
-function hoursAgo(n: number): Date { return new Date(BASE - n * HOUR); }
-
-function dateHour(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const h = String(d.getUTCHours()).padStart(2, "0");
-  return `${y}-${m}-${day}T${h}`;
-}
 
 async function makeHandler(overrides: Record<string, unknown> = {}, opts?: { fixedRunId?: string }) {
   const { createHealthCheck } = await import("../src/jobs/health-check.js");
@@ -69,6 +98,8 @@ async function makeHandler(overrides: Record<string, unknown> = {}, opts?: { fix
     finishRun: async (rid: string, summary: any) => { runStore.set(rid, { ...summary, finished: true }); },
     existingSummary: async (rid: string) => { const r = runStore.get(rid); return (r && r.finished) ? r : null; },
     recordOperationalAlert: async (key: AlertDeliveryKey) => { await store.record(key); },
+    recordResolvedAlert: async (key: AlertDeliveryKey) => { await store.recordResolved(key); },
+    resolveCleared: async (input: { code: string; activeSubjectIds: string[] }) => store.resolveCleared(input),
     getSourceChecks: async (_since: Date) => [] as FakeSourceCheck[],
     getSourceFacts: async () => ({} as FakeSourceFactsMap),
     getCoverageCapabilities: async () => [] as FakeCapability[],
@@ -84,11 +115,8 @@ async function makeHandler(overrides: Record<string, unknown> = {}, opts?: { fix
 // ============================ SOURCE_STALE ===========================
 
 describe("healthCheck — SOURCE_STALE", () => {
-  it("emits SOURCE_STALE once per incident window", async () => {
-    const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "SOURCE_STALE", subjectId: "B01", bucket };
-
+  it("pages once, then stays silent within the 24h cooldown", async () => {
+    let now = new Date("2026-07-30T12:00:00Z");
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
       getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(25) } }),
@@ -96,28 +124,41 @@ describe("healthCheck — SOURCE_STALE", () => {
     });
 
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.getCount(key)).toBe(1);
+    expect(store.getCount("SOURCE_STALE", "B01")).toBe(1);
 
-    await call(baseArgs({ scheduledFor: new Date(now.getTime() + 30 * 60000) }));
-    expect(store.getCount(key)).toBe(1);
+    now = new Date(now.getTime() + 30 * 60000);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("SOURCE_STALE", "B01")).toBe(1);
+  });
+
+  it("pages again once 24h have passed while the source is still stale", async () => {
+    let now = new Date("2026-07-30T12:00:00Z");
+    const { call, store } = await makeHandler({
+      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
+      getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(25) } }),
+      now: () => now,
+    });
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("SOURCE_STALE", "B01")).toBe(1);
+
+    now = new Date(now.getTime() + DAY);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("SOURCE_STALE", "B01")).toBe(2);
   });
 
   it("SOURCE_STALE starts strictly after its SLA", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "SOURCE_STALE", subjectId: "B01", bucket };
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
       getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(12) } }),
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has(key)).toBe(false);
+    expect(store.has("SOURCE_STALE", "B01")).toBe(false);
   });
 
   it("ignores disabled sources and sources without SLA", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "D01" }, { sourceId: "D02" }] }],
       getSourceFacts: async () => ({
@@ -127,18 +168,15 @@ describe("healthCheck — SOURCE_STALE", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "SOURCE_STALE", subjectId: "D01", bucket })).toBe(false);
+    expect(store.has("SOURCE_STALE", "D01")).toBe(false);
   });
 });
 
 // ============================ GLOBAL_GAP ============================
 
 describe("healthCheck — GLOBAL_GAP", () => {
-  it("emits GLOBAL_GAP once per incident window", async () => {
-    const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "GLOBAL_GAP", subjectId: "market:us", bucket };
-
+  it("pages once, then stays silent within the cooldown", async () => {
+    let now = new Date("2026-07-30T12:00:00Z");
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "market:us", sources: [{ sourceId: "B01" }, { sourceId: "B02" }] }],
       getSourceFacts: async () => ({
@@ -149,21 +187,21 @@ describe("healthCheck — GLOBAL_GAP", () => {
     });
 
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.getCount(key)).toBe(1);
-    await call(baseArgs({ scheduledFor: new Date(now.getTime() + HOUR) }));
-    expect(store.getCount(key)).toBe(1);
+    expect(store.getCount("GLOBAL_GAP", "market:us")).toBe(1);
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("GLOBAL_GAP", "market:us")).toBe(1);
   });
 
   it("does not emit when a source group is within SLA", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "market:us", sources: [{ sourceId: "B01" }] }],
       getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(1) } }),
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "GLOBAL_GAP", subjectId: "market:us", bucket })).toBe(false);
+    expect(store.has("GLOBAL_GAP", "market:us")).toBe(false);
   });
 });
 
@@ -172,8 +210,6 @@ describe("healthCheck — GLOBAL_GAP", () => {
 describe("healthCheck — CONTENT_COLLAPSE", () => {
   it("emits CONTENT_COLLAPSE when current succeeds empty after productive baseline", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "CONTENT_COLLAPSE", subjectId: "B01", bucket };
     const checks: FakeSourceCheck[] = [];
     for (let i = 1; i <= 7; i++) checks.push({ sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo((i + 1) * 6) });
     checks.push({ sourceId: "B01", status: "SUCCEEDED_EMPTY", itemCount: 0, checkedAt: hoursAgo(1) });
@@ -185,12 +221,11 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.getCount(key)).toBe(1);
+    expect(store.getCount("CONTENT_COLLAPSE", "B01")).toBe(1);
   });
 
   it("does NOT fire with only 3 qualifying checks", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
     const checks: FakeSourceCheck[] = [];
     for (let i = 1; i <= 3; i++) checks.push({ sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo((i + 1) * 6) });
     for (let i = 4; i <= 7; i++) checks.push({ sourceId: "B01", status: "SUCCEEDED_EMPTY", itemCount: 0, checkedAt: hoursAgo((i + 1) * 6) });
@@ -202,12 +237,11 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "CONTENT_COLLAPSE", subjectId: "B01", bucket })).toBe(false);
+    expect(store.has("CONTENT_COLLAPSE", "B01")).toBe(false);
   });
 
   it("never reclassifies a network failure as content collapse", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
     const checks: FakeSourceCheck[] = [];
     for (let i = 1; i <= 7; i++) checks.push({ sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo((i + 1) * 6) });
     checks.unshift({ sourceId: "B01", status: "FAILED", itemCount: 0, checkedAt: hoursAgo(1) });
@@ -218,18 +252,16 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "CONTENT_COLLAPSE", subjectId: "B01", bucket })).toBe(false);
+    expect(store.has("CONTENT_COLLAPSE", "B01")).toBe(false);
   });
 
   it("does NOT fire when fewer than 4 previous successful checks exist", async () => {
     const now = new Date("2026-07-30T12:00:00Z");
-    const bucket = dateHour(now);
     // Only 2 previous successful checks — baseline.length < 4
     const checks: FakeSourceCheck[] = [
       { sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo(12) },
       { sourceId: "B01", status: "SUCCEEDED_ITEMS", itemCount: 10, checkedAt: hoursAgo(18) },
     ];
-    // Current empty
     checks.unshift({ sourceId: "B01", status: "SUCCEEDED_EMPTY", itemCount: 0, checkedAt: hoursAgo(1) });
     const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
@@ -238,7 +270,7 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "CONTENT_COLLAPSE", subjectId: "B01", bucket })).toBe(false);
+    expect(store.has("CONTENT_COLLAPSE", "B01")).toBe(false);
   });
 });
 
@@ -247,49 +279,128 @@ describe("healthCheck — CONTENT_COLLAPSE", () => {
 describe("healthCheck — BRIEFING_ABSENT", () => {
   it("emits BRIEFING_ABSENT on Monday when no briefing was produced", async () => {
     const now = new Date("2026-07-27T08:00:00Z"); // Monday UTC
-    const bucket = dateHour(now);
-    const key: AlertDeliveryKey = { code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket };
     const { call, store } = await makeHandler({
       getBriefingStatus: async () => ({ absent: true }),
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.getCount(key)).toBe(1);
+    expect(store.getCount("BRIEFING_ABSENT", "2026-07-20")).toBe(1);
   });
 
   it("does not emit BRIEFING_ABSENT when briefing is present", async () => {
     const now = new Date("2026-07-27T08:00:00Z");
-    const bucket = dateHour(now);
     const { call, store } = await makeHandler({
       getBriefingStatus: async () => ({ absent: false }),
       now: () => now,
     });
     await call(baseArgs({ scheduledFor: now }));
-    expect(store.has({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket })).toBe(false);
+    expect(store.has("BRIEFING_ABSENT", "2026-07-20")).toBe(false);
+  });
+
+  it("pages at most once a day while the same week's briefing stays absent", async () => {
+    let now = new Date("2026-07-27T08:00:00Z");
+    const { call, store } = await makeHandler({
+      getBriefingStatus: async () => ({ absent: true }),
+      now: () => now,
+    });
+    await call(baseArgs({ scheduledFor: now }));
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now }));
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now }));
+    // Three runs inside one day, still one page — this is the exact bug
+    // (measured: ~500 identical Telegram messages over three weeks) this
+    // cooldown exists to close.
+    expect(store.getCount("BRIEFING_ABSENT", "2026-07-20")).toBe(1);
+  });
+
+  it("does not send a resolved notice when the week simply rolls over", async () => {
+    // subjectId is the Monday that started the missing window, so it changes
+    // every week regardless of whether the underlying cause was ever fixed.
+    // Treating that rollover as "resolved" would be a false all-clear for a
+    // condition that is still, in fact, broken.
+    let now = new Date("2026-07-27T08:00:00Z"); // Monday, week of 07-20 missing
+    const { call, store } = await makeHandler({
+      getBriefingStatus: async () => ({ absent: true }),
+      now: () => now,
+    });
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("BRIEFING_ABSENT", "2026-07-20")).toBe(1);
+
+    now = new Date("2026-08-03T08:00:00Z"); // next Monday, week of 07-27 missing
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.getCount("BRIEFING_ABSENT", "2026-07-27")).toBe(1);
+    expect(store.resolvedCount("BRIEFING_ABSENT", "2026-07-20")).toBe(0);
   });
 });
 
-// ============================ cross-day (BLOCKER 2 pin) ==============
+// ============================ resolved notifications ====================
 
-describe("healthCheck — cross-day idempotency", () => {
-  it("re-alerts on a different day at the same hour", async () => {
-    const day1 = new Date("2026-07-30T12:00:00Z");
-    const day2 = new Date("2026-07-31T12:30:00Z");
-    const { call: call1, store: s1 } = await makeHandler({
+describe("healthCheck — resolved notifications", () => {
+  it("sends exactly one resolved notice when a stale source recovers", async () => {
+    let stale = true;
+    let now = new Date("2026-07-30T12:00:00Z");
+    const { call, store } = await makeHandler({
       getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
+      getSourceFacts: async () => ({
+        B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: stale ? hoursAgo(25) : new Date(now.getTime() - HOUR) },
+      }),
+      now: () => now,
+    });
+
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.has("SOURCE_STALE", "B01")).toBe(true);
+    expect(store.resolvedCount("SOURCE_STALE", "B01")).toBe(0);
+
+    stale = false;
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.resolvedCount("SOURCE_STALE", "B01")).toBe(1);
+
+    // Staying fresh must not repeat the resolved notice.
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.resolvedCount("SOURCE_STALE", "B01")).toBe(1);
+  });
+
+  it("pages immediately on a recurrence, ignoring the old cooldown", async () => {
+    // A condition that cleared and came back is a new episode, not a
+    // continuation of the one that already paged — waiting out a 24h
+    // cooldown here would mean staying silent about a fresh incident.
+    let stale = true;
+    let now = new Date("2026-07-30T12:00:00Z");
+    const { call, store } = await makeHandler({
+      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
+      getSourceFacts: async () => ({
+        B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: stale ? hoursAgo(25) : new Date(now.getTime() - HOUR) },
+      }),
+      now: () => now,
+    });
+
+    await call(baseArgs({ scheduledFor: now })); // pages (1)
+    stale = false;
+    now = new Date(now.getTime() + HOUR);
+    await call(baseArgs({ scheduledFor: now })); // resolves
+    expect(store.resolvedCount("SOURCE_STALE", "B01")).toBe(1);
+
+    stale = true;
+    now = new Date(now.getTime() + HOUR); // well inside the old 24h cooldown
+    await call(baseArgs({ scheduledFor: now })); // pages again anyway
+    expect(store.getCount("SOURCE_STALE", "B01")).toBe(2);
+  });
+
+  it("resolves GLOBAL_GAP independently of SOURCE_STALE for the same source", async () => {
+    // Different codes, same subjectId shape — must not share state.
+    let now = new Date("2026-07-30T12:00:00Z");
+    const { call, store } = await makeHandler({
+      getCoverageCapabilities: async () => [{ key: "market:us", sources: [{ sourceId: "B01" }] }],
       getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(25) } }),
-      now: () => day1,
+      now: () => now,
     });
-    await call1(baseArgs({ scheduledFor: day1 }));
-    expect(s1.getCount({ code: "SOURCE_STALE", subjectId: "B01", bucket: dateHour(day1) })).toBe(1);
-
-    const { call: call2, store: s2 } = await makeHandler({
-      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }],
-      getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(25 + 24) } }),
-      now: () => day2,
-    });
-    await call2(baseArgs({ scheduledFor: day2 }));
-    expect(s2.getCount({ code: "SOURCE_STALE", subjectId: "B01", bucket: dateHour(day2) })).toBe(1);
+    await call(baseArgs({ scheduledFor: now }));
+    expect(store.has("SOURCE_STALE", "B01")).toBe(true);
+    expect(store.has("GLOBAL_GAP", "market:us")).toBe(true);
+    expect(store.has("GLOBAL_GAP", "B01")).toBe(false);
   });
 });
 
@@ -351,157 +462,139 @@ describe("healthCheck — job handler contract", () => {
 
 // ============================ delivery adapter (NB1) ===================
 
-describe("delivery adapter — finishedAt only on 'sent'", () => {
-  const key = { code: "SOURCE_STALE", subjectId: "B01", bucket: "2026-07-30T12" };
+describe("delivery adapter — state only advances on 'sent'", () => {
+  function fakeState(initial?: { firstAlertedAt: Date; lastAlertedAt: Date; resolvedAt: Date | null }) {
+    let row: { id: string; firstAlertedAt: Date; lastAlertedAt: Date; resolvedAt: Date | null } | null =
+      initial ? { id: "r1", ...initial } : null;
+    return {
+      findUnique: async () => row,
+      create: async (args: any) => { row = { id: "r1", ...args.data }; return { id: "r1" }; },
+      update: async (args: any) => { row = { ...(row ?? { id: "r1" }), ...args.data } as any; },
+      get current() { return row; },
+    };
+  }
 
-  it("sets finishedAt on created row when sendOpsAlert returns 'sent'", async () => {
+  const key: AlertDeliveryKey = { code: "SOURCE_STALE", subjectId: "B01", now: new Date("2026-07-30T12:00:00Z") };
+
+  it("creates a row and pages on the first sighting", async () => {
     const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    const createdRows: any[] = [];
+    const state = fakeState();
+    let sendCount = 0;
     const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => null,
-          create: async (args: any) => { createdRows.push(args.data); return { id: "r1" }; },
-          update: async () => {},
-        },
-      },
-      sendOpsAlert: async () => "sent",
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => { sendCount++; return "sent"; },
     });
     await adapter.record(key);
-    expect(createdRows).toHaveLength(1);
-    expect(createdRows[0].finishedAt).not.toBeNull();
+    expect(sendCount).toBe(1);
+    expect(state.current).not.toBeNull();
+    expect(state.current!.resolvedAt).toBeNull();
   });
 
-  it("does NOT set finishedAt when sendOpsAlert returns 'skipped'", async () => {
+  it("does NOT page or touch state when sendOpsAlert returns 'skipped'", async () => {
     const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    const createdRows: any[] = [];
+    const state = fakeState();
     const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => null,
-          create: async (args: any) => { createdRows.push(args.data); return { id: "r2" }; },
-          update: async () => {},
-        },
-      },
+      prisma: { operationalAlertState: state },
       sendOpsAlert: async () => "skipped",
     });
     await adapter.record(key);
-    expect(createdRows).toHaveLength(1);
-    expect(createdRows[0].finishedAt).toBeUndefined();
+    expect(state.current).toBeNull(); // never recorded — next run retries
   });
 
-  it("does NOT set finishedAt when sendOpsAlert returns 'failed'", async () => {
+  it("does NOT page or touch state when sendOpsAlert returns 'failed'", async () => {
     const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    const createdRows: any[] = [];
+    const state = fakeState();
     const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => null,
-          create: async (args: any) => { createdRows.push(args.data); return { id: "r3" }; },
-          update: async () => {},
-        },
-      },
+      prisma: { operationalAlertState: state },
       sendOpsAlert: async () => "failed",
     });
     await adapter.record(key);
-    expect(createdRows).toHaveLength(1);
-    expect(createdRows[0].finishedAt).toBeUndefined();
+    expect(state.current).toBeNull();
   });
 
-  it("skips sending when a finished row already exists", async () => {
+  it("does NOT touch state when sendOpsAlert throws", async () => {
     const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    let sendCallCount = 0;
+    const state = fakeState();
     const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => ({ id: "r-exists", finishedAt: new Date("2026-07-30T12:00:00Z") }),
-          create: async () => { throw new Error("should not create"); },
-          update: async () => {},
-        },
-      },
-      sendOpsAlert: async () => { sendCallCount++; return "sent"; },
-    });
-    await adapter.record(key);
-    expect(sendCallCount).toBe(0);
-  });
-
-  it("retries sending when a row exists but is unfinished", async () => {
-    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    let sendCallCount = 0;
-    const updates: any[] = [];
-    const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => ({ id: "r-unfinished", finishedAt: null }),
-          create: async () => { throw new Error("should not create"); },
-          update: async (args: any) => { updates.push(args.data); },
-        },
-      },
-      sendOpsAlert: async () => { sendCallCount++; return "sent"; },
-    });
-    await adapter.record(key);
-    expect(sendCallCount).toBe(1);
-    expect(updates).toHaveLength(1);
-    expect(updates[0].finishedAt).not.toBeNull();
-  });
-
-  it("load returns true when finished row exists, false otherwise", async () => {
-    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    let findResult: { id: string; finishedAt: Date | null } | null = null;
-    const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => findResult,
-          create: async () => ({ id: "x" }),
-          update: async () => {},
-        },
-      },
-    });
-
-    findResult = { id: "r-finished", finishedAt: new Date() };
-    expect(await adapter.load(key)).toBe(true);
-
-    findResult = { id: "r-unfinished", finishedAt: null };
-    expect(await adapter.load(key)).toBe(false);
-
-    findResult = null;
-    expect(await adapter.load(key)).toBe(false);
-  });
-
-  it("leaves row unfinished when sendOpsAlert throws (create path)", async () => {
-    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    const createdRows: any[] = [];
-    const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => null,
-          create: async (args: any) => { createdRows.push(args.data); return { id: "r-throw" }; },
-          update: async () => {},
-        },
-      },
+      prisma: { operationalAlertState: state },
       sendOpsAlert: async () => { throw new Error("Telegram down"); },
     });
     await adapter.record(key);
-    expect(createdRows).toHaveLength(1);
-    expect(createdRows[0].finishedAt).toBeUndefined();
-    expect(createdRows[0].status).toBe("FAILED");
+    expect(state.current).toBeNull(); // outage must not abort the health job, and must not fake a delivery
   });
 
-  it("leaves row unfinished when sendOpsAlert throws (existing-unfinished path)", async () => {
+  it("suppresses a second page inside the cooldown", async () => {
     const { createDeliveryAdapter } = await import("../src/email/transactional.js");
-    let updateCalled = false;
+    const state = fakeState({ firstAlertedAt: key.now, lastAlertedAt: key.now, resolvedAt: null });
+    let sendCount = 0;
     const adapter = createDeliveryAdapter({
-      prisma: {
-        pipelineRun: {
-          findUnique: async () => ({ id: "r-unfinished", finishedAt: null }),
-          create: async () => { throw new Error("should not create"); },
-          update: async () => { updateCalled = true; },
-        },
-      },
-      sendOpsAlert: async () => { throw new Error("Telegram down"); },
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => { sendCount++; return "sent"; },
     });
-    await adapter.record(key);
-    expect(updateCalled).toBe(false); // update only on "sent", throw skips send
+    await adapter.record({ ...key, now: new Date(key.now.getTime() + HOUR) });
+    expect(sendCount).toBe(0);
+  });
+
+  it("pages again once the cooldown has elapsed", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const state = fakeState({ firstAlertedAt: key.now, lastAlertedAt: key.now, resolvedAt: null });
+    let sendCount = 0;
+    const adapter = createDeliveryAdapter({
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => { sendCount++; return "sent"; },
+    });
+    await adapter.record({ ...key, now: new Date(key.now.getTime() + DAY) });
+    expect(sendCount).toBe(1);
+    expect(state.current!.lastAlertedAt.getTime()).toBe(key.now.getTime() + DAY);
+  });
+
+  it("pages immediately when a resolved row recurs, ignoring the old cooldown", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const state = fakeState({ firstAlertedAt: key.now, lastAlertedAt: key.now, resolvedAt: key.now });
+    let sendCount = 0;
+    const adapter = createDeliveryAdapter({
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => { sendCount++; return "sent"; },
+    });
+    await adapter.record({ ...key, now: new Date(key.now.getTime() + 5 * 60000) });
+    expect(sendCount).toBe(1);
+    expect(state.current!.resolvedAt).toBeNull();
+  });
+
+  it("recordResolved marks resolvedAt only when the notice actually sends", async () => {
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const state = fakeState({ firstAlertedAt: key.now, lastAlertedAt: key.now, resolvedAt: null });
+    const adapter = createDeliveryAdapter({
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => "failed",
+    });
+    await adapter.recordResolved(key);
+    expect(state.current!.resolvedAt).toBeNull(); // failed send → next run retries the notice
+  });
+
+  it("recordResolved is a no-op when the row was never created", async () => {
+    // Every prior alert attempt failed to send, so nothing was ever paged —
+    // there is nothing to mark resolved and no notice to send.
+    const { createDeliveryAdapter } = await import("../src/email/transactional.js");
+    const state = fakeState();
+    let sendCount = 0;
+    const adapter = createDeliveryAdapter({
+      prisma: { operationalAlertState: state },
+      sendOpsAlert: async () => { sendCount++; return "sent"; },
+    });
+    await adapter.recordResolved(key);
+    // The current implementation still sends the notice text (it has no way
+    // to know a row never existed without a read) but the update is a no-op
+    // against a missing row, which must not throw.
+    expect(sendCount).toBe(1);
+  });
+});
+
+describe("buildOpsResolvedText", () => {
+  it("labels the same code and states the subject as resolved", async () => {
+    const { buildOpsResolvedText } = await import("../src/email/transactional.js");
+    expect(buildOpsResolvedText("SOURCE_STALE", "B01")).toBe("[Source Stale] RESOLVED — B01");
+    expect(buildOpsResolvedText("BRIEFING_ABSENT", "2026-07-20")).toBe("[Briefing Absent] RESOLVED — 2026-07-20");
   });
 });
 
@@ -542,6 +635,24 @@ describe("detectFailures — delivery gating", () => {
     expect(detections.length).toBe(2); // SOURCE_STALE + GLOBAL_GAP
     expect(delivered.length).toBe(2);
     expect(delivered.some((d) => d.code === "SOURCE_STALE")).toBe(true);
+  });
+
+  it("does not require resolveCleared/recordResolvedAlert to be present", async () => {
+    // Both are optional — a caller that only wires recordOperationalAlert
+    // (e.g. an older test double) must still work; it just gets no
+    // resolved-notice behaviour.
+    const { detectFailures } = await import("../src/jobs/health-check.js");
+    const now = new Date("2026-07-30T12:00:00Z");
+    const deps = {
+      getCoverageCapabilities: async () => [{ key: "t", sources: [{ sourceId: "B01" }] }] as FakeCapability[],
+      getSourceFacts: async () => ({ B01: { id: "B01", isActive: true, freshnessSlaMinutes: 720, lastOkAt: hoursAgo(1) } }) as FakeSourceFactsMap,
+      getSourceChecks: async () => [] as FakeSourceCheck[],
+      getBriefingStatus: async () => ({ absent: false }),
+      recordOperationalAlert: async () => {},
+      maxSlaWindowHours: 48,
+      now: () => now,
+    } as any;
+    await expect(detectFailures(deps, now, { deliver: true })).resolves.toEqual([]);
   });
 });
 

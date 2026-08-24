@@ -16,7 +16,6 @@
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import type { CostDecision } from "../monitoring/cost.js";
 import { registerJob } from "./registry.js";
-import { dateHourBucket } from "../monitoring/cost.js";
 
 export { evaluateCostGuardrail } from "../monitoring/cost.js";
 
@@ -75,7 +74,7 @@ export interface CostReportDeps {
     succeeded: number; failed: number; finished: boolean;
   } | null>;
   getProjectedCost(): Promise<{ total: number; breakdown: Record<string, number> }>;
-  recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
+  recordOperationalAlert(key: { code: string; subjectId: string; now: Date }): Promise<void>;
 }
 
 // ---- factory ----
@@ -102,8 +101,7 @@ export function createCostReport(
     const decision = evaluateCostGuardrail({ projectedTotalUsd });
 
     if (decision.level === "HARD_CAP") {
-      const bucket = dateHourBucket(args.scheduledFor);
-      await deps.recordOperationalAlert({ code: "HARD_CAP", subjectId: "cost", bucket });
+      await deps.recordOperationalAlert({ code: "HARD_CAP", subjectId: "cost", now: args.scheduledFor });
     }
 
     await deps.finishRun(runId, {
@@ -159,7 +157,7 @@ const REAL_DEPS: CostReportDeps = {
     const { getProjectedCost: fetchCost } = await import("../monitoring/cost.js");
     return fetchCost();
   },
-  async recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }) {
+  async recordOperationalAlert(key: { code: string; subjectId: string; now: Date }) {
     const { createDeliveryAdapter } = await import("../email/transactional.js");
     const adapter = createDeliveryAdapter();
     await adapter.record(key);

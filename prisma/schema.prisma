@@ -527,6 +527,27 @@ model PipelineRun {
   @@unique([jobType, scopeKey, scheduledFor])
 }
 
+// Lifecycle state for one operational alert (code + subjectId), e.g.
+// SOURCE_STALE for one source, or BRIEFING_ABSENT for one missing week.
+// Exists so an ongoing condition pages at most once per cooldown instead of
+// on every health-check run — the previous scheme keyed dedup off the current
+// hour, which is a no-op dedup against an hourly job: it re-sent an identical
+// message every hour for as long as the condition lasted (measured: ~500
+// messages over 3 weeks for one unresolved BRIEFING_ABSENT). resolvedAt is
+// cleared (not deleted) when the same code+subjectId re-fires after having
+// cleared, so a recurrence pages immediately rather than waiting out a
+// cooldown that belongs to the previous episode.
+model OperationalAlertState {
+  id             String    @id @default(cuid())
+  code           String
+  subjectId      String
+  firstAlertedAt DateTime
+  lastAlertedAt  DateTime
+  resolvedAt     DateTime?
+
+  @@unique([code, subjectId])
+}
+
 // One source check within a run — recorded independently from new-item volume.
 model SourceCheck {
   id          String    @id @default(cuid())

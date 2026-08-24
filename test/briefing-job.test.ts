@@ -39,18 +39,18 @@ function sundayArgs(): JobArgs {
 }
 
 class AlertLedger {
-  readonly records: Array<{ code: string; subjectId: string; bucket: string }> = [];
-  record(key: { code: string; subjectId: string; bucket: string }) {
+  readonly records: Array<{ code: string; subjectId: string; now: Date }> = [];
+  record(key: { code: string; subjectId: string; now: Date }) {
     this.records.push(key);
   }
-  hasExact(expect: { code: string; subjectId: string; bucket: string }): boolean {
+  hasExact(expect: { code: string; subjectId: string; now: Date }): boolean {
     return this.records.some((r) =>
-      r.code === expect.code && r.subjectId === expect.subjectId && r.bucket === expect.bucket,
+      r.code === expect.code && r.subjectId === expect.subjectId && r.now.getTime() === expect.now.getTime(),
     );
   }
-  countExact(expect: { code: string; subjectId: string; bucket: string }): number {
+  countExact(expect: { code: string; subjectId: string; now: Date }): number {
     return this.records.filter((r) =>
-      r.code === expect.code && r.subjectId === expect.subjectId && r.bucket === expect.bucket,
+      r.code === expect.code && r.subjectId === expect.subjectId && r.now.getTime() === expect.now.getTime(),
     ).length;
   }
 }
@@ -110,7 +110,7 @@ function makeBriefinger(deps: Partial<BriefingBatchDeps> = {}) {
         }),
       recordOperationalAlert:
         deps.recordOperationalAlert ??
-        (async (key: { code: string; subjectId: string; bucket: string }) => {
+        (async (key: { code: string; subjectId: string; now: Date }) => {
           await alertStore.record(key);
         }),
     }),
@@ -124,7 +124,7 @@ describe("briefingBatch — weekly absence", () => {
     const { call, alertStore } = makeBriefinger();
     const result = await call(mondayArgs());
     expect(result).toMatchObject({ status: "BLOCKED", exitCode: 2 });
-    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(true);
+    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", now: new Date("2026-07-27T08:00:00Z") })).toBe(true);
   });
 });
 
@@ -343,11 +343,11 @@ describe("briefingBatch — absent replay", () => {
 
     // First run records the alert
     await call(mondayArgs());
-    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(1);
+    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", now: new Date("2026-07-27T08:00:00Z") })).toBe(1);
 
     // Replay must NOT re-record the alert
     await call(mondayArgs());
-    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(1);
+    expect(alertStore.countExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", now: new Date("2026-07-27T08:00:00Z") })).toBe(1);
   }, 10000);
 });
 
@@ -362,7 +362,7 @@ describe("briefingBatch — zero qualified", () => {
     expect(result.status).toBe("BLOCKED");
     expect(result.exitCode).toBe(2);
     expect(result.itemCount).toBe(0);
-    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", bucket: "2026-07-27T08" })).toBe(true);
+    expect(alertStore.hasExact({ code: "BRIEFING_ABSENT", subjectId: "2026-07-20", now: new Date("2026-07-27T08:00:00Z") })).toBe(true);
   }, 10000);
 });
 

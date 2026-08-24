@@ -17,7 +17,6 @@
 import { createHash } from "node:crypto";
 
 import { beginRun } from "../collection/run.js";
-import { dateHourBucket } from "../monitoring/cost.js";
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
 
@@ -63,7 +62,7 @@ export interface BriefingBatchDeps {
     versionIds: string[];
     outputFingerprint: string;
   } | null>;
-  recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }): Promise<void>;
+  recordOperationalAlert(key: { code: string; subjectId: string; now: Date }): Promise<void>;
 }
 
 // ---- window helpers ----
@@ -156,11 +155,10 @@ export function createBriefingBatch(
     const weeklyRun = isWeeklyRun(args.scheduledFor);
 
     if (versions.length === 0 && weeklyRun) {
-      const bucket = dateHourBucket(args.scheduledFor);
       await deps.recordOperationalAlert({
         code: "BRIEFING_ABSENT",
         subjectId: window.start.toISOString().slice(0, 10), // Monday date as weekly window id
-        bucket,
+        now: args.scheduledFor,
       });
 
       await deps.finishRun(runId, {
@@ -326,7 +324,7 @@ const REAL_DEPS: BriefingBatchDeps = {
       outputFingerprint: run.outputFingerprint ?? "",
     };
   },
-  async recordOperationalAlert(key: { code: string; subjectId: string; bucket: string }) {
+  async recordOperationalAlert(key: { code: string; subjectId: string; now: Date }) {
     const { createDeliveryAdapter } = await import("../email/transactional.js");
     const adapter = createDeliveryAdapter();
     await adapter.record(key);

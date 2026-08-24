@@ -13,21 +13,22 @@
  *   BRIEFING_ABSENT  — weekly briefing missing
  *
  * Delivery is separated from detection: detectFailures returns ALL currently-
- * detected failures. Delivery uses a PipelineRun-backed adapter
- * (createDeliveryAdapter) with structured {code, subjectId, bucket} keys.
- * The adapter handles its own dedup via finishedAt checks.
+ * detected failures. Delivery uses an OperationalAlertState-backed adapter
+ * (createDeliveryAdapter) keyed by {code, subjectId}: an ongoing condition
+ * pages at most once per 24h, and clearing sends exactly one resolved notice
+ * for SOURCE_STALE, CONTENT_COLLAPSE and GLOBAL_GAP (see the note on
+ * BRIEFING_ABSENT below for why it is excluded from resolution tracking).
  */
 
 import type { JobArgs, JobResult, JobStatus } from "./types.js";
 import { registerJob } from "./registry.js";
-import { dateHourBucket } from "../monitoring/cost.js";
 
 // ---- delivery adapter injection (structured) ----
 
 export interface AlertDeliveryKey {
   code: string;
   subjectId: string;
-  bucket: string; // YYYY-MM-DDTHH
+  now: Date;
 }
 
 // ---- types ----
@@ -63,6 +64,22 @@ export interface HealthCheckDeps {
     succeeded: number; failed: number; finished: boolean;
   } | null>;
   recordOperationalAlert(key: AlertDeliveryKey): Promise<void>;
+  /**
+   * Send exactly one "cleared" notice when a previously-alerting
+   * (code, subjectId) drops out of the currently-detected set. Optional so
+   * detection-only callers (evaluateOperationalHealth, most tests) are
+   * unaffected; wired for real delivery in REAL_DEPS.
+   */
+  recordResolvedAlert?(key: AlertDeliveryKey): Promise<void>;
+  /**
+   * Given everything this code currently detects as active, return the
+   * subjectIds that were previously unresolved and are not in that set —
+   * i.e. what just cleared — and mark them resolved. Only meaningful for a
+   * code whose subjectId identifies a persistent thing (a source, a
+   * capability); see the BRIEFING_ABSENT note in detectFailures for why it
+   * does not use this.
+   */
+  resolveCleared?(input: { code: string; activeSubjectIds: string[] }): Promise<string[]>;
   getSourceChecks(since: Date): Promise<SourceCheckSummary[]>;
   getSourceFacts(sourceIds: string[]): Promise<Record<string, SourceFacts>>;
   getCoverageCapabilities(): Promise<CapabilitySummary[]>;
@@ -231,13 +248,34 @@ const HOUR = 60 * 60000;
  * the job handler). Default is {deliver: false} — pure detection only,
  * with no side effects (used by evaluateOperationalHealth).
  */
+/**
+ * After a detection loop for one code has run, page anything newly-due and
+ * mark anything that cleared. Shared by the three codes whose subjectId
+ * names a persistent thing (a source, a capability) — see the BRIEFING_ABSENT
+ * comment in detectFailures for the one code that does not use this.
+ */
+async function deliverWithResolution(
+  deps: HealthCheckDeps,
+  now: Date,
+  code: string,
+  activeSubjectIds: string[],
+): Promise<void> {
+  for (const subjectId of activeSubjectIds) {
+    await deps.recordOperationalAlert({ code, subjectId, now });
+  }
+  if (!deps.resolveCleared || !deps.recordResolvedAlert) return;
+  const cleared = await deps.resolveCleared({ code, activeSubjectIds });
+  for (const subjectId of cleared) {
+    await deps.recordResolvedAlert({ code, subjectId, now });
+  }
+}
+
 export async function detectFailures(
   deps: HealthCheckDeps,
   now: Date,
   opts?: { deliver?: boolean },
 ): Promise<Detection[]> {
   const deliver = opts?.deliver ?? false;
-  const bucket = dateHourBucket(now);
   const detections: Detection[] = [];
 
   const capabilities = await deps.getCoverageCapabilities();
@@ -249,26 +287,31 @@ export async function detectFailures(
   const sourceFacts = await deps.getSourceFacts([...allSourceIds]);
 
   // ---- 1. SOURCE_STALE ----
+  const staleSourceIds: string[] = [];
   for (const sourceId of allSourceIds) {
     const facts = sourceFacts[sourceId];
     if (!facts) continue;
     if (isSourceStale(facts, now)) {
+      staleSourceIds.push(sourceId);
       detections.push({ code: "SOURCE_STALE", subjectId: sourceId });
-      if (deliver) await deps.recordOperationalAlert({ code: "SOURCE_STALE", subjectId: sourceId, bucket });
     }
   }
+  if (deliver) await deliverWithResolution(deps, now, "SOURCE_STALE", staleSourceIds);
 
   // ---- 2. CONTENT_COLLAPSE ----
   const lookbackWindow = new Date(now.getTime() - deps.maxSlaWindowHours * HOUR);
   const checks = await deps.getSourceChecks(lookbackWindow);
+  const collapsedSourceIds: string[] = [];
   for (const sourceId of allSourceIds) {
     if (detectContentCollapse(sourceId, checks)) {
+      collapsedSourceIds.push(sourceId);
       detections.push({ code: "CONTENT_COLLAPSE", subjectId: sourceId });
-      if (deliver) await deps.recordOperationalAlert({ code: "CONTENT_COLLAPSE", subjectId: sourceId, bucket });
     }
   }
+  if (deliver) await deliverWithResolution(deps, now, "CONTENT_COLLAPSE", collapsedSourceIds);
 
   // ---- 3. GLOBAL_GAP ----
+  const gappedCapabilityKeys: string[] = [];
   for (const cap of capabilities) {
     const activeSources = cap.sources
       .map((s) => sourceFacts[s.sourceId])
@@ -279,16 +322,20 @@ export async function detectFailures(
       if (s.lastOkAt == null) return true;
       return now.getTime() - s.lastOkAt.getTime() > maxSlaMinutes * 60000;
     })) {
+      gappedCapabilityKeys.push(cap.key);
       detections.push({ code: "GLOBAL_GAP", subjectId: cap.key });
-      if (deliver) await deps.recordOperationalAlert({ code: "GLOBAL_GAP", subjectId: cap.key, bucket });
     }
   }
+  if (deliver) await deliverWithResolution(deps, now, "GLOBAL_GAP", gappedCapabilityKeys);
 
   // ---- 4. BRIEFING_ABSENT ----
+  // No resolution tracking here, deliberately. subjectId is the Monday that
+  // started the missing weekly window, so it rolls forward every week
+  // whether or not the underlying cause was fixed — the week rolling over is
+  // not resolution, and treating it as one would send a false "cleared"
+  // notice every Monday for as long as the condition actually persists.
   const briefingStatus = await deps.getBriefingStatus(now);
   if (briefingStatus.absent) {
-    // SubjectId is the Monday that STARTED the missing weekly window
-    // (the same window queried by getBriefingStatus: [prevMon, curMon)).
     const mondayOfWeek = new Date(Date.UTC(
       now.getUTCFullYear(), now.getUTCMonth(),
       now.getUTCDate() - ((now.getUTCDay() + 6) % 7),
@@ -297,7 +344,7 @@ export async function detectFailures(
     previousMonday.setUTCDate(mondayOfWeek.getUTCDate() - 7);
     const subjectId = previousMonday.toISOString().slice(0, 10);
     detections.push({ code: "BRIEFING_ABSENT", subjectId });
-    if (deliver) await deps.recordOperationalAlert({ code: "BRIEFING_ABSENT", subjectId, bucket });
+    if (deliver) await deps.recordOperationalAlert({ code: "BRIEFING_ABSENT", subjectId, now });
   }
 
   return detections;
@@ -352,6 +399,21 @@ const REAL_DEPS: HealthCheckDeps = {
     const { createDeliveryAdapter } = await import("../email/transactional.js");
     const adapter = createDeliveryAdapter();
     await adapter.record(key);
+  },
+  async recordResolvedAlert(key: AlertDeliveryKey) {
+    const { createDeliveryAdapter } = await import("../email/transactional.js");
+    const adapter = createDeliveryAdapter();
+    await adapter.recordResolved(key);
+  },
+  async resolveCleared({ code, activeSubjectIds }) {
+    const { prisma: db } = await import("../db/client.js");
+    const stillUnresolved = await db.operationalAlertState.findMany({
+      where: { code, resolvedAt: null },
+      select: { subjectId: true },
+    });
+    return stillUnresolved
+      .map((r) => r.subjectId)
+      .filter((subjectId) => !activeSubjectIds.includes(subjectId));
   },
   async getSourceChecks(since: Date) {
     const { prisma: db } = await import("../db/client.js");
