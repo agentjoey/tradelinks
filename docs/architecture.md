@@ -1,22 +1,22 @@
 # TradeLinks — System Architecture
 
-> Last updated: 2026-07-30 · v0.12.0 + Phase 1 Foundation + Operations preparation
+> Last updated: 2026-08-24 · v0.12.0 + Phase 1 Foundation + Operations + Public Intelligence（全部在 main 与 production）
 
 ## Overview
 
-TradeLinks 当前线上仍运行**数据摄取 → AI 处理 → 精选分发**的 legacy 管道；Phase 1 Foundation 在同一 schema 中以 additive、forward-only 方式加入来源契约、采集账本、规范化情报、结构化证据、不可变版本与 coverage readiness。Phase 1 Operations 的有限任务入口、重试/锁、发布、briefing、health 与 cost guardrail 已在仓库完成，但 Railway Cron cutover 尚未启用。Public Intelligence 和 Private Relevance 尚未切换读写路径。
+Phase 1 已经切换：Public Intelligence 的新公开面（`/changes`、各 platform/category hub、`/briefings`、feeds、OpenAPI）已是生产流量入口，legacy Wire/Radar/Daily 路由 308 到契约目标（完全可逆，见 `.agent/CURRENT.md` Task 9b）。Railway 八个 finite-job cron 服务（`collect-fast/standard/slow`、`canonicalize`、`publish`、`public-briefing`、`health`、`cost-report`）跑的是 `main` 分支，取代了原先 pg-boss + 常驻 worker 的拓扑；pg-boss 仍在仓库中但不再是生产路径的关键依赖。cluster → CanonicalChange 促成机制已上线并持续运行。Private Relevance 与 Seller Profile 尚未开始。
 
 ## Implementation Status
 
 | Layer | Repository state | Production state |
 |-------|------------------|------------------|
-| Legacy Wire / Radar / Daily | Preserved for current traffic | Live |
-| Phase 1 Foundation | Complete; 8/8 Pact tasks accepted; Draft PR #3 | Vercel/Neon staging only; production unchanged |
-| Public Intelligence | Detailed plan only | Not started |
+| Legacy Wire / Radar / Daily | Preserved, routes 308 to Public Intelligence equivalents | Redirected, not removed (rollback path) |
+| Phase 1 Foundation | Complete; 8/8 Pact tasks accepted | Migrations `0011`/`0012` on production |
+| Public Intelligence | Complete; 10/10 Pact tasks accepted | **Live** — cutover flag on, serving production traffic |
 | Private Relevance | Detailed plan only | Not started |
-| Operations / cost cutover | Tasks 1–4 accepted; Task 5 Phase A prepared | Legacy worker remains live until controlled cron cutover |
+| Operations / cost cutover | Finite-job topology complete; pact task `railway-cutover` still `awaiting_review` in the ledger despite the cron services already running on `main` in production — ledger needs reconciling, not a code gap | Railway cron topology is production, legacy pg-boss worker retired from the critical path |
 
-Foundation validation used the approved non-production Neon branch. Migrations `0011` and `0012`, legacy backfill apply/replay, 426 tests, and the production build passed there. The migrations are now also applied on Neon staging and commit `91a7d25` is live on a protected Vercel staging Preview; staging backfill remains dry-run only and production is unchanged.
+Foundation validation used the approved non-production Neon branch before rollout. Public Intelligence and Operations were verified the same way, then rolled straight to production per owner decision to skip a separate staging soak (`.agent/CURRENT.md`, 2026-08-05). Migrations through `0014` are on production; see the per-migration notes below and the Operational Alerts section.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -72,6 +72,8 @@ Foundation validation used the approved non-production Neon branch. Migrations `
 │  CanonicalChange/Version — immutable canonical intelligence     │
 │  EvidenceRecord — role/authority/access/review provenance       │
 │  CoverageCapability/CapabilitySource — truthful promise ceiling │
+│  OperationalAlertState — per (code,subjectId) alert lifecycle,  │
+│    24h cooldown + resolved-notice state (0014, see below)       │
 │  users            — auth + subscription tiers                   │
 │  keyword_watches  — user-defined keyword monitors               │
 └────────────────────────┬────────────────────────────────────────┘
@@ -183,11 +185,11 @@ scrape queue runs `batchSize: 1`. Without this, ingest jobs (which carry the ful
 scraped items array as JSONB) bloated pg-boss to ~300 MB and nearly filled Neon's
 0.5 GB. See operations.md.
 
-### Phase 1 target topology (pending production cutover)
+### Phase 1 topology (live in production since 2026-08-05)
 
-Eight short-lived Railway Cron services will call `pnpm job --name <job>` and exit. `PipelineRun` plus PostgreSQL advisory locks provide stable slot identity and prevent concurrent duplicate work. The target services are `collect-fast`, `collect-standard`, `collect-slow`, `canonicalize`, `publish`, `public-briefing`, `health`, and `cost-report`; exact schedules and rollback steps are in `docs/operations/phase1-runbook.md`.
+Eight short-lived Railway Cron services call `pnpm job --name <job>` and exit: `collect-fast`, `collect-standard`, `collect-slow`, `canonicalize`, `publish`, `public-briefing`, `health`, and `cost-report`. `PipelineRun` plus PostgreSQL advisory locks provide stable slot identity and prevent concurrent duplicate work. Exact schedules and rollback steps are in `docs/operations/phase1-runbook.md`.
 
-The target topology is not considered active until the old worker is paused, three manual finite slots pass, and schedules are enabled without overlap. pg-boss and the worker remain the rollback path for the first 72 hours. The pre-cutover Neon checkpoint is `phase1-operations-pre-cron`. Only after the 72-hour evidence is independently accepted may the repository remove pg-boss and the retired runtime files.
+The pact ledger still lists the `railway-cutover` task as `awaiting_review`, but the cron services have been running `main` in production since 2026-08-05 (`.agent/CURRENT.md`) — this is a ledger-reconciliation gap, not an unstarted cutover. `tradelinks-legacy-worker` (the old `next start`-based worker) is a dead, unstable service that carries no live pipeline traffic and is a deletion candidate, not a rollback path.
 
 ## Monitoring & Source Health
 
@@ -358,5 +360,16 @@ failures across Tasks 5–9a. See
 Everything in this milestone is additive. A code rollback leaves the five new
 tables in place — never run a down migration. Staging pre-migration checkpoint:
 `staging-pre-0013-public-content` (`br-shy-band-aol21p63`, parent
-`br-delicate-snow-aoi9sgtw`, expires 2026-08-18). Production has **not** received
-`0013`.
+`br-delicate-snow-aoi9sgtw`, expired 2026-08-18). `0013` was applied to
+production on 2026-08-04 as part of the Public Intelligence cutover; the
+pre-cutover production checkpoint is `phase1-public-pre-retirement`
+(`br-damp-boat-aov1verm`, no expiry) per `.agent/CURRENT.md`.
+
+## Operational Alerts (migration `0014`, on production 2026-08-24)
+
+`OperationalAlertState` gives each `(code, subjectId)` operational alert (`SOURCE_STALE`, `CONTENT_COLLAPSE`, `GLOBAL_GAP`, `BRIEFING_ABSENT` from `health-check.ts`; `HARD_CAP` from `cost-report.ts`) persistent lifecycle state, replacing a dedup key that bucketed on the *current hour* — against an hourly job that key never matched a prior run, so an ongoing condition paged every single hour indefinitely (measured ~500 identical Telegram messages over three weeks for one unresolved `BRIEFING_ABSENT`).
+
+- `record()` pages at most once per 24h while a condition stays active; a condition that clears and later recurs pages immediately as a new episode, not bound by the old episode's cooldown.
+- `recordResolved()` sends a one-time "RESOLVED" notice when `SOURCE_STALE`/`CONTENT_COLLAPSE`/`GLOBAL_GAP` clear. `BRIEFING_ABSENT` is deliberately excluded — its `subjectId` is the Monday that started the missing week, which rolls forward regardless of whether the underlying cause was fixed, so diffing it would send a false all-clear every week.
+- State only advances on a confirmed `"sent"` from the push adapter; `skipped`/`failed`/a thrown send leaves the row untouched so the next run retries naturally.
+- `getBriefingStatus()` (the `BRIEFING_ABSENT` detector) only evaluates on Mondays by design — it is not a cooldown side-effect that the alert goes quiet Tuesday–Sunday even while the underlying briefing pipeline stays broken (see the periodKey/scopeKey mismatch noted in `docs/status/2026-08-18-product-status.md`).

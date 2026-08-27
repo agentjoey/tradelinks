@@ -23,6 +23,14 @@ Owner 决策「1.每天 2.补上」：冷却期改为按天，并补上"已恢�
 
 **仍未做**：Amazon 源 `US-APHIS` 静默失败（0 条却记 `SUCCEEDED_EMPTY`）的修复——已提出方案，owner 尚未拍板；P0-2（`US-CPSC-RSS` 转正、`US-FTC-CONSUMER` 去留）同样待决。
 
+### ⛔ 2026-08-24 晚：第一次 Railway 重部署没生效，已修正
+
+`railway redeploy --from-source` 在 `git push` **之前**执行，拉的是远端上一个提交（`de7d68e`）——DB migration 生效了，但代码没换，所以 `[Briefing Absent]` 当晚继续按小时刷屏（owner 截图发现）。已重新按正确顺序（先 push 再 redeploy）执行，三个服务确认跑的是 `06bc67f`。**教训**：Railway `--from-source` 读远端仓库，不是本地工作树，先 push 再 redeploy，且部署后应核对 `railway status --json` 里的 `commitHash` 而非只看"Building/Online"。
+
+**2026-08-28 复核**：`OperationalAlertState` 生产表里 `BRIEFING_ABSENT` 只有一行，`lastAlertedAt` 停在 08-24 19:39，此后 `health` 逐小时跑了几十次都没再发——**这是预期行为，不是新 bug**。`getBriefingStatus()` 的缺失判定本身只在周一触发（`isMonday` 门槛，`src/jobs/health-check.ts:461`，与本次改动无关的既有逻辑），所以一周里其余六天条件恒为 false，冷却期机制根本没被触发第二次的机会。下周一（08-31）若周报流水线仍未修（`docs/status/2026-08-18-product-status.md` 记录的 scopeKey/periodKey 契约错位），预期会看到新一条 `subjectId="2026-08-24"` 的告警。
+
+**顺带发现的账本问题**：pact 状态显示 `feat-phase1-operations` 的 `railway-cutover` 任务仍是 `awaiting_review`，但对应的 cron 切换早在 08-05 就已在生产跑了三周——账本没跟上事实，需要 reviewer（`claude` 座位）去补验收，而不是重做。`phase1-foundation`、`phase1-public-intelligence` 两个 feature 同样卡在 pact 的 `in_progress`，尽管任务全 `accepted` 且代码早已进 `main`——同一类账本滞后。
+
 ## 2026-08-05：合并 operations + 补上管线缺失的一环
 
 Owner 决策：Track A 原为切换前试运行，出现问题后决定**跳过其验收仪式直接上生产**。仪式可跳，代码不可——Railway 自 2026-08-01 起就在跑那个分支。

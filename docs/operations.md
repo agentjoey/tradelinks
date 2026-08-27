@@ -16,14 +16,14 @@
 
 Local `.env` points to dev; staging/production require explicit commands (`pnpm db:migrate:staging` / `pnpm db:migrate:prod`).
 
-## Phase 1 Foundation rollout status
+## Phase 1 rollout status (updated 2026-08-24)
 
-- Repository: complete; 8/8 Pact tasks accepted; Draft PR [#3](https://github.com/agentjoey/tradelinks/pull/3).
-- Staging: Git commit `91a7d25`; Vercel Preview READY at `https://tradelinks-git-staging-agentjoeys-projects.vercel.app`; Neon branch `br-delicate-snow-aoi9sgtw` has migrations `0011` and `0012` applied.
-- Staging rollback checkpoint: `br-orange-king-ao98kiew`, no compute, expires 2026-08-04T12:00:00Z.
-- Staging backfill is dry-run only. Production is unchanged; do not run the Foundation backfill or migrations against production from this document.
-- Next operational gate: merge/review Public Intelligence and the Railway Cron/short-lived worker cutover, then complete seven consecutive days of source-SLA and global-gap monitoring before P0 acceptance.
-- The checkpoint branch expires on 2026-07-30; any later rollout requires a fresh Neon backup/branch checkpoint rather than treating the old branch as a durable backup.
+**Production has cut over.** As of 2026-08-04/05, Public Intelligence's new public surfaces (`/changes`, platform/category hubs, `/briefings`, feeds, OpenAPI) serve production traffic, legacy Wire/Radar/Daily routes 308 to their contract targets, and the eight Railway Cron finite-job services (`collect-fast/standard/slow`, `canonicalize`, `publish`, `public-briefing`, `health`, `cost-report`) run `main` in production — see `.agent/CURRENT.md` Task 9b for the cutover record and rollback procedure (flip `PUBLIC_CUTOVER_ENABLED` off, or `vercel promote` the pre-cutover deployment; legacy code and data are untouched).
+
+- Migrations `0011` through `0014` are all applied to production. `pnpm db:migrate:prod`/`:staging` depend on `.env.production`/`.env.staging`, which **do not exist in this working copy** — either provision those files first, or apply migrations via the Neon MCP tools with connection strings pulled directly from the target branch (`prisma migrate deploy` with `DATABASE_URL`/`DIRECT_URL` set inline). Confirmed twice now (2026-08-05, 2026-08-24) that the missing-file case fails silently and falls back to the dev database rather than erroring.
+- Cluster → CanonicalChange promotion is live and running on a 4-hour cadence; publication still requires human review through `/admin/review`.
+- Open pact-ledger gap: the `railway-cutover` task under `feat-phase1-operations` is still marked `awaiting_review` even though the cutover it describes has been live in production for weeks — this needs reconciling in the ledger, not re-doing.
+- Next operational gate (per the original Foundation plan) was seven consecutive days of source-SLA/global-gap monitoring before P0 acceptance; given the direct-to-production rollout this was not run as a discrete staging soak — treat ongoing production `/admin/sources` and `health` job output as the closest available evidence.
 
 ## Source health dashboard
 
